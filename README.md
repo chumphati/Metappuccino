@@ -11,6 +11,11 @@ Use of [Llama.cpp](https://github.com/ggerganov/llama.cpp) to launch te used LLM
 
     git clone git@github.com:ggerganov/llama.cpp.git
 
+The dependant models for the tool are:
+- Llama 70B
+
+Those models must be stored in the folder models.
+
 # Installation
 Clone the repository:
 
@@ -21,6 +26,6 @@ Clone the repository:
 # Quick start
 #### Running MetaMap
 
-    nohup bash bin/MetaMap.sh > results/logsMetaMap.log 2>&1 &
+    nohup python3 bin/MetaMap.py > results/logsMetaMap.log 2>&1 &
 
 #### Main argument input

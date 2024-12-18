@@ -6,6 +6,5 @@
 #PBS -l select=1:ncpus=20:mem=64gb
 
 echo "Begin date: $(date)"
-#launch metadata
-bash /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/get_clean_metadata/get_metadata_ncbi_ena.sh
+python3 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/get_clean_metadata/get_metadata_ncbi_ena.py
 echo "End date: $(date)"
