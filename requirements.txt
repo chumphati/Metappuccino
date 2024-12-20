@@ -23,4 +23,5 @@ requests
 lxml
 pandas
 tqdm
-llama-cpp-python
+psutil
+torch

@@ -3,8 +3,8 @@
 #GET PROPORTION EMPTY LINE PER COLUMN
 
 #output llm process
-fichier_final_out_llm="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/cleaned_table/biollama_8B.csv"
-output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/stats/biollama_8B.csv"
+fichier_final_out_llm="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/cleaned_table/llama_3_3_70B.csv"
+output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/stats/llama_3_3_70B.csv"
 
 #créate prop
 en_tete=$(head -n 1 "$fichier_final_out_llm")
