@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#COUNT SAME UBERON NUMBER BETWEEN TWO FILES AND VERIFY CODE
+# COUNT SAME UBERON NUMBER BETWEEN TWO FILES AND VERIFY CODE
 
-file1="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/cleaned_table/biollama_8B.csv"
-file2="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/data/processed_ref_metadata.csv"
-output="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/mismatch_uberon/bad_uberon_biollama_8B.txt"
-good_uberon="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/mismatch_uberon/good_uberon_biollama_8B.txt"
-output_stats="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/stats/biollama_8B.csv"
-detailed_output="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/detailed_uberon_results/biollama_8B_detailed_uberon_results.txt"
-uberon_ref="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/data/UBERON_TABLE_CLEAN.csv"
+file1="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/cleaned_table/llama_3_3_70B.csv"
+file2="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/processed_ref_metadata.csv"
+output="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/mismatch_uberon/bad_uberon_llama_3_3_70B.txt"
+good_uberon="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/mismatch_uberon/good_uberon_llama_3_3_70B.txt"
+output_stats="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/stats/llama_3_3_70B.csv"
+detailed_output="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/results/final_out_llm/detailed_uberon_results/llama_3_3_70B_detailed_uberon_results.txt"
+uberon_ref="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/UBERON_TABLE_CLEAN.csv"
 
-#counts
+# Counts
 match_count=0
 skip_count=0
 correct_uberon_count=0
@@ -22,37 +22,38 @@ echo "LLM // REFERENCE" >> "$output"
 > "$detailed_output"
 echo "Accession,Reference UBERON Code,Reference Names and Synonyms,Predicted Code,Result" >> "$detailed_output"
 
-#find common accession number to compare the good lines
-common_ids=$(comm -12 <(cut -d',' -f1 "$file1" | sort) <(cut -d',' -f1 "$file2" | sort))
-#Same uberon nb+Unknown entries from LLM+output file
-
+# Build the UBERON reference dictionary
 declare -A uberon_map
 while IFS=',' read -r code name synonyms; do
-    code_cleaned=$(echo "$code" | tr '[:upper:]' '[:lower:]' | xargs)
-    synonyms_cleaned=$(echo "$name;$synonyms" | tr '[:upper:]' '[:lower:]' | sed 's/;/ /g' | xargs -0)
+    code_cleaned=$(echo "$code" | tr '[:upper:]' '[:lower:]' | sed -E 's/[-_]/:/g' | xargs)
+    synonyms_cleaned=$(echo "$name;$synonyms" | tr '[:upper:]' '[:lower:]' | sed -E 's/[-_]/:/g' | xargs)
     uberon_map["$code_cleaned"]="$synonyms_cleaned"
 done < "$uberon_ref"
 
-#on common line
+# Find common accession numbers
+common_ids=$(comm -12 <(cut -d',' -f1 "$file1" | sort) <(cut -d',' -f1 "$file2" | sort))
+
+# Process common lines
 for id in $common_ids; do
     line1=$(grep "^$id," "$file1")
     line2=$(grep "^$id," "$file2")
 
-    #clean extract columns
-    col1=$(echo "$line1" | cut -d',' -f6 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9: ]//g' | xargs -0)
-    col2=$(echo "$line2" | cut -d',' -f6 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9: ]//g' | xargs -0)
+    # Clean and extract columns
+    col1=$(echo "$line1" | cut -d',' -f6 | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9:_-]//g' | sed -E 's/[-_]/:/g' | xargs)
+    col2=$(echo "$line2" | cut -d',' -f6 | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9:_-]//g' | sed -E 's/[-_]/:/g' | xargs)
 
-    #if llm "inc" ou "not specified"
-    if [[ "$col1" == "inc" || "$col1" == "not specified" ]]; then
+    # Skip invalid entries
+    if [[ "$col1" == "inc" || "$col1" == "not specified" || "$col1" == "na" ]]; then
         skip_count=$((skip_count + 1))
         continue
     fi
 
-    #extraction uberon
-    if [[ "$col1" =~ (uberon:[0-9]+) ]]; then
-        uberon_code=${BASH_REMATCH[1]}
-        col1_text=$(echo "$col1" | sed "s/$uberon_code//g" | xargs -0)
+    # Extract UBERON code
+    if [[ "$col1" =~ ([a-z]*uberon[:][0-9]+) ]]; then
+        uberon_code=$(echo "${BASH_REMATCH[1]}" | sed -E 's/[a-z]*uberon/uberon/g')
+        col1_text=$(echo "$col1" | sed "s/$uberon_code//g" | xargs)
 
+        # Compare with reference
         if [[ -n ${uberon_map["$uberon_code"]} ]]; then
             synonyms=${uberon_map["$uberon_code"]}
             match_found=false
@@ -81,7 +82,7 @@ for id in $common_ids; do
         echo "$id,N/A,N/A,$col1,No Code Found" >> "$detailed_output"
     fi
 
-    #comparison words
+    # Compare words
     words_col1=($col1)
     words_col2=($col2)
 
@@ -104,8 +105,8 @@ for id in $common_ids; do
     fi
 done
 
-#write output
-echo "Same uberon nb,$match_count" >> "$output_stats"
+# Write output statistics
+echo "Same UBERON term number,$match_count" >> "$output_stats"
 echo "Unknown entries from LLM,$skip_count" >> "$output_stats"
 echo "Correct UBERON codes,$correct_uberon_count" >> "$output_stats"
 echo "Incorrect UBERON codes,$incorrect_uberon_count" >> "$output_stats"
