@@ -11,7 +11,7 @@ import sys
 base_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
 input_metadata_path = os.path.join(base_path, "LLM_METADATA_READY/sample_info.txt")
 raw_final_info_path = os.path.join(base_path, "RAW_FINAL_INFO.txt")
-output_dir = os.path.join(base_path, "INFO_BIO_LLM")
+output_dir = os.path.join(base_path, "TEST_LLM_GPU")
 model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf"
 log_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/llm_log_SB.txt"
 
@@ -19,12 +19,15 @@ log_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/llm_
 #FUNCTIONS
 sys.stdout = open(log_file_path, "a")
 sys.stderr = sys.stdout
+
+
 #check memory
 def print_memory_usage(process):
     memory_info = process.memory_info()
     vm = psutil.virtual_memory()
     print(f"rss memory usage: {memory_info.rss / 1024 ** 2:.2f} mb")
     print(f"peak virtual memory usage: {vm.used / 1024 ** 2:.2f} mb")
+
 
 #check if gpu available
 use_gpu = torch.cuda.is_available()
@@ -34,16 +37,28 @@ if use_gpu:
 else:
     print("no gpu detected. using cpu.")
 
+
 #load llama
 def get_llama_model(model_path, gpu_to_use):
-    return Llama(model_path=model_path, n_ctx=780, use_mmap=True, n_gpu_layers=gpu_to_use)
+    return Llama(model_path=model_path, n_ctx=700, use_mmap=True, n_gpu_layers=gpu_to_use)
+
+
+#extend context if to small LLM
+def reload_model_with_new_ctx(current_n_ctx, increment, max_n_ctx, model_path, gpu_to_use):
+    if current_n_ctx + increment <= max_n_ctx:
+        new_n_ctx = current_n_ctx + increment
+        print(f"Warning: new n_ctx to {new_n_ctx}")
+        return new_n_ctx, get_llama_model(model_path, gpu_to_use)
+    else:
+        print("Error: reached the maximum n_ctx, can't increase further.")
+        return current_n_ctx, None
 
 ##########################################################################################
 #MAIN
 #ram
 process = psutil.Process(os.getpid())
 #number max gpu = 2 (total noeud 49/51)
-gpu_to_use = min(gpu_count, 80)
+gpu_to_use = min(gpu_count, 2)
 #model
 llm = get_llama_model(model_path, gpu_to_use)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
@@ -60,7 +75,11 @@ with open(raw_final_info_path, "r") as raw_file:
 
 
 #process metadata
-for idx, line in enumerate(metadata_lines, start=1):
+initial_n_ctx = 700
+n_ctx_increment = 250
+max_n_ctx = 2200
+current_n_ctx = initial_n_ctx
+for idx, line in enumerate(metadata_lines, start=62):
     clean_metadata = line.strip().split("\t")
     run_accession = clean_metadata[0]
 
@@ -71,25 +90,29 @@ for idx, line in enumerate(metadata_lines, start=1):
         if na_columns:
             instructions = []
             if "Tissue type" in na_columns:
-                instructions.append("Tissue type: [value: The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context.]")
+                instructions.append("Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
             if "Cell line" in na_columns:
-                instructions.append("Cell line: [value: Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.]")
+                instructions.append("Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
             if "Cell type" in na_columns:
-                instructions.append("Cell type: [value: The type of cell in the sample (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.]")
+                instructions.append("Cell type – The type of cell in the sample (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
             if "UBERON organ and code" in na_columns:
-                instructions.append("UBERON organ: [value: The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context in the two last columns, or search one related to the tissue.]")
+                instructions.append("UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
             if "Disease Ontology Term" in na_columns:
-                instructions.append("Disease Ontology Term: [value: normal or deduce disease type from context.]")
+                instructions.append("Disease Ontology Term – The Disease Ontology Term for the disease type + the name (e.g., DOID:XXXXX + term related to the code) with validation status (e.g., 'Validated' or 'Estimated'). Deduce from context if not specified.")
 
             prompt = f"""
             Run accession: {run_accession}
             Metadata to analyze: {clean_metadata}
 
-            If any information is missing in the metadata for the following task: Clearly state that it is 'NA'.
-            Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below).
-            Deduce missing values based on the metadata and general knowledge and format the output as:
-
+            Attached is the metadata of a run from the NCBI SRA. The first line contains the column names. For each row in the metadata table, I would like the following concise information as a list:
+            
             {chr(10).join(instructions)}
+
+            If any information is missing in the metadata:
+            Clearly state that it is 'Not specified.'
+            Provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
+            Specify when a detail requires further validation (e.g., from external sources like GTEx for UBERON codes).
+            Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below) Provide this format directly in the response for any metadata table shared in the future, in a txt file. Use LLM inference not python (write only the table as ouput, no additionnal sentences, one run only provided here):
 
             Format the output as:
             """ + chr(10).join([f"{col}: [value]" for col in na_columns if col != "Donor information"])
@@ -99,12 +122,20 @@ for idx, line in enumerate(metadata_lines, start=1):
 
             try:
                 response = llm(prompt, max_tokens=100)
-                output_file = os.path.join(output_dir, f"{run_accession}_llm.txt")
+                output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                 with open(output_file, "w") as f:
                     f.write(response["choices"][0]["text"])
 
+            except ValueError as e:
+                if "n_ctx" in str(e):
+                    current_n_ctx, llm = reload_model_with_new_ctx(current_n_ctx, n_ctx_increment, max_n_ctx,
+                                                                   model_path, gpu_to_use)
+                    if llm is None:
+                        print(f"n_ctx excedeed limit.")
+                        break
+
             except MemoryError:
-                print(f"memory error: line {idx}")
+                print(f"Memory error: line {idx}")
                 break
 
             #ram after answer
