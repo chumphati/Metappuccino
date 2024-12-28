@@ -3,7 +3,7 @@
 #PBS -o /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/llm_specific_biology_information.out
 #PBS -e /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/llm_specific_biology_information.err
 #PBS -l walltime=1000:00:00
-#PBS -l select=1:host=node49:ncpus=12:ngpus=2:mem=200gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
