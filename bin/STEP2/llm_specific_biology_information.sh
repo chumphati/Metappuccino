@@ -9,6 +9,7 @@ SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 source /store/EQUIPES/SSFA/MEMBERS/fiona.hak/llama_env/bin/activate
+#python3 -m pip install torch
 echo "Begin date: $(date)"
 
 python3 -u /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/fill_missing_metadata/get_biology_information_LLM.py
