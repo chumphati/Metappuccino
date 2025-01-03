@@ -5,15 +5,20 @@ import psutil
 from llama_cpp import Llama
 import torch
 import sys
+import argparse
 
 ##########################################################################################
 # PATHS
-base_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
-input_metadata_path = os.path.join(base_path, "LLM_METADATA_READY/sample_info.txt")
+parser = argparse.ArgumentParser(description="Process metadata with LLM.")
+parser.add_argument("--base_path", type=str, required=True, help="Base path for input/output files.")
+args = parser.parse_args()
+
+base_path = args.base_path
+input_metadata_path = os.path.join(base_path, "sample_info.txt")
 raw_final_info_path = os.path.join(base_path, "RAW_FINAL_INFO.txt")
 output_dir = os.path.join(base_path, "TEST_LLM_GPU")
-model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf"
-log_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/llm_log_SB.txt"
+model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
+log_file_path = os.path.join(base_path, "llm_log_SB.txt")
 error_file_path = os.path.join(base_path, "tmp/reload_model_bio_info.txt")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
 
@@ -33,6 +38,8 @@ def print_memory_usage(process):
 
 
 # check if gpu available
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"Number of GPUs: {torch.cuda.device_count()}")
 use_gpu = torch.cuda.is_available()
 gpu_count = torch.cuda.device_count() if use_gpu else 0
 if use_gpu:
@@ -43,7 +50,7 @@ else:
 
 # load llama
 def get_llama_model(model_path, n_ctx):
-    return Llama(model_path=model_path, n_ctx=n_ctx, use_mmap=True, tensor_split=[1,1], n_threads=30)
+    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, tensor_split=[1,1], n_threads=30)
 
 
 # write prompt that is out of context
