@@ -14,9 +14,9 @@ parser.add_argument("--base_path", type=str, required=True, help="Base path for 
 args = parser.parse_args()
 
 base_path = args.base_path
-input_metadata_path = os.path.join(base_path, "sample_info.txt")
+input_metadata_path = os.path.join(base_path, "test.txt")
 raw_final_info_path = os.path.join(base_path, "RAW_FINAL_INFO.txt")
-output_dir = os.path.join(base_path, "TEST_LLM_GPU")
+output_dir = os.path.join(base_path, "INFO_BIO_LLM")
 model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
 log_file_path = os.path.join(base_path, "llm_log_SB.txt")
 error_file_path = os.path.join(base_path, "tmp/reload_model_bio_info.txt")
@@ -69,11 +69,12 @@ def write_reload_file(filepath, header, line):
 def process_metadata_llm(metadata_lines, llm):
     streams = [torch.cuda.Stream(device=i) for i in range(gpu_to_use)]
     for idx, line in enumerate(metadata_lines):
-        clean_metadata = line.strip().split("\t")
+        clean_metadata = line.strip().split(";")
         run_accession = clean_metadata[0]
 
         with torch.cuda.stream(streams[idx % gpu_to_use]):
             if run_accession in raw_data:
+                print(run_accession)
                 raw_info = raw_data[run_accession]
                 na_columns = [raw_headers[i] for i, value in enumerate(raw_info) if value == "NA"]
 
@@ -155,8 +156,8 @@ with open(input_metadata_path, "r") as metadata_file:
 
 with open(raw_final_info_path, "r") as raw_file:
     raw_lines = raw_file.readlines()
-    raw_headers = raw_lines[0].strip().split(",")
-    raw_data = {line.split(",")[0]: line.strip().split(",") for line in raw_lines[1:]}
+    raw_headers = raw_lines[0].strip().split(";")
+    raw_data = {line.split(";")[0]: line.strip().split(";") for line in raw_lines[1:]}
 
 # process metadata with CUDA streams for parallelisation
 process_metadata_llm(metadata_lines, llm)
