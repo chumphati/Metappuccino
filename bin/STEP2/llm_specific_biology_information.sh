@@ -13,7 +13,7 @@ cd $SCRATCH_DIR
 
 # necessary files
 cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
-cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/LLM_METADATA_READY/sample_info.txt $SCRATCH_DIR/
+cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/LLM_METADATA_READY/test.txt $SCRATCH_DIR/
 cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/RAW_FINAL_INFO.txt $SCRATCH_DIR/
 cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
 
@@ -34,7 +34,7 @@ echo "Begin date: $(date)"
 python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR
 
 # copy results
-cp -r $SCRATCH_DIR/TEST_LLM_GPU $OUTPUT_DIR/
+cp -r $SCRATCH_DIR/INFO_BIO_LLM $OUTPUT_DIR/
 cp $SCRATCH_DIR/llm_log_SB.txt $LOG_DIR/
 echo "End date: $(date)"
 rm -rf "$SCRATCH_DIR"
