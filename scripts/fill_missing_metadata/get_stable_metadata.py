@@ -60,7 +60,7 @@ for col in final_columns:
 #reorganise columns ans save
 final_df = final_df.fillna("NA")
 final_df = final_df[final_columns]
-final_df.to_csv(output_file, index=False, sep=",")
+final_df.to_csv(output_file, index=False, sep="|")
 
 #create flag end process before cleaning
 open(FLAG_FILE, 'w').close()

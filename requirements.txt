@@ -26,3 +26,4 @@ tqdm
 psutil
 torch
 aiofiles
+fuzzywuzzy
