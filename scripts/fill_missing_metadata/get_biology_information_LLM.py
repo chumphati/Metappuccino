@@ -155,8 +155,8 @@ with open(input_metadata_path, "r") as metadata_file:
 
 with open(raw_final_info_path, "r") as raw_file:
     raw_lines = raw_file.readlines()
-    raw_headers = raw_lines[0].strip().split(",")
-    raw_data = {line.split(",")[0]: line.strip().split(",") for line in raw_lines[1:]}
+    raw_headers = raw_lines[0].strip().split("|")
+    raw_data = {line.split("|")[0]: line.strip().split("|") for line in raw_lines[1:]}
 
 # process metadata sequentially
 process_metadata_llm(metadata_lines, llm)

@@ -7,6 +7,7 @@
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 OUTPUT_DIR=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results
+TMP_DIR=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp
 LOG_DIR=$OUTPUT_DIR/logs
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
@@ -15,6 +16,7 @@ cd $SCRATCH_DIR
 cleanup() {
     echo "Copying results to $OUTPUT_DIR and cleaning up."
     cp -r $SCRATCH_DIR/INFO_BIO_LLM $OUTPUT_DIR/ 2>/dev/null || echo "INFO_BIO_LLM not found, skipping."
+    cp $SCRATCH_DIR/tmp/reload_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "TMP not found, skipping."
     cp $SCRATCH_DIR/llm_log_SB.txt $LOG_DIR/ 2>/dev/null || echo "Log file not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
