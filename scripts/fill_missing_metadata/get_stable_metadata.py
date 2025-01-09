@@ -2,13 +2,18 @@
 #IMPORT LIB
 import pandas as pd
 import os
+import argparse
 
 ########################################################################################################################
 #PATHS
-input_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/CLEAN_METADATA_SRA.txt"
-output_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/RAW_FINAL_INFO.txt"
-BASE_PATH = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
-FLAG_FILE = os.path.join(BASE_PATH, "logs/STEP2_1.flag")
+parser = argparse.ArgumentParser(description="Process raw matadata information directly from database")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
+
+base_path = args.base_path
+input_file = os.path.join(base_path, "cleaned_metadata_sra.txt")
+output_file = os.path.join(base_path, "raw_final_info.txt")
+FLAG_FILE = os.path.join(base_path, "STEP2_1.flag")
 
 ########################################################################################################################
 #DECLARE COLUMNS

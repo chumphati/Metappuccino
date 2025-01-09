@@ -9,19 +9,19 @@ import argparse
 
 ##########################################################################################
 # PATHS
-parser = argparse.ArgumentParser(description="Process metadata with LLM.")
-parser.add_argument("--base_path", type=str, required=True, help="Base path for input/output files.")
+parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
 args = parser.parse_args()
 
 base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "sample_info.txt")
-raw_final_info_path = os.path.join(base_path, "RAW_FINAL_INFO.txt")
+raw_final_info_path = os.path.join(base_path, "raw_final_info.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
 model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
 log_file_path = os.path.join(base_path, "llm_log_SB.txt")
-error_file_path = os.path.join(base_path, "tmp/reload_model_bio_info.txt")
+error_file_path = os.path.join(base_path, "reload_model_bio_info.txt")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
-
+FLAG_FILE = os.path.join(base_path, "STEP2_3.flag")
 
 ##########################################################################################
 # FUNCTIONS
@@ -162,3 +162,6 @@ with open(raw_final_info_path, "r") as raw_file:
 process_metadata_llm(metadata_lines, llm)
 
 sys.stdout.close()
+
+# create flag end process before cleaning
+open(FLAG_FILE, 'w').close()
