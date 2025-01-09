@@ -1,10 +1,35 @@
 #!/bin/bash
 #PBS -N get_stable_metadata
-#PBS -o /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/get_stable_metadata.out
-#PBS -e /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/logs/get_stable_metadata.err
 #PBS -l walltime=12:00:00
 #PBS -l select=1:ncpus=10:mem=16gb
 
+METAMAP=$1
+ENV_REQUIREMENT=$2
+LOG_DIR=$METAMAP/results/logs
+TMP_DIR=$METAMAP/results/tmp
+
+SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+mkdir -p $SCRATCH_DIR
+cd $SCRATCH_DIR
+
+exec > "$LOG_DIR/get_stable_metadata.out" 2> "$LOG_DIR/get_stable_metadata.err"
+
+#clean and copy in case of fail
+cleanup() {
+    cp $SCRATCH_DIR/raw_final_info.txt $TMP_DIR/ 2>/dev/null || echo "Output directory not found, skipping."
+    cp $SCRATCH_DIR/STEP2_1.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
+    echo "End date: $(date)"
+    rm -rf "$SCRATCH_DIR"
+}
+trap cleanup EXIT
+
+#necessary files
+cp "$METAMAP/results/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAMAP/scripts/fill_missing_metadata/get_stable_metadata.py" $SCRATCH_DIR/
+
+#activate requirements venv
+source $ENV_REQUIREMENT/bin/activate
+
 echo "Begin date: $(date)"
-python3 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/fill_missing_metadata/get_stable_metadata.py
-echo "End date: $(date)"
+
+python3 -u $SCRATCH_DIR/get_stable_metadata.py --base_path $SCRATCH_DIR
