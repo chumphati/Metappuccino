@@ -3,12 +3,19 @@
 import csv
 import os
 import re
+import argparse
 
 ##########################################################################################
 #PATHS
-uberon_ref = "/Users/fionahak/Documents/phd/phd_code/MetaMap/data/UBERON_TABLE_CLEAN.csv"
-llm_out = "/Users/fionahak/Documents/phd/phd_code/MetaMap/results/INFO_BIO_LLM"
-output_file = "/Users/fionahak/Documents/phd/phd_code/MetaMap/results/RAW_FINAL_INFO.txt"
+parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
+
+base_path = args.base_path
+uberon_ref = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
+llm_out = os.path.join(base_path, "INFO_BIO_LLM")
+output_file = os.path.join(base_path, "RAW_FINAL_INFO.txt")
+FLAG_FILE = os.path.join(base_path, "STEP3_1.flag")
 
 #check files
 if not os.path.exists(uberon_ref):
@@ -115,3 +122,6 @@ with open(output_file, 'w') as output_file:
     output_file.write('|'.join(header) + '\n')
     for row in rows:
         output_file.write('|'.join(row) + '\n')
+
+# create flag end process before cleaning
+open(FLAG_FILE, 'w').close()
