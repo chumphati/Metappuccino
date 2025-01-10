@@ -5,6 +5,7 @@ import subprocess
 import argparse
 import time
 import sys
+import shutil
 
 ########################################################################################################################
 #FUNCTIONS
@@ -12,6 +13,7 @@ import sys
 def wait_for_flag_file(flag_path):
     while not os.path.isfile(flag_path):
         time.sleep(10)
+
 
 ########################################################################################################################
 #MAIN FUNCTION
@@ -24,7 +26,7 @@ def main():
                         help="Path to the venv build with requirement.txt")
     parser.add_argument("--requirements", action="store_true",
                         help="Install requirements.txt and CUDA configuration for GPU. Warning: It is assumed that a venv was created and the path correctly given in --env_requirement. In the case a CUDA configuration is needed, please specify cuda path in --cuda_path if it is different from /usr/local/cuda.")
-    parser.add_argument("--env_requirement", type=str, default="/usr/local/cuda",
+    parser.add_argument("--cuda", type=str, default="/usr/local/cuda",
                         help="Path to CUDA installation if different from '/usr/local/cuda'")
     parser.add_argument("--getmetadata", action="store_true",
                         help="Download and clean metadata from NCBI [Input: List of run accessions]")
@@ -35,7 +37,7 @@ def main():
     #scripts to execute and flags
     metamap_dir = args.metamap_dir
     env_dir = args.env_requirement
-    cuda_path = args.cuda_path
+    cuda_path = args.cuda
     tmp_dir = os.path.join(metamap_dir, "results", "tmp")
 
     step1_flag = os.path.join(tmp_dir, "STEP1_1.flag")
@@ -53,21 +55,26 @@ def main():
 
     ##INSTALL REQUIREMENTS
     try:
+        if not shutil.which("qsub"):
+            print("❌ Error: 'qsub' command not found", file=sys.stderr)
+            sys.exit(1)
+
         if args.requirements:
-            subprocess.run(["qsub", "-q", "common", install_requirements, metamap_dir, env_dir, cuda_path])
+            subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements])
             print("✔ Installation requirements completed!")
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:
             #get metadata from sra ncbi if asked from a sra list
             if not os.path.isfile(step1_flag):
-                subprocess.run(["qsub", "-q", "common", download_script, metamap_dir, env_dir])
+                print("qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script)
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script])
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
-                subprocess.run(["qsub", "-q", "common", clean_script, metamap_dir])
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP=", metamap_dir, clean_script])
                 print("✔ Metadata cleaned!")
 
         ##STEP 2: FILL MISSING METADATA
@@ -87,7 +94,7 @@ def main():
             #fill the missing information in the output final table with LLM
             #biology info
             if not os.path.isfile(step5_flag):
-                subprocess.run(["qsub", "-q", "common", llm_specific_biology_information, metamap_dir, env_dir])
+                subprocess.run(["qsub", "-q", "alphafold", llm_specific_biology_information, metamap_dir, env_dir])
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 

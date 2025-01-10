@@ -1,6 +1,8 @@
 #!/bin/bash
 #PBS -N clean_metadata
 #PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
 #PBS -l select=1:ncpus=8:mem=16gb
 
 METAMAP=$1

@@ -1,6 +1,8 @@
 #!/bin/bash
 #PBS -N download_metadata
 #PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
 #PBS -l select=1:ncpus=20:mem=64gb
 
 METAMAP=$1
