@@ -5,7 +5,8 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=8:mem=16gb
 
-METAMAP=$1
+METAMAP=${1:-$METAMAP}
+
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 
@@ -70,4 +71,4 @@ awk -F'\t' '{
 }' OFS='\t' "$SCRATCH_DIR/cleaned_metadata_sra.txt" > "$SCRATCH_DIR/cleaned_metadata_sra.tmp" && \
 mv "$SCRATCH_DIR/cleaned_metadata_sra.tmp" "$SCRATCH_DIR/cleaned_metadata_sra.txt"
 
-touch "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/STEP1_2.flag"
+touch "$SCRATCH_DIR/STEP1_2.flag"

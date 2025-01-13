@@ -25,18 +25,18 @@ print_metamap_logo() {
   echo "       Version 1.0.0                      "
   echo "       License Apache License 2.0         "
   echo "=========================================="
+  echo " "
 }
 
 print_metamap_logo
 
-echo "✨ Beginning of MetaMap analysis✨"
+echo "✨Beginning of MetaMap analysis✨"
 echo "Beginning date: $(date)"
 echo "🔄 Please wait while we analyze your data..."
 
 #create dir
 mkdir -p $METAMAP_DIR/results/logs
 mkdir -p $METAMAP_DIR/results/tmp
-mkdir -p $METAMAP_DIR/results/logs
 mkdir -p $METAMAP_DIR/results/METADATA
 mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS
 
@@ -50,3 +50,4 @@ python3 "$METAMAP_DIR/bin/MetaMap.py" \
 deactivate
 
 echo "End date: $(date)"
+echo "✨End of MetaMap analysis! All results are stored in '$METAMAP_DIR/results'✨"

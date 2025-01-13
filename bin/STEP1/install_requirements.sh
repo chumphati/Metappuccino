@@ -5,9 +5,9 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=12:mem=64gb
 
-METAMAP=$1
-ENV_REQUIREMENT=$2
-PATH_CUDA=$3
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+PATH_CUDA=${3:-$PATH_CUDA}
 
 LOG_DIR=$METAMAP/results/logs
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID

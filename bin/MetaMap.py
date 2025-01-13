@@ -60,41 +60,41 @@ def main():
             sys.exit(1)
 
         if args.requirements:
-            subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements])
+            subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
             print("✔ Installation requirements completed!")
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:
             #get metadata from sra ncbi if asked from a sra list
             if not os.path.isfile(step1_flag):
-                print("qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script)
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script])
+                # print("qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script)
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP=", metamap_dir, clean_script])
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir, clean_script], check=True)
                 print("✔ Metadata cleaned!")
 
         ##STEP 2: FILL MISSING METADATA
         if args.fillmetadata:
             #get basic information for each run in output final table
             if not os.path.isfile(step3_flag):
-                subprocess.run(["qsub", "-q", "common", get_stable_metadata, metamap_dir, env_dir])
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
             wait_for_flag_file(step3_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #split specific, study and donor analysis
             if not os.path.isfile(step4_flag):
-                subprocess.run(["qsub", "-q", "common", split_col_cleanmetadata, metamap_dir, env_dir])
+                subprocess.run(["qsub", "-q", "common", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
             wait_for_flag_file(step4_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #fill the missing information in the output final table with LLM
             #biology info
             if not os.path.isfile(step5_flag):
-                subprocess.run(["qsub", "-q", "alphafold", llm_specific_biology_information, metamap_dir, env_dir])
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 

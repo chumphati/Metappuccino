@@ -5,8 +5,9 @@
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
-METAMAP=$1
-ENV_REQUIREMENT=$2
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+
 RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs

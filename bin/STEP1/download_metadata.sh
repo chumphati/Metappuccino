@@ -5,8 +5,9 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=20:mem=64gb
 
-METAMAP=$1
-ENV_REQUIREMENT=$2
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 

@@ -1,10 +1,13 @@
 #!/bin/bash
 #PBS -N split_col_cleanmetadata
 #PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-OUTPUT_DIR=$1
-ENV_REQUIREMENT=$2
+OUTPUT_DIR=${1:-$OUTPUT_DIR}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+
 LOG_DIR=$OUTPUT_DIR/results/logs
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 TMP_DIR=$OUTPUT_DIR/results/tmp
