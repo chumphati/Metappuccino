@@ -17,6 +17,11 @@ llm_out = os.path.join(base_path, "INFO_BIO_LLM")
 output_file = os.path.join(base_path, "RAW_FINAL_INFO.txt")
 FLAG_FILE = os.path.join(base_path, "STEP3_1.flag")
 
+# uberon_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/UBERON_TABLE_CLEAN.csv")
+# llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
+# output_file = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt")
+# FLAG_FILE = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/STEP3_1.flag")
+
 #check files
 if not os.path.exists(uberon_ref):
     print(f"error: {uberon_ref} doesn't exist.")
@@ -57,8 +62,14 @@ with open(output_file, 'r') as raw_file:
 header = lines[0].strip().split('|')
 rows = [line.strip().split('|') for line in lines[1:]]
 
-#dictionary to get run accession
-rows_dict = {row[header.index("Run accession number")]: row for row in rows}
+# Update header indices
+header_mapping = {
+    "Run accession number": header.index("Run accession number"),
+    "UBERON code": header.index("UBERON code"),
+    "UBERON term": header.index("UBERON term")
+}
+
+rows_dict = {row[header_mapping["Run accession number"]]: row for row in rows}
 
 #get uberon terms
 patterns = [
@@ -66,58 +77,67 @@ patterns = [
     r"UBERON:\d{7}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
     r"UBERON:\d{7}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
     r"UBERON:\d{7}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"UBERON:\d{7}\s*\(([^)]+)\)"
+    r"UBERON:\d{7}\s*\(([^)]+)\)",
+    r"UBERON:\d{7}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
+    r"\bEstimated\s*-\s*(.*?)\b"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
 ##########################################################################################
 #MAIN
-#for all the runs in llm process
 for fichier in os.listdir(llm_out):
     path = os.path.join(llm_out, fichier)
-    #find accession
     if os.path.isfile(path) and fichier.endswith("_bio.txt"):
         run_accession = fichier.replace("_bio.txt", "")
-        #find good
         if run_accession in rows_dict:
-            # print(f"{run_accession}:")
             row = rows_dict[run_accession]
-            uberon_index = header.index("UBERON organ and code")
-            found_terms = set()
+            uberon_codes = set()
+            uberon_terms = set()
+
             with open(path, 'r') as f:
                 for ligne in f:
                     if "UBERON organ and code:" in ligne:
-                        # print(ligne)
-                        #get uberon terms
                         medical_terms = []
+                        # print(ligne)
                         for pattern in compiled_patterns:
+                            # print(compiled_patterns)
                             matches = pattern.findall(ligne)
-                            # print(matches)
                             for match in matches:
+                                # print(f"Terms {run_accession} :")
+                                # print(match)
                                 if isinstance(match, tuple):
                                     for sub_match in match:
-                                        if sub_match and "requires" not in sub_match.lower():
-                                            medical_terms.append(clean_string(sub_match))
-                                elif match and "requires" not in match.lower():
+                                        if sub_match and not any(keyword in sub_match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
+                                            split_terms = sub_match.split(" and ") if " and " in sub_match else [sub_match]
+                                            for term in split_terms:
+                                                medical_terms.append(clean_string(term))
+                                elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
                                     medical_terms.append(clean_string(match))
-                        #compare llm medical term to reference
+
                         for term in medical_terms:
                             matched = False
                             for entry in uberon_data:
                                 if term in entry['synonyms']:
-                                    found_terms.add(f"{entry['code_uberon']}, {entry['name']}")
+                                    uberon_codes.add(entry['code_uberon'])
+                                    uberon_terms.add(entry['name'])
                                     matched = True
                                     break
-                            #no match
-                            if not matched and "requires" not in term.lower() and "validation" not in term.lower():
-                                found_terms.add(f"{term} not found for {run_accession}")
+                            if not matched:
+                                split_further = term.split(" ")
+                                for sub_term in split_further:
+                                    for entry in uberon_data:
+                                        if sub_term in entry['synonyms']:
+                                            uberon_codes.add(entry['code_uberon'])
+                                            uberon_terms.add(entry['name'])
+                                            matched = True
+                                            break
+                                if not matched:
+                                    uberon_terms.add(f"{term} (!)")
 
-            if found_terms:
-                row[uberon_index] = '; '.join(sorted(found_terms))
-            else:
-                row[uberon_index] = 'NA'
+            row[header_mapping["UBERON code"]] = ', '.join(sorted(uberon_codes)) if uberon_codes else 'NA'
+            row[header_mapping["UBERON term"]] = ', '.join(sorted(uberon_terms)) if uberon_terms else 'NA'
 
-#update raw_final_info
+# update raw_final_info
 with open(output_file, 'w') as output_file:
     output_file.write('|'.join(header) + '\n')
     for row in rows:

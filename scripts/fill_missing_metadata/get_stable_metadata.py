@@ -35,8 +35,10 @@ final_columns = [
     "Tissue type",
     "Cell line",
     "Cell type",
-    "UBERON organ and code",
-    "Disease Ontology Term",
+    "UBERON code",
+    "UBERON term",
+    "DOT code",
+    "DOT term",
     "Library strategy",
     "Instrument platform",
     "Donor information"

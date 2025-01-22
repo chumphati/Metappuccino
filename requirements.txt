@@ -8,6 +8,8 @@ idna==2.10
 importlib-resources==3.3.1
 jmespath==0.10.0
 numpy
+matplotlib
+cooler
 pathlib2==2.3.7.post1
 python-dateutil==2.9.0.post0
 requests==2.27.1
@@ -19,6 +21,7 @@ tqdm==4.66.3
 typing
 urllib3==1.26.20
 zipp
+datasets
 requests
 lxml
 pandas

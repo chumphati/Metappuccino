@@ -101,7 +101,7 @@ def extract_and_save_metadata(run_accession):
         ]
 
         response = subprocess.run(curl_command, capture_output=True, text=True)
-        ena_data = response.text.strip().split("\n")[-1]
+        ena_data = response.stdout.strip().split("\n")[-1]
 
         #first line
         with open(OUTPUT_FILE, 'a') as f_out:

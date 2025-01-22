@@ -12,11 +12,11 @@ RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
+exec > "$LOG_DIR/llm_specific_biology_information.out" 2> "$LOG_DIR/llm_specific_biology_information.err"
+
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
-
-exec > "$LOG_DIR/llm_specific_biology_information.out" 2> "$LOG_DIR/llm_specific_biology_information.err"
 
 #clean and copy in case of fail
 cleanup() {
@@ -41,4 +41,3 @@ source $ENV_REQUIREMENT/bin/activate
 echo "Begin date: $(date)"
 
 python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR
-

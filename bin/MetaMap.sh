@@ -3,7 +3,7 @@
 #PBS -l walltime=1000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node21:ncpus=10:mem=16gb
+#PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
@@ -45,7 +45,7 @@ source "$ENV_REQUIREMENT/bin/activate"
 python3 "$METAMAP_DIR/bin/MetaMap.py" \
     --metamap_dir "$METAMAP_DIR" \
     --env_requirement "$ENV_REQUIREMENT" \
-    --getmetadata \
+    --fillmetadata \
     >> "$METAMAP_DIR/results/logs/MetaMap.out" 2>> "$METAMAP_DIR/results/logs/MetaMap.err"
 deactivate
 

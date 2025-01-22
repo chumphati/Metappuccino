@@ -94,7 +94,7 @@ def main():
             #fill the missing information in the output final table with LLM
             #biology info
             if not os.path.isfile(step5_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 
