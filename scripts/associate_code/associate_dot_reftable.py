@@ -7,20 +7,20 @@ import argparse
 
 ##########################################################################################
 #PATHS
-# parser = argparse.ArgumentParser(description="Process metadata with LLM")
-# parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
-# args = parser.parse_args()
-#
-# base_path = args.base_path
-# dot_ref = os.path.join(base_path, "DOT_TABLE_CLEAN.csv")
-# llm_out = os.path.join(base_path, "INFO_BIO_LLM")
-# output_file = os.path.join(base_path, "RAW_FINAL_INFO.txt")
-# FLAG_FILE = os.path.join(base_path, "STEP3_1.flag")
+parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
 
-dot_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv")
-llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
-output_file = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt")
-FLAG_FILE = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/STEP3_1.flag")
+base_path = args.base_path
+dot_ref = os.path.join(base_path, "DOT_TABLE_CLEAN.csv")
+llm_out = os.path.join(base_path, "INFO_BIO_LLM")
+output_file = os.path.join(base_path, "RAW_FINAL_INFO.txt")
+FLAG_FILE = os.path.join(base_path, "STEP3_1.flag")
+
+# dot_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv")
+# llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
+# output_file = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt")
+# FLAG_FILE = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/STEP3_1.flag")
 
 #check files
 if not os.path.exists(dot_ref):

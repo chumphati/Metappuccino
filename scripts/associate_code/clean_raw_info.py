@@ -1,14 +1,23 @@
+##########################################################################################
+# IMPORT
 import re
 import os
 import pandas as pd
 
-input_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
-output_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+##########################################################################################
+#PATHS
+input_file = "/MetaMap/ccle_results/tmp/raw_final_info.txt"
+output_file = "/MetaMap/ccle_results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+
+##########################################################################################
+#FUNCTIONS
 
 
 def clean_column(value):
     return re.sub(r"[^a-zA-Z0-9,:-]", " ", value)
 
+##########################################################################################
+#MAIN
 
 if not os.path.exists(input_file):
     raise FileNotFoundError(f"Le fichier d'entrée {input_file} n'existe pas.")

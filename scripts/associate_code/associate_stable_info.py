@@ -1,7 +1,10 @@
+#IMPORT
 import os
 import re
 import csv
 
+##########################################################################################
+#PATHS
 LLM_OUT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
 OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
 TEMP_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info_temp.txt"
@@ -14,16 +17,22 @@ if not os.path.exists(OUTPUT_FILE):
     exit(1)
 
 
+##########################################################################################
+#FUNCTIONS
+
 def clean_info(info):
     info = re.sub(r"\(.*?(Inferred|based on).*?\)", "", info)
     info = re.sub(r"\b(Inferred|based on)\b.*", "", info, flags=re.IGNORECASE)
     info = re.sub(r"\b(Not specified|estimated|Inferred|based on)\b", "", info, flags=re.IGNORECASE)
-    return re.sub(r"[^a-zA-Z0-9\s]", "", info.strip()).strip()
+    return re.sub(r"[^a-zA-Z0-9\s]", " ", info.strip()).strip()
 
 
 def normalize_line(line):
-    return re.sub(r"[^a-zA-Z0-9:\s]", "", line).strip()
+    return re.sub(r"[^a-zA-Z0-9:\s]", " ", line).strip()
 
+
+##########################################################################################
+#MAIN
 
 with open(OUTPUT_FILE, 'r') as infile:
     lines = infile.readlines()
@@ -65,7 +74,6 @@ for row in data:
                     if extracted:
                         cell_type = extracted
 
-    # Update the existing columns in the row
     row[tissue_index] = tissue_type
     row[cell_line_index] = cell_line
     row[cell_type_index] = cell_type
