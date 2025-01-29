@@ -5,9 +5,18 @@ import csv
 
 ##########################################################################################
 #PATHS
-LLM_OUT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
-OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
-TEMP_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info_temp.txt"
+parser = argparse.ArgumentParser(description="Associate raw LLM information to final output file")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
+
+base_path = args.base_path
+LLM_OUT = os.path.join(base_path, "INFO_BIO_LLM")
+OUTPUT_FILE = os.path.join(base_path, "raw_final_info.txt")
+TEMP_FILE = os.path.join(base_path, "raw_final_info_temp.txt")
+
+# LLM_OUT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
+# OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
+# TEMP_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info_temp.txt"
 
 if not os.path.exists(LLM_OUT):
     print(f"Error: Directory {LLM_OUT} does not exist.")

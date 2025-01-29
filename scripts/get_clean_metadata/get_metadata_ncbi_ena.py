@@ -15,25 +15,29 @@ parser.add_argument("--base_path", type=str, required=True, help="Base path to M
 args = parser.parse_args()
 
 base_path = args.base_path
-RAW_CSV = os.path.join(base_path, "annotated_totalRNA.csv")
+RAW_CSV = os.path.join(base_path, "mela-select.tsv")
 RUNS_TSV = os.path.join(base_path, "runs.tsv")
 METADATA_DIR = os.path.join(base_path, "metadata")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra.txt")
 FLAG_FILE = os.path.join(base_path, "STEP1_1.flag")
-FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description"
-HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
+# FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description"
+# HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
+
+FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description,host_sex,sex,submitted_host_sex,disease,host_status"
+HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\thost_sex\tsex\tsubmitted_host_sex\tdisease\thost_status\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
 
 ########################################################################################################################
 #FUNCTIONS
 
+
 #from annotated total rna extract runs
 def extract_run_accessions_from_file():
     with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
-        reader = csv.reader(infile, delimiter=';')
+        reader = csv.reader(infile, delimiter='\t')
         writer = csv.writer(outfile, delimiter='\t')
         for row in reader:
-            if len(row) > 4 and row[4].strip():
-                writer.writerow([row[4]])
+            if len(row) > 0 and row[0].strip():
+                writer.writerow([row[0]])
 
 
 #get header for out file
@@ -59,7 +63,7 @@ def get_run_accessions(project_id):
     return run_accessions
 
 
-# Replace download_metadata with Bash script execution
+#download metadata
 def execute_bash_download_metadata():
     bash_script = f"""#!/bin/bash
                 if [ -d "{METADATA_DIR}" ]; then
@@ -67,6 +71,7 @@ def execute_bash_download_metadata():
                 else
                     /usr/bin/mkdir -p "{METADATA_DIR}"
                     /usr/bin/tail -n +2 "{RUNS_TSV}" | while IFS=$'\t' read -r RUN_ACCESSION; do
+                        RUN_ACCESSION=$(echo "$RUN_ACCESSION" | tr -d '\r' | tr -d '\n' | tr -d ' ')
                         OUTPUT_FILE="{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml"
                         if [ ! -f "$OUTPUT_FILE" ]; then
                             echo "Download metadata for $RUN_ACCESSION"
@@ -76,22 +81,20 @@ def execute_bash_download_metadata():
                     done
                 fi
                 """
-    with open("download_metadata.sh", "w") as bash_file:
-        bash_file.write(bash_script)
-
-    os.chmod("download_metadata.sh", 0o755)
-    subprocess.run(["./download_metadata.sh"], check=True)
+    subprocess.run(bash_script, shell=True, check=True, executable="/bin/bash")
 
 
-#get metadata from xml
+#get specific metadata from xml
 def extract_and_save_metadata(run_accession):
     xml_file = os.path.join(METADATA_DIR, f"{run_accession}_metadata.xml")
+    print(run_accession)
     try:
         #get xml
         tree = ET.parse(xml_file)
         root = tree.getroot()
         sample_metadata = "".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
         study_metadata = "".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
+        print(sample_metadata)
 
         #search in sample and study
         curl_command = [
@@ -115,13 +118,14 @@ def extract_and_save_metadata(run_accession):
 def main():
     ensure_output_file_header()
     #run extraction from file (columns 1)
-    # extract_run_accessions()
+    extract_run_accessions_from_file()
 
     #run extraction from project accession
-    get_run_accessions("PRJNA523380")
+    # get_run_accessions("PRJNA523380")
 
     with open(RUNS_TSV, 'r') as file:
-        run_accessions = [line.strip() for line in file]
+        next(file)
+        run_accessions = [line.strip() for line in file if line.strip()]
         if not run_accessions:
             print("Error: no run accessions found")
             return

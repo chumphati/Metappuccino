@@ -6,6 +6,7 @@ from llama_cpp import Llama
 import torch
 import sys
 import argparse
+import math
 
 ##########################################################################################
 # PATHS
@@ -15,7 +16,7 @@ args = parser.parse_args()
 
 base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "sample_info.txt")
-raw_final_info_path = os.path.join(base_path, "raw_final_info.txt")
+raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
 model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
 log_file_path = os.path.join(base_path, "llm_log_SB.txt")
@@ -51,7 +52,19 @@ else:
 # load llama
 def get_llama_model(model_path, n_ctx):
     # tensor_split = [1, 1, 1, 1, 1, 1, 1, 1]
-    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30)
+    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30, logits_all=True)
+
+
+def logits_to_probabilities(logits):
+    max_logit = max(logits)
+    exp_logits = [math.exp(logit - max_logit) for logit in logits]
+    sum_exp_logits = sum(exp_logits)
+    probabilities = [exp_logit / sum_exp_logits for exp_logit in exp_logits]
+    return probabilities
+
+
+def calculate_entropy(probabilities):
+    return -sum(p * math.log(p) for p in probabilities if p > 0)
 
 
 # write prompt that is out of context
@@ -113,12 +126,41 @@ def process_metadata_llm(metadata_lines, llm):
                 print_memory_usage(process)
 
                 try:
-                    response = llm(prompt, max_tokens=180)
+                    response = llm(prompt, max_tokens=180, logprobs=True)
+
                     print("ANSWER:", flush=True)
-                    print(response["choices"][0]["text"], flush=True)
+                    logprobs = response["choices"][0].get("logprobs", None)
+                    token_logprobs = logprobs["token_logprobs"]
+
+                    #split answer to get each instruction
+                    response_lines = response["choices"][0]["text"].strip().split("\n")
+                    entropy_dict = {}
+                    token_index = 0
+
+                    #entropie calculation for each instruction
+                    for i, instruction in enumerate(na_columns):
+                        if i < len(response_lines):
+                            line = response_lines[i]
+                            words = line.split()
+                            num_tokens = len(words)
+
+                            #extract log-probabilités per instruction
+                            logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
+                            probabilities_segment = [math.exp(lp) for lp in logprobs_segment]
+                            sum_prob_segment = sum(probabilities_segment)
+                            normalized_prob_segment = [p / sum_prob_segment for p in probabilities_segment]
+
+                            #entropy
+                            entropy = -sum(p * math.log(p) for p in normalized_prob_segment if p > 0)
+                            entropy_dict[instruction] = entropy
+                            token_index += num_tokens
+
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     with open(output_file, "w") as f:
                         f.write(response["choices"][0]["text"])
+                        f.write(f"\n")
+                        for key, value in entropy_dict.items():
+                            f.write(f"\n{key} Entropy: {value}")
 
                 except ValueError as e:
                     if "Requested tokens" in str(e):

@@ -45,7 +45,7 @@ source "$ENV_REQUIREMENT/bin/activate"
 python3 "$METAMAP_DIR/bin/MetaMap.py" \
     --metamap_dir "$METAMAP_DIR" \
     --env_requirement "$ENV_REQUIREMENT" \
-    --fillmetadata \
+    --getmetadata \
     >> "$METAMAP_DIR/results/logs/MetaMap.out" 2>> "$METAMAP_DIR/results/logs/MetaMap.err"
 deactivate
 

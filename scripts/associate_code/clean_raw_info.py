@@ -6,8 +6,17 @@ import pandas as pd
 
 ##########################################################################################
 #PATHS
-input_file = "/MetaMap/ccle_results/tmp/raw_final_info.txt"
-output_file = "/MetaMap/ccle_results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+parser = argparse.ArgumentParser(description="Clean final output")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
+
+base_path = args.base_path
+input_file = os.path.join(base_path, "raw_final_info.txt")
+output_file = os.path.join(base_path, "final_llm_sample_analysis.csv")
+FLAG_FILE = os.path.join(base_path, "STEP3.flag")
+
+# input_file = "/MetaMap/ccle_results/tmp/raw_final_info.txt"
+# output_file = "/MetaMap/ccle_results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
 
 ##########################################################################################
 #FUNCTIONS
@@ -20,7 +29,7 @@ def clean_column(value):
 #MAIN
 
 if not os.path.exists(input_file):
-    raise FileNotFoundError(f"Le fichier d'entrée {input_file} n'existe pas.")
+    raise FileNotFoundError(f"Error: {input_file} doesn't exist.")
 
 with open(input_file, "r") as file:
     lines = file.readlines()
@@ -31,3 +40,6 @@ cleaned_data = [[clean_column(cell) for cell in row] for row in data]
 cleaned_df = pd.DataFrame(cleaned_data, columns=header)
 os.makedirs(os.path.dirname(output_file), exist_ok=True)
 cleaned_df.to_csv(output_file, sep="\t", index=False)
+
+# create flag end process before cleaning
+open(FLAG_FILE, 'w').close()

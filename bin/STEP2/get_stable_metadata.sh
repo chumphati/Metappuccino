@@ -28,6 +28,7 @@ trap cleanup EXIT
 
 #necessary files
 cp "$METAMAP/results/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAMAP/scripts/fill_missing_metadata/get_initial_raw_metadata.py" $SCRATCH_DIR/
 cp "$METAMAP/scripts/fill_missing_metadata/get_stable_metadata.py" $SCRATCH_DIR/
 
 #activate requirements venv
@@ -35,4 +36,5 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
+python3 -u $SCRATCH_DIR/get_initial_raw_metadata.py --base_path $SCRATCH_DIR
 python3 -u $SCRATCH_DIR/get_stable_metadata.py --base_path $SCRATCH_DIR

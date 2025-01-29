@@ -23,6 +23,10 @@ Clone the repository:
 
 # Documentation
 
+Search fields in NCBI API:
+
+    https://www.ebi.ac.uk/ena/portal/api/returnFields?result=
+
 # Quick start
 #### Running MetaMap
 

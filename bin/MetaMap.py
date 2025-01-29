@@ -31,7 +31,9 @@ def main():
     parser.add_argument("--getmetadata", action="store_true",
                         help="Download and clean metadata from NCBI [Input: List of run accessions]")
     parser.add_argument("--fillmetadata", action="store_true",
-                        help="Fill metadata with LLMs [Input: CLEAN_METADATA_SRA.txt]")
+                        help="Fill metadata with LLMs [Input: Cleaned sra file]")
+    parser.add_argument("--associateinformation", action="store_true",
+                        help="Associate medical codes with LLMs answers and clean them [Input: LLMs answers]")
     args = parser.parse_args()
 
     #scripts to execute and flags
@@ -45,6 +47,7 @@ def main():
     step3_flag = os.path.join(tmp_dir, "STEP2_1.flag")
     step4_flag = os.path.join(tmp_dir, "STEP2_2.flag")
     step5_flag = os.path.join(tmp_dir, "STEP2_3.flag")
+    step6_flag = os.path.join(tmp_dir, "STEP3.flag")
 
     install_requirements = os.path.join(metamap_dir, "bin", "STEP1", "install_requirements.sh")
     download_script = os.path.join(metamap_dir, "bin", "STEP1", "download_metadata.sh")
@@ -52,6 +55,7 @@ def main():
     get_stable_metadata = os.path.join(metamap_dir, "bin", "STEP2", "get_stable_metadata.sh")
     llm_specific_biology_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
     split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
+    associate_information = os.path.join(metamap_dir, "bin", "STEP3", "assocate_codes_clean.sh")
 
     ##INSTALL REQUIREMENTS
     try:
@@ -102,9 +106,12 @@ def main():
             #merge in final table
 
         ##STEP 3: ASSOCIATE TERMS WITH CODE
-        #association uberon/dot with ref table
-
-        #fill the unknown match with LLM
+        if args.associateinformation:
+            #association uberon/dot with ref table and clean
+            if not os.path.isfile(step6_flag):
+                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
+            wait_for_flag_file(step6_flag)
+            print("✔ Code association and cleaning LLM answers successfully completed!")
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)
