@@ -40,6 +40,12 @@ if not os.path.exists(output_file):
 def clean_string(s):
     return re.sub(r'[^a-zA-Z\s]', '', s).lower().strip()
 
+
+#extract entropy
+def extract_entropy(line):
+    match = re.search(r"([0-9]+\.[0-9]+)$", line)
+    return float(match.group(1)) if match else None
+
 ##########################################################################################
 #SORT DOT REF
 dot_data = []
@@ -94,44 +100,52 @@ for fichier in os.listdir(llm_out):
             row = rows_dict[run_accession]
             dot_codes = set()
             dot_terms = set()
+            dot_entropy = None
 
             with open(path, 'r') as f:
-                for ligne in f:
-                    if "Disease Ontology Term:" in ligne:
-                        medical_terms = []
-                        # print(ligne)
-                        for pattern in compiled_patterns:
-                            matches = pattern.findall(ligne)
-                            for match in matches:
-                                if isinstance(match, tuple):
-                                    for sub_match in match:
-                                        if sub_match and not any(keyword in sub_match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
-                                            split_terms = sub_match.split(" and ") if " and " in sub_match else [sub_match]
-                                            for term in split_terms:
-                                                medical_terms.append(clean_string(term))
-                                elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
-                                    medical_terms.append(clean_string(match))
 
-                        for term in medical_terms:
-                            matched = False
-                            for entry in dot_data:
-                                if term in entry['synonyms']:
-                                    dot_codes.add(entry['code_dot'])
-                                    dot_terms.add(entry['name'])
-                                    matched = True
-                                    break
-                            if not matched:
-                                split_further = term.split(" ")
-                                for sub_term in split_further:
-                                    for entry in dot_data:
-                                        if sub_term in entry['synonyms']:
-                                            dot_codes.add(entry['code_dot'])
-                                            dot_terms.add(entry['name'])
-                                            matched = True
-                                            break
+                for ligne in f:
+                    if "UBERON organ and code Entropy" in ligne:
+                        dot_entropy = extract_entropy(ligne)
+
+                if dot_entropy is None or dot_entropy < 2.5:
+                    f.seek(0)
+                    for ligne in f:
+                        if "Disease Ontology Term:" in ligne:
+                            medical_terms = []
+                            # print(ligne)
+                            for pattern in compiled_patterns:
+                                matches = pattern.findall(ligne)
+                                for match in matches:
+                                    if isinstance(match, tuple):
+                                        for sub_match in match:
+                                            if sub_match and not any(keyword in sub_match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
+                                                split_terms = sub_match.split(" and ") if " and " in sub_match else [sub_match]
+                                                for term in split_terms:
+                                                    medical_terms.append(clean_string(term))
+                                    elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
+                                        medical_terms.append(clean_string(match))
+
+                            for term in medical_terms:
+                                matched = False
+                                for entry in dot_data:
+                                    if term in entry['synonyms']:
+                                        dot_codes.add(entry['code_dot'])
+                                        dot_terms.add(entry['name'])
+                                        matched = True
+                                        break
                                 if not matched:
-                                    print(run_accession, term)
-                                    dot_terms.add(f"{term} (!)")
+                                    split_further = term.split(" ")
+                                    for sub_term in split_further:
+                                        for entry in dot_data:
+                                            if sub_term in entry['synonyms']:
+                                                dot_codes.add(entry['code_dot'])
+                                                dot_terms.add(entry['name'])
+                                                matched = True
+                                                break
+                                    if not matched:
+                                        print(run_accession, term)
+                                        dot_terms.add(f"{term} (!)")
 
             row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes)) if dot_codes else 'normal'
             row[header_mapping["DOT term"]] = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'

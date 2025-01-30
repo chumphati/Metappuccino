@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import subprocess
 from multiprocessing import Pool
 import argparse
+import time
 
 ########################################################################################################################
 #PATHS
@@ -20,11 +21,11 @@ RUNS_TSV = os.path.join(base_path, "runs.tsv")
 METADATA_DIR = os.path.join(base_path, "metadata")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra.txt")
 FLAG_FILE = os.path.join(base_path, "STEP1_1.flag")
-# FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description"
-# HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
+FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description"
+HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
 
-FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description,host_sex,sex,submitted_host_sex,disease,host_status"
-HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\thost_sex\tsex\tsubmitted_host_sex\tdisease\thost_status\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
+# FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description,host_sex,sex,submitted_host_sex,disease,host_status"
+# HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\thost_sex\tsex\tsubmitted_host_sex\tdisease\thost_status\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
 
 ########################################################################################################################
 #FUNCTIONS
@@ -87,14 +88,15 @@ def execute_bash_download_metadata():
 #get specific metadata from xml
 def extract_and_save_metadata(run_accession):
     xml_file = os.path.join(METADATA_DIR, f"{run_accession}_metadata.xml")
-    print(run_accession)
+
     try:
         #get xml
         tree = ET.parse(xml_file)
         root = tree.getroot()
         sample_metadata = "".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
         study_metadata = "".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
-        print(sample_metadata)
+
+        time.sleep(2)
 
         #search in sample and study
         curl_command = [
@@ -104,11 +106,15 @@ def extract_and_save_metadata(run_accession):
         ]
 
         response = subprocess.run(curl_command, capture_output=True, text=True)
+        print("RUN: ", run_accession)
+        print("RAW ENA RESPONSE:", response.stdout)
         ena_data = response.stdout.strip().split("\n")[-1]
+        print("ENA DATA: ", ena_data)
 
         #first line
         with open(OUTPUT_FILE, 'a') as f_out:
             f_out.write(f"{ena_data}\t{sample_metadata}\t{study_metadata}\n")
+            print("STUDY DATA: ", study_metadata)
 
     except Exception as e:
         print(f"Error {run_accession}: {e}")
@@ -134,7 +140,7 @@ def main():
     execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
-    with Pool(20) as pool:  # multiprocess on 20 CPUs
+    with Pool(10) as pool:  # multiprocess on 10 CPUs
         pool.map(extract_and_save_metadata, run_accessions)
 
     #create flag end process before cleaning

@@ -35,6 +35,12 @@ if not os.path.exists(output_file):
 def clean_string(s):
     return re.sub(r'[^a-zA-Z\s]', '', s).lower().strip()
 
+
+#extract entropy
+def extract_entropy(line):
+    match = re.search(r"([0-9]+\.[0-9]+)$", line)
+    return float(match.group(1)) if match else None
+
 ##########################################################################################
 #SORT UBERON REF
 uberon_data = []
@@ -87,46 +93,53 @@ for fichier in os.listdir(llm_out):
             row = rows_dict[run_accession]
             uberon_codes = set()
             uberon_terms = set()
+            uberon_entropy = None
 
             with open(path, 'r') as f:
                 for ligne in f:
-                    if "UBERON organ and code:" in ligne:
-                        medical_terms = []
-                        # print(ligne)
-                        for pattern in compiled_patterns:
-                            # print(compiled_patterns)
-                            matches = pattern.findall(ligne)
-                            for match in matches:
-                                # print(f"Terms {run_accession} :")
-                                # print(match)
-                                if isinstance(match, tuple):
-                                    for sub_match in match:
-                                        if sub_match and not any(keyword in sub_match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
-                                            split_terms = sub_match.split(" and ") if " and " in sub_match else [sub_match]
-                                            for term in split_terms:
-                                                medical_terms.append(clean_string(term))
-                                elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
-                                    medical_terms.append(clean_string(match))
+                    if "UBERON organ and code Entropy" in ligne:
+                        uberon_entropy = extract_entropy(ligne)
 
-                        for term in medical_terms:
-                            matched = False
-                            for entry in uberon_data:
-                                if term in entry['synonyms']:
-                                    uberon_codes.add(entry['code_uberon'])
-                                    uberon_terms.add(entry['name'])
-                                    matched = True
-                                    break
-                            if not matched:
-                                split_further = term.split(" ")
-                                for sub_term in split_further:
-                                    for entry in uberon_data:
-                                        if sub_term in entry['synonyms']:
-                                            uberon_codes.add(entry['code_uberon'])
-                                            uberon_terms.add(entry['name'])
-                                            matched = True
-                                            break
+                if uberon_entropy is None or uberon_entropy < 2.5:
+                    f.seek(0)
+                    for ligne in f:
+                        if "UBERON organ and code:" in ligne:
+                            medical_terms = []
+                            # print(ligne)
+                            for pattern in compiled_patterns:
+                                # print(compiled_patterns)
+                                matches = pattern.findall(ligne)
+                                for match in matches:
+                                    # print(f"Terms {run_accession} :")
+                                    # print(match)
+                                    if isinstance(match, tuple):
+                                        for sub_match in match:
+                                            if sub_match and not any(keyword in sub_match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
+                                                split_terms = sub_match.split(" and ") if " and " in sub_match else [sub_match]
+                                                for term in split_terms:
+                                                    medical_terms.append(clean_string(term))
+                                    elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
+                                        medical_terms.append(clean_string(match))
+
+                            for term in medical_terms:
+                                matched = False
+                                for entry in uberon_data:
+                                    if term in entry['synonyms']:
+                                        uberon_codes.add(entry['code_uberon'])
+                                        uberon_terms.add(entry['name'])
+                                        matched = True
+                                        break
                                 if not matched:
-                                    uberon_terms.add(f"{term} (!)")
+                                    split_further = term.split(" ")
+                                    for sub_term in split_further:
+                                        for entry in uberon_data:
+                                            if sub_term in entry['synonyms']:
+                                                uberon_codes.add(entry['code_uberon'])
+                                                uberon_terms.add(entry['name'])
+                                                matched = True
+                                                break
+                                    if not matched:
+                                        uberon_terms.add(f"{term} (!)")
 
             row[header_mapping["UBERON code"]] = ', '.join(sorted(uberon_codes)) if uberon_codes else 'NA'
             row[header_mapping["UBERON term"]] = ', '.join(sorted(uberon_terms)) if uberon_terms else 'NA'
