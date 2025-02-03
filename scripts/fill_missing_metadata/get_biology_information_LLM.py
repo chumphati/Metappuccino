@@ -207,3 +207,10 @@ sys.stdout.close()
 
 # create flag end process before cleaning
 open(FLAG_FILE, 'w').close()
+
+if llm is not None:
+    try:
+        llm.close()
+    except Exception as e:
+        print(f"Error closing model: {e}")
+del llm
