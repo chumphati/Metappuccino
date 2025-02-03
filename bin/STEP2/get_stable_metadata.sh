@@ -19,7 +19,8 @@ exec > "$LOG_DIR/get_stable_metadata.out" 2> "$LOG_DIR/get_stable_metadata.err"
 
 #clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/raw_final_info.txt $TMP_DIR/ 2>/dev/null || echo "Output directory not found, skipping."
+    cp $SCRATCH_DIR/raw_final_info.txt $TMP_DIR/ 2>/dev/null || echo "Output file not found, skipping."
+    cp $SCRATCH_DIR/initial_raw_metadata.txt $TMP_DIR/ 2>/dev/null || echo "Output file not found, skipping."
     cp $SCRATCH_DIR/STEP2_1.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"

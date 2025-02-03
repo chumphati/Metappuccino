@@ -34,6 +34,8 @@ def main():
                         help="Fill metadata with LLMs [Input: Cleaned sra file]")
     parser.add_argument("--associateinformation", action="store_true",
                         help="Associate medical codes with LLMs answers and clean them [Input: LLMs answers]")
+    parser.add_argument("--completestudy", action="store_true",
+                        help="Fill metadata with study information if needed [Input: Cleaned sra file]")
     args = parser.parse_args()
 
     #scripts to execute and flags
@@ -81,7 +83,8 @@ def main():
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
                 subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir, clean_script], check=True)
-                print("✔ Metadata cleaned!")
+            wait_for_flag_file(step2_flag)
+            print("✔ Metadata cleaned!")
 
         ##STEP 2: FILL MISSING METADATA
         if args.fillmetadata:
@@ -115,7 +118,7 @@ def main():
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
 
-        if args.fillmetadata:
+        if args.completestudy:
             # fill the missing information in the output final table with study info
             if not os.path.isfile(step7_flag):
                 subprocess.run(

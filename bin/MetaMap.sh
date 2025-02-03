@@ -38,14 +38,14 @@ echo "🔄 Please wait while we analyze your data..."
 mkdir -p $METAMAP_DIR/results/logs
 mkdir -p $METAMAP_DIR/results/tmp
 mkdir -p $METAMAP_DIR/results/METADATA
-mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS
+mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS/ENTROPY_DISTRIBUTION
 
 #call script that manage the analysis
 source "$ENV_REQUIREMENT/bin/activate"
 python3 "$METAMAP_DIR/bin/MetaMap.py" \
     --metamap_dir "$METAMAP_DIR" \
     --env_requirement "$ENV_REQUIREMENT" \
-    --getmetadata \
+    --getmetadata --fillmetadata --associateinformation --completestudy \
     >> "$METAMAP_DIR/results/logs/MetaMap.out" 2>> "$METAMAP_DIR/results/logs/MetaMap.err"
 deactivate
 

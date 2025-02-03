@@ -6,9 +6,9 @@
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
-#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
-#ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
+##ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap2"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
 RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp
@@ -34,11 +34,11 @@ trap cleanup EXIT
 #necessary files
 cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
-cp $TMP_DIR/final_llm_sample_analysis.txt $SCRATCH_DIR/
+cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/similar_study_accession_process.py $SCRATCH_DIR/
 
 #activate requirements venv
-source $ENV_REQUIREMENT/bin/activate
+#source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 

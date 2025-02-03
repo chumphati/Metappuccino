@@ -1,10 +1,12 @@
 #!/bin/bash
 #PBS -N assocate_codes_clean
 #PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-METAMAP=$1
-ENV_REQUIREMENT=$2
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 FINAL_DIR=$METAMAP/results/SPECIFIC_RUN_ANALYSIS
