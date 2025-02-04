@@ -7,6 +7,7 @@ import torch
 import sys
 import argparse
 import math
+import numpy as np
 
 ##########################################################################################
 # PATHS
@@ -79,6 +80,15 @@ def write_reload_file(filepath, header, line):
         file.write("\t".join(map(str, line)) + '\n')
 
 
+def calculate_entropy_optimized(token_logprobs):
+    logprobs_array = np.array(token_logprobs)
+    max_logprob = np.max(logprobs_array)
+    exp_logprobs = np.exp(logprobs_array - max_logprob)
+    probabilities = exp_logprobs / np.sum(exp_logprobs)
+
+    return -np.sum(probabilities * np.log(probabilities + 1e-10))
+
+
 # prompt to llm metadata
 def process_metadata_llm(metadata_lines, llm):
     for idx, line in enumerate(metadata_lines):
@@ -141,17 +151,13 @@ def process_metadata_llm(metadata_lines, llm):
                     for i, instruction in enumerate(na_columns):
                         if i < len(response_lines):
                             line = response_lines[i]
-                            words = line.split()
-                            num_tokens = len(words)
+                            num_tokens = len(line.split())
 
                             #extract log-probabilités per instruction
                             logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
-                            probabilities_segment = [math.exp(lp) for lp in logprobs_segment]
-                            sum_prob_segment = sum(probabilities_segment)
-                            normalized_prob_segment = [p / sum_prob_segment for p in probabilities_segment]
 
                             #entropy
-                            entropy = -sum(p * math.log(p) for p in normalized_prob_segment if p > 0)
+                            entropy = calculate_entropy_optimized(logprobs_segment)
                             entropy_dict[instruction] = entropy
                             token_index += num_tokens
 

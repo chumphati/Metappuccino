@@ -13,6 +13,11 @@ base_path = args.base_path
 LLM_OUT = os.path.join(base_path, "INFO_BIO_LLM")
 OUTPUT_FILE = os.path.join(base_path, "raw_final_info.txt")
 TEMP_FILE = os.path.join(base_path, "raw_final_info_temp.txt")
+tt_high_entropy = os.path.join(base_path, "tissue_high_entropy.txt")
+cl_high_entropy = os.path.join(base_path, "cellline_high_entropy.txt")
+ct_high_entropy = os.path.join(base_path, "celltype_high_entropy.txt")
+
+entropy_thresold = 2.5
 
 if not os.path.exists(LLM_OUT):
     print(f"Error: Directory {LLM_OUT} does not exist.")
@@ -23,7 +28,7 @@ if not os.path.exists(OUTPUT_FILE):
 
 
 ##########################################################################################
-# FUNCTIONS
+#FUNCTIONS
 
 def clean_info(info):
     info = re.sub(r"\(.*?(Inferred|based on).*?\)", "", info)
@@ -32,17 +37,13 @@ def clean_info(info):
     return re.sub(r"[^a-zA-Z0-9\s]", " ", info.strip()).strip()
 
 
-def normalize_line(line):
-    return re.sub(r"[^a-zA-Z0-9:\s]", " ", line).strip()
-
-
 def extract_entropy(line):
     match = re.search(r"([0-9]+\.[0-9]+)$", line)
     return float(match.group(1)) if match else None
 
 
 ##########################################################################################
-# MAIN
+#MAIN
 
 with open(OUTPUT_FILE, 'r') as infile:
     lines = infile.readlines()
@@ -54,11 +55,15 @@ try:
     tissue_index = header.index("Tissue type")
     cell_line_index = header.index("Cell line")
     cell_type_index = header.index("Cell type")
-except ValueError as e:
+except ValueError:
     print("Error: Required columns are missing in the output file.")
     exit(1)
 
 updated_data = []
+tt_high_entropy_rows = []
+cl_high_entropy_rows = []
+ct_high_entropy_rows = []
+
 for row in data:
     run_accession_number = row[0]
 
@@ -70,30 +75,56 @@ for row in data:
     cell_line_entropy = None
     cell_type_entropy = None
 
+    tissue_full_line = None
+    cell_line_full_line = None
+    cell_type_full_line = None
+
     file_path = os.path.join(LLM_OUT, f"{run_accession_number}_bio.txt")
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
-            for line in f:
-                entropy = extract_entropy(line)
-                normalized_line = normalize_line(line)
+            lines = f.readlines()
 
-                if "Entropy" in line and entropy is not None:
-                    if "Tissue type Entropy" in line:
-                        tissue_entropy = entropy
-                    elif "Cell line Entropy" in line:
-                        cell_line_entropy = entropy
-                    elif "Cell type Entropy" in line:
-                        cell_type_entropy = entropy
+        entropy_dict = {}
+        for line in lines:
+            entropy = extract_entropy(line)
+            if entropy is not None:
+                if "Tissue type Entropy" in line:
+                    entropy_dict["Tissue type"] = entropy
+                elif "Cell line Entropy" in line:
+                    entropy_dict["Cell line"] = entropy
+                elif "Cell type Entropy" in line:
+                    entropy_dict["Cell type"] = entropy
+        # print(run_accession_number)
+        # print(entropy_dict)
+        for line in lines:
+            normalized_line = line.strip()
+
+            if normalized_line.startswith("Tissue type:"):
+                entropy = entropy_dict.get("Tissue type", None)
+                tissue_full_line = normalized_line
+                if entropy is not None and entropy < entropy_thresold:
+                    tissue_type = clean_info(normalized_line.split("Tissue type:", 1)[1].strip())
                 else:
-                    if normalized_line.startswith("Tissue type:") and (
-                            tissue_entropy is not None and tissue_entropy < 2.5):
-                        tissue_type = clean_info(normalized_line.split("Tissue type:", 1)[1].strip())
-                    elif normalized_line.startswith("Cell line:") and (
-                            cell_line_entropy is not None and cell_line_entropy < 2.5):
-                        cell_line = clean_info(normalized_line.split("Cell line:", 1)[1].strip())
-                    elif normalized_line.startswith("Cell type:") and (
-                            cell_type_entropy is not None and cell_type_entropy < 2.5):
-                        cell_type = clean_info(normalized_line.split("Cell type:", 1)[1].strip())
+                    tt_high_entropy_rows.append([run_accession_number, entropy, tissue_full_line])
+                    continue
+
+            elif normalized_line.startswith("Cell line:"):
+                entropy = entropy_dict.get("Cell line", None)
+                cell_line_full_line = normalized_line
+                if entropy is not None and entropy < entropy_thresold:
+                    cell_line = clean_info(normalized_line.split("Cell line:", 1)[1].strip())
+                else:
+                    cl_high_entropy_rows.append([run_accession_number, entropy, cell_line_full_line])
+                    continue
+
+            elif normalized_line.startswith("Cell type:"):
+                entropy = entropy_dict.get("Cell type", None)
+                cell_type_full_line = normalized_line
+                if entropy is not None and entropy < entropy_thresold:
+                    cell_type = clean_info(normalized_line.split("Cell type:", 1)[1].strip())
+                else:
+                    ct_high_entropy_rows.append([run_accession_number, entropy, cell_type_full_line])
+                    continue
 
     row[tissue_index] = tissue_type
     row[cell_line_index] = cell_line
@@ -104,3 +135,20 @@ with open(OUTPUT_FILE, 'w', newline='') as outfile:
     writer = csv.writer(outfile, delimiter='|')
     writer.writerow(header)
     writer.writerows(updated_data)
+
+#store high entropy results
+#tissue type
+with open(tt_high_entropy, 'w') as tt_high_entropy_file:
+    tt_high_entropy_file.write("Run accession number|Entropy|Tissue type\n")
+    for row in tt_high_entropy_rows:
+        tt_high_entropy_file.write('|'.join(map(str, row)) + '\n')
+#cell line
+with open(cl_high_entropy, 'w') as cl_high_entropy_file:
+    cl_high_entropy_file.write("Run accession number|Entropy|Cell line\n")
+    for row in cl_high_entropy_rows:
+        cl_high_entropy_file.write('|'.join(map(str, row)) + '\n')
+#cell type
+with open(ct_high_entropy, 'w') as ct_high_entropy_file:
+    ct_high_entropy_file.write("Run accession number|Entropy|Cell type\n")
+    for row in ct_high_entropy_rows:
+        ct_high_entropy_file.write('|'.join(map(str, row)) + '\n')

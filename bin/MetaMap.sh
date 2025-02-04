@@ -36,7 +36,7 @@ echo "🔄 Please wait while we analyze your data..."
 
 #create dir
 mkdir -p $METAMAP_DIR/results/logs
-mkdir -p $METAMAP_DIR/results/tmp
+mkdir -p $METAMAP_DIR/results/tmp/high_entropy
 mkdir -p $METAMAP_DIR/results/METADATA
 mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS/ENTROPY_DISTRIBUTION
 

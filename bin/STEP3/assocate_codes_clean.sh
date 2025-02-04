@@ -20,6 +20,7 @@ exec > "$LOG_DIR/assocate_codes_clean.out" 2> "$LOG_DIR/assocate_codes_clean.err
 #clean and copy in case of fail
 cleanup() {
     cp $SCRATCH_DIR/raw_final_info.txt $TMP_DIR/ 2>/dev/null || echo "Raw LLM file not found, skipping."
+    cp $SCRATCH_DIR/uberon_high_entropy.txt $SCRATCH_DIR/dot_high_entropy.txt $SCRATCH_DIR/tissue_high_entropy.txt $SCRATCH_DIR/cellline_high_entropy.txt $SCRATCH_DIR/celltype_high_entropy.txt $TMP_DIR/high_entropy 2>/dev/null || echo "High entropy files not found, skipping."
     cp $SCRATCH_DIR/final_llm_sample_analysis.csv $FINAL_DIR/ 2>/dev/null || echo "Final LLM file not found, skipping."
     cp $SCRATCH_DIR/STEP3.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"

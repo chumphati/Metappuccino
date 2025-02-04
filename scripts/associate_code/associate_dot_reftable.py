@@ -15,6 +15,7 @@ base_path = args.base_path
 dot_ref = os.path.join(base_path, "DOT_TABLE_CLEAN.csv")
 llm_out = os.path.join(base_path, "INFO_BIO_LLM")
 output_file = os.path.join(base_path, "raw_final_info.txt")
+high_entropy_output = os.path.join(base_path, "dot_high_entropy.txt")
 
 # dot_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv")
 # llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
@@ -92,6 +93,9 @@ compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
 ##########################################################################################
 #MAIN
+
+high_entropy_rows = []
+
 for fichier in os.listdir(llm_out):
     path = os.path.join(llm_out, fichier)
     if os.path.isfile(path) and fichier.endswith("_bio.txt"):
@@ -101,12 +105,15 @@ for fichier in os.listdir(llm_out):
             dot_codes = set()
             dot_terms = set()
             dot_entropy = None
+            dot_full_line = None
 
             with open(path, 'r') as f:
 
                 for ligne in f:
-                    if "UBERON organ and code Entropy" in ligne:
+                    if "Disease Ontology Term Entropy" in ligne:
                         dot_entropy = extract_entropy(ligne)
+                    if "Disease Ontology Term:" in ligne:
+                        dot_full_line = ligne.strip()
 
                 if dot_entropy is None or dot_entropy < 2.5:
                     f.seek(0)
@@ -147,12 +154,22 @@ for fichier in os.listdir(llm_out):
                                         print(run_accession, term)
                                         dot_terms.add(f"{term} (!)")
 
+                else:
+                    high_entropy_rows.append([run_accession, dot_entropy, dot_full_line])
+                    continue
+
             row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes)) if dot_codes else 'normal'
             row[header_mapping["DOT term"]] = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'
 
-# update raw_final_info
+#update raw_final_info
 with open(output_file, 'w') as output_file:
     output_file.write('|'.join(header) + '\n')
     for row in rows:
         output_file.write('|'.join(row) + '\n')
+
+#store high entropy results
+with open(high_entropy_output, 'w') as high_entropy_file:
+    high_entropy_file.write("Run accession number|Entropy|DOT term\n")
+    for row in high_entropy_rows:
+        high_entropy_file.write('|'.join(map(str, row)) + '\n')
 

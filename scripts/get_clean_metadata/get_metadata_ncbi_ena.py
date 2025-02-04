@@ -111,13 +111,25 @@ def extract_and_save_metadata(run_accession):
         ena_data = response.stdout.strip().split("\n")[-1]
         print("ENA DATA: ", ena_data)
 
+        if not response.stdout.strip():
+            print(f"Warning: No data returned from ENA API for run accession {run_accession}.")
+        if response.returncode != 0:
+            print(f"Error: curl command failed with return code {response.returncode}.")
+            print("stderr:", response.stderr)
+
         #first line
         with open(OUTPUT_FILE, 'a') as f_out:
             f_out.write(f"{ena_data}\t{sample_metadata}\t{study_metadata}\n")
             print("STUDY DATA: ", study_metadata)
 
+    except FileNotFoundError as e:
+        print(f"Error: XML file not found {e}")
+    except ET.ParseError as e:
+        print(f"Error: Failed to parse XML {e}")
+    except subprocess.SubprocessError as e:
+        print(f"Error: Subprocess execution failed {e}")
     except Exception as e:
-        print(f"Error {run_accession}: {e}")
+        print(f"Unexpected error: {e}")
 
 ########################################################################################################################
 #MAIN FUNCTION

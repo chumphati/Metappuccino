@@ -7,6 +7,7 @@ import torch
 import sys
 import argparse
 import math
+import numpy as np
 
 ##########################################################################################
 # PATHS
@@ -22,7 +23,7 @@ model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.
 log_file_path = os.path.join(base_path, "llm_log_study.txt")
 error_file_path = os.path.join(base_path, "reload_model_study_info.txt")
 error_file_header = "study_accession\trun_accession_list\tlibrary_construction_protocol\tstudy_metadata_ncbi"
-FLAG_FILE = os.path.join(base_path, "STEP2_4.flag")
+FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
 
 NA_COLUMNS = ["Tissue type", "Cell line", "Cell type", "UBERON code", "UBERON term", "DOT code", "DOT term"]
 
@@ -118,6 +119,15 @@ def write_reload_file(filepath, header, line):
         file.write("\t".join(map(str, line)) + '\n')
 
 
+def calculate_entropy_optimized(token_logprobs):
+    logprobs_array = np.array(token_logprobs)
+    max_logprob = np.max(logprobs_array)
+    exp_logprobs = np.exp(logprobs_array - max_logprob)
+    probabilities = exp_logprobs / np.sum(exp_logprobs)
+
+    return -np.sum(probabilities * np.log(probabilities + 1e-10))
+
+
 # prompt to llm metadata
 def process_metadata_llm(filtered_studies, raw_data, study_metadata):
     for study_accession, run_accessions in filtered_studies.items():
@@ -181,17 +191,13 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 for i, instruction in enumerate(na_columns):
                     if i < len(response_lines):
                         line = response_lines[i]
-                        words = line.split()
-                        num_tokens = len(words)
+                        num_tokens = len(line.split())
 
                         #extract log-probabilités per instruction
                         logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
-                        probabilities_segment = [math.exp(lp) for lp in logprobs_segment]
-                        sum_prob_segment = sum(probabilities_segment)
-                        normalized_prob_segment = [p / sum_prob_segment for p in probabilities_segment]
 
                         #entropy
-                        entropy = -sum(p * math.log(p) for p in normalized_prob_segment if p > 0)
+                        entropy = calculate_entropy_optimized(logprobs_segment)
                         entropy_dict[instruction] = entropy
                         token_index += num_tokens
 

@@ -50,7 +50,7 @@ def main():
     step4_flag = os.path.join(tmp_dir, "STEP2_2.flag")
     step5_flag = os.path.join(tmp_dir, "STEP2_3.flag")
     step6_flag = os.path.join(tmp_dir, "STEP3.flag")
-    step7_flag = os.path.join(tmp_dir, "STEP2_4.flag")
+    step7_flag = os.path.join(tmp_dir, "STEP4_1.flag")
 
     install_requirements = os.path.join(metamap_dir, "bin", "STEP1", "install_requirements.sh")
     download_script = os.path.join(metamap_dir, "bin", "STEP1", "download_metadata.sh")
@@ -59,7 +59,7 @@ def main():
     llm_specific_biology_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
     split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
     associate_information = os.path.join(metamap_dir, "bin", "STEP3", "assocate_codes_clean.sh")
-    llm_study_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_study_information.sh")
+    llm_study_information = os.path.join(metamap_dir, "bin", "STEP4", "llm_study_information.sh")
 
     ##INSTALL REQUIREMENTS
     try:

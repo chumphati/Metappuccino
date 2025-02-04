@@ -15,6 +15,7 @@ base_path = args.base_path
 uberon_ref = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
 llm_out = os.path.join(base_path, "INFO_BIO_LLM")
 output_file = os.path.join(base_path, "raw_final_info.txt")
+high_entropy_output = os.path.join(base_path, "uberon_high_entropy.txt")
 
 #check files
 if not os.path.exists(uberon_ref):
@@ -85,6 +86,9 @@ compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
 ##########################################################################################
 #MAIN
+
+high_entropy_rows = []
+
 for fichier in os.listdir(llm_out):
     path = os.path.join(llm_out, fichier)
     if os.path.isfile(path) and fichier.endswith("_bio.txt"):
@@ -94,11 +98,14 @@ for fichier in os.listdir(llm_out):
             uberon_codes = set()
             uberon_terms = set()
             uberon_entropy = None
+            uberon_full_line = None
 
             with open(path, 'r') as f:
                 for ligne in f:
                     if "UBERON organ and code Entropy" in ligne:
                         uberon_entropy = extract_entropy(ligne)
+                    if "UBERON organ and code:" in ligne:
+                        uberon_full_line = ligne.strip()
 
                 if uberon_entropy is None or uberon_entropy < 2.5:
                     f.seek(0)
@@ -141,12 +148,23 @@ for fichier in os.listdir(llm_out):
                                     if not matched:
                                         uberon_terms.add(f"{term} (!)")
 
+                else:
+                    high_entropy_rows.append([run_accession, uberon_entropy, uberon_full_line])
+                    continue
+
             row[header_mapping["UBERON code"]] = ', '.join(sorted(uberon_codes)) if uberon_codes else 'NA'
             row[header_mapping["UBERON term"]] = ', '.join(sorted(uberon_terms)) if uberon_terms else 'NA'
 
-# update raw_final_info
+#update raw_final_info
 with open(output_file, 'w') as output_file:
     output_file.write('|'.join(header) + '\n')
     for row in rows:
         output_file.write('|'.join(row) + '\n')
+
+#store high entropy results
+with open(high_entropy_output, 'w') as high_entropy_file:
+    high_entropy_file.write("Run accession number|Entropy|UBERON term\n")
+    for row in high_entropy_rows:
+        high_entropy_file.write('|'.join(map(str, row)) + '\n')
+
 
