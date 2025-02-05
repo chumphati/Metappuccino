@@ -5,9 +5,8 @@
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
-METAMAP=${1:-$METAMAP}
-#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap2"
-#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+#METAMAP=${1:-$METAMAP}
+METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 
 RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp
@@ -22,15 +21,16 @@ cd $SCRATCH_DIR
 #clean and copy in case of fail
 cleanup() {
     cp -r $SCRATCH_DIR/INFO_STUDY_LLM $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/ 2>/dev/null || echo "INFO_STUDY_LLM not found, skipping."
-    cp $SCRATCH_DIR/reload_model_study_info.txt $TMP_DIR/ 2>/dev/null || echo "TMP not found, skipping."
+    cp $SCRATCH_DIR/reload_model_study_info.txt $TMP_DIR/ 2>/dev/null || echo "No need of more context."
     cp $SCRATCH_DIR/llm_log_study.txt $LOG_DIR/ 2>/dev/null || echo "Log file not found, skipping."
-    cp $SCRATCH_DIR/STEP2_4.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
+    cp $SCRATCH_DIR/STEP4_1.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
 }
 trap cleanup EXIT
 
 #necessary files
+cp -r $METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
 cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
 cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/

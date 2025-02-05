@@ -23,7 +23,7 @@ cd $SCRATCH_DIR
 #clean and copy in case of fail
 cleanup() {
     cp -r $SCRATCH_DIR/INFO_BIO_LLM $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/ 2>/dev/null || echo "INFO_BIO_LLM not found, skipping."
-    cp $SCRATCH_DIR/reload_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "TMP not found, skipping."
+    cp $SCRATCH_DIR/reload_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "No additional context to increase."
     cp $SCRATCH_DIR/llm_log_SB.txt $LOG_DIR/ 2>/dev/null || echo "Log file not found, skipping."
     cp $SCRATCH_DIR/STEP2_3.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"

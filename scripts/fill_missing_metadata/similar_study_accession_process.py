@@ -71,6 +71,36 @@ def filter_studies_for_llm(study_map, raw_data):
     return {study: runs for study, runs in study_map.items() if any(run in raw_data for run in runs)}
 
 
+def pre_filter_studies(filtered_studies):
+    studies_to_analyze = {}
+    studies_to_eliminate = {}
+    info_bio_llm_dir = os.path.join(base_path, "INFO_BIO_LLM")
+
+    for study, run_accessions in filtered_studies.items():
+        all_run_entropies = []
+        for run in run_accessions:
+            run_file = os.path.join(info_bio_llm_dir, f"{run}_bio.txt")
+            # print(run_file, flush=True)
+            if os.path.exists(run_file):
+                with open(run_file, "r") as rf:
+                    for line in rf:
+                        if "Entropy:" in line:
+                            try:
+                                entropy_value = float(line.split("Entropy:")[1].strip())
+                                all_run_entropies.append(entropy_value)
+                            except ValueError:
+                                pass
+            else:
+                print(f"Error: file not found: {run_file}", flush=True)
+
+        if all_run_entropies and all(ent < 2.5 for ent in all_run_entropies):
+            studies_to_eliminate[study] = run_accessions
+        else:
+            studies_to_analyze[study] = run_accessions
+
+    return studies_to_analyze, studies_to_eliminate
+
+
 # check memory
 def print_memory_usage(process):
     memory_info = process.memory_info()
@@ -114,7 +144,7 @@ def write_reload_file(filepath, header, line):
         with open(filepath, 'w') as file:
             file.write(header + '\n')
 
-    #append the problematic line to the file
+    # append the problematic line to the file
     with open(filepath, 'a') as file:
         file.write("\t".join(map(str, line)) + '\n')
 
@@ -139,17 +169,25 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 na_columns.update(raw_data[run])
 
         if na_columns:
+            fields_for_prompt = [col for col in na_columns if
+                                 col not in ["Donor information", "UBERON code", "DOT code"]]
+
             instructions = []
-            if "Tissue type" in na_columns:
-                instructions.append("Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain).")
-            if "Cell line" in na_columns:
-                instructions.append("Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
-            if "Cell type" in na_columns:
-                instructions.append("Cell type – The list of type of cells in the study (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
-            if "UBERON term" in na_columns:
-                instructions.append("UBERON organ code – The list of UBERON code and organ for the tissue types (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
-            if "DOT term" in na_columns:
-                instructions.append("Disease Ontology Term – The list of possible Disease Ontology Term for all the study (e.g., DOID:XXXXX + term related to the code) with validation status (e.g., 'Validated' or 'Estimated'). Deduce from context if not specified.")
+            if "Tissue type" in fields_for_prompt:
+                instructions.append(
+                    "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain).")
+            if "Cell line" in fields_for_prompt:
+                instructions.append(
+                    "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
+            if "Cell type" in fields_for_prompt:
+                instructions.append(
+                    "Cell type – The list of type of cells in the study (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
+            if "UBERON term" in fields_for_prompt:
+                instructions.append(
+                    "UBERON organ code – The list of UBERON code and organ for the tissue types (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+            if "DOT term" in fields_for_prompt:
+                instructions.append(
+                    "Disease Ontology Term – The list of possible Disease Ontology Term for all the study (e.g., DOID:XXXXX + term related to the code) with validation status (e.g., 'Validated' or 'Estimated'). Deduce from context if not specified.")
 
             prompt = f"""
             Study accession: {study_accession}
@@ -165,8 +203,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
             - Indicate if further validation is required (e.g., using external databases such as GTEx for UBERON codes).
 
             Return the results in a structured plain text format with one entry per row as follows. Do not add any other sentence. Keep answers short. Ensure that all fields are explicitly stated, even if inferred from general study details:
-            """ + chr(10).join(
-                [f"{col}: [value]" for col in na_columns if col != "Donor information" and col != "UBERON code" and col != "DOT code"]) + " Here is the askep output :"
+            """ + chr(10).join([f"{col}: [value]" for col in fields_for_prompt]) + " Here is the askep output :"
 
             print("PROMPT:", flush=True)
             print(prompt, flush=True)
@@ -182,23 +219,23 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 logprobs = response["choices"][0].get("logprobs", None)
                 token_logprobs = logprobs["token_logprobs"]
 
-                #split answer to get each instruction
+                # split answer to get each instruction
                 response_lines = response["choices"][0]["text"].strip().split("\n")
                 entropy_dict = {}
                 token_index = 0
 
-                #entropie calculation for each instruction
-                for i, instruction in enumerate(na_columns):
+                # entropie calculation for each instruction (using fields_for_prompt)
+                for i, field in enumerate(fields_for_prompt):
                     if i < len(response_lines):
                         line = response_lines[i]
                         num_tokens = len(line.split())
 
-                        #extract log-probabilités per instruction
+                        # extract log-probabilités per instruction
                         logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
 
-                        #entropy
+                        # entropy
                         entropy = calculate_entropy_optimized(logprobs_segment)
-                        entropy_dict[instruction] = entropy
+                        entropy_dict[field] = entropy
                         token_index += num_tokens
 
                 output_file = os.path.join(output_dir, f"{study_accession}_study.txt")
@@ -220,6 +257,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
             # ram after answer
             print_memory_usage(process)
 
+
 ##########################################################################################
 # MAIN
 
@@ -229,7 +267,7 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 10000
+initial_n_ctx = 3000
 llm = get_llama_model(model_path, initial_n_ctx)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
 
@@ -242,13 +280,25 @@ os.makedirs(output_dir, exist_ok=True)
 raw_data = load_final_info(raw_final_info_path)
 study_map, study_metadata = load_study_info(input_metadata_path)
 filtered_studies = filter_studies_for_llm(study_map, raw_data)
+excluded_studies = set(study_map.keys()) - set(filtered_studies.keys())
+if len(excluded_studies) > 0:
+    print("Warning: the following studies are excluded before run_accession already complete:", flush=True)
+    for study in excluded_studies:
+        print(study, flush=True)
 
-# process metadata sequentially
-process_metadata_llm(filtered_studies, raw_data, study_metadata)
+studies_to_analyze, studies_to_eliminate = pre_filter_studies(filtered_studies)
+
+print("Study accessions to analyze:", flush=True)
+for study in studies_to_analyze.keys():
+    print(study, flush=True)
+print("Study accessions to eliminate (all run-level entropies < 2.5):", flush=True)
+for study in studies_to_eliminate.keys():
+    print(study, flush=True)
+
+# process_metadata_llm(studies_to_analyze, raw_data, study_metadata)
 
 sys.stdout.close()
 
-# create flag end process before cleaning
 open(FLAG_FILE, 'w').close()
 
 if llm is not None:

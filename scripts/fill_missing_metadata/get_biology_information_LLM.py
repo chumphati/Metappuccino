@@ -55,7 +55,6 @@ def get_llama_model(model_path, n_ctx):
     # tensor_split = [1, 1, 1, 1, 1, 1, 1, 1]
     return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30, logits_all=True)
 
-
 def logits_to_probabilities(logits):
     max_logit = max(logits)
     exp_logits = [math.exp(logit - max_logit) for logit in logits]
@@ -89,11 +88,16 @@ def calculate_entropy_optimized(token_logprobs):
     return -np.sum(probabilities * np.log(probabilities + 1e-10))
 
 
+total_processed = 0
+skipped_entries = []
 # prompt to llm metadata
 def process_metadata_llm(metadata_lines, llm):
+    global total_processed
     for idx, line in enumerate(metadata_lines):
         clean_metadata = line.strip().split(";")
         run_accession = clean_metadata[0]
+        total_processed += 1
+        print(f"🔄 Process on going {total_processed}/{len(metadata_lines)}: {run_accession}", flush=True)
 
         if run_accession in raw_data:
             print(run_accession)
@@ -111,7 +115,7 @@ def process_metadata_llm(metadata_lines, llm):
                 if "UBERON organ and code" in na_columns:
                     instructions.append("UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
-                    instructions.append("Disease Ontology Term – The Disease Ontology Term for the disease type + the name (e.g., DOID:XXXXX + term related to the code) with validation status (e.g., 'Validated' or 'Estimated'). Deduce from context if not specified.")
+                    instructions.append("Disease Ontology Term – The Disease Ontology Term for the disease type + the name (e.g., DOID:XXXXX + term related to the code). Deduce from context if not specified.")
 
                 prompt = f"""
                 Run accession: {run_accession}
@@ -122,10 +126,9 @@ def process_metadata_llm(metadata_lines, llm):
                 {chr(10).join(instructions)}
                 If any information is missing in the metadata:
 
-                Clearly state that it is 'Not specified.'
                 Provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
-                Specify when a detail requires further validation (e.g., from external sources like GTEx for UBERON codes).
-                Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below) Provide this format directly in the response for any metadata table shared in the future, in a txt file. Use LLM inference not python (write only the table as ouput, no additionnal sentences, one run only provided here):
+                Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below).
+                Write short senteces, no additionnal sentences, no useless words (very important), like this):
                 """ + chr(10).join(
                     [f"{col}: [value]" for col in na_columns if col != "Donor information"]) + " Here is the askep output :"
 
@@ -139,6 +142,7 @@ def process_metadata_llm(metadata_lines, llm):
                     response = llm(prompt, max_tokens=180, logprobs=True)
 
                     print("ANSWER:", flush=True)
+                    print(response["choices"][0]["text"])
                     logprobs = response["choices"][0].get("logprobs", None)
                     token_logprobs = logprobs["token_logprobs"]
 
@@ -162,6 +166,7 @@ def process_metadata_llm(metadata_lines, llm):
                             token_index += num_tokens
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
+                    print(output_file, flush=True)
                     with open(output_file, "w") as f:
                         f.write(response["choices"][0]["text"])
                         f.write(f"\n")
@@ -177,8 +182,16 @@ def process_metadata_llm(metadata_lines, llm):
                     print(f"Memory error: line {idx}")
                     break
 
+                except Exception as e:
+                    print(f"Error in {run_accession} process: {e}", flush=True)
+                    skipped_entries.append(run_accession)
+                    continue
+
                 # ram after answer
                 print_memory_usage(process)
+
+                print(f"✅ Process over: {total_processed}/{len(metadata_lines)} runs inferred.")
+                print(f"❌ Ignored runs : {len(skipped_entries)}")
 
 ##########################################################################################
 # MAIN
