@@ -128,7 +128,7 @@ def process_metadata_llm(metadata_lines, llm):
 
                 Provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
                 Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below).
-                Write short senteces, no additionnal sentences, no useless words (very important), like this):
+                Write short senteces, no additionnal sentences (very important), no useless words (very important), like this):
                 """ + chr(10).join(
                     [f"{col}: [value]" for col in na_columns if col != "Donor information"]) + " Here is the askep output :"
 
@@ -162,6 +162,7 @@ def process_metadata_llm(metadata_lines, llm):
 
                             #entropy
                             entropy = calculate_entropy_optimized(logprobs_segment)
+                            print("Entropy", entropy)
                             entropy_dict[instruction] = entropy
                             token_index += num_tokens
 

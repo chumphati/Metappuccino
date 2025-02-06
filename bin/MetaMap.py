@@ -51,6 +51,7 @@ def main():
     step5_flag = os.path.join(tmp_dir, "STEP2_3.flag")
     step6_flag = os.path.join(tmp_dir, "STEP3.flag")
     step7_flag = os.path.join(tmp_dir, "STEP4_1.flag")
+    step8_flag = os.path.join(tmp_dir, "STEP4_2.flag")
 
     install_requirements = os.path.join(metamap_dir, "bin", "STEP1", "install_requirements.sh")
     download_script = os.path.join(metamap_dir, "bin", "STEP1", "download_metadata.sh")
@@ -60,6 +61,7 @@ def main():
     split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
     associate_information = os.path.join(metamap_dir, "bin", "STEP3", "assocate_codes_clean.sh")
     llm_study_information = os.path.join(metamap_dir, "bin", "STEP4", "llm_study_information.sh")
+    process_study_llm = os.path.join(metamap_dir, "bin", "STEP4", "sort_entropy.sh")
 
     ##INSTALL REQUIREMENTS
     try:
@@ -118,6 +120,7 @@ def main():
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
 
+        ##STEP 4: STUDY COMPLETION
         if args.completestudy:
             # fill the missing information in the output final table with study info
             if not os.path.isfile(step7_flag):
@@ -126,6 +129,14 @@ def main():
                      llm_study_information], check=True)
             wait_for_flag_file(step7_flag)
             print("✔ Study information for projects filled by LLM model successfully!")
+
+            # process study info via entropy
+            if not os.path.isfile(step8_flag):
+                subprocess.run(
+                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                     process_study_llm], check=True)
+            wait_for_flag_file(step8_flag)
+            print("✔ Study information information processed successfully!")
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)

@@ -1,14 +1,25 @@
+##########################################################################################
+# IMPORT
 import os
 import csv
 from collections import defaultdict
+import argparse
 
-base_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
-study_info_path = os.path.join(base_path, "tmp/study_info.txt")
-llm_results_dir = os.path.join(base_path, "SPECIFIC_RUN_ANALYSIS/INFO_STUDY_LLM")
-high_entropy_dir = os.path.join(base_path, "tmp/high_entropy")
-output_file = os.path.join(base_path, "SPECIFIC_RUN_ANALYSIS/best_inferences_per_run.csv")
+##########################################################################################
+# PATHS
+parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+args = parser.parse_args()
+
+base_path = args.base_path
+study_info_path = os.path.join(base_path, "study_info.txt")
+llm_results_dir = os.path.join(base_path, "INFO_STUDY_LLM")
+high_entropy_dir = os.path.join(base_path, "high_entropy")
+output_file = os.path.join(base_path, "best_inferences_per_run.csv")
 categories = ["Cell type", "UBERON term", "Tissue type", "Cell line", "DOT term"]
 
+##########################################################################################
+# MAIN
 category_to_filename_prefix = {
     "Cell type": "celltype",
     "UBERON term": "uberon",
@@ -17,10 +28,10 @@ category_to_filename_prefix = {
     "DOT term": "dot"
 }
 
-#charge mapping study_accession → run_accessions
+#load study_info.txt
 study_to_runs = {}
 with open(study_info_path, "r") as f:
-    next(f)
+    next(f)  # ignore l'en-tête
     for line in f:
         parts = line.strip().split(";")
         if len(parts) < 2:
@@ -29,33 +40,31 @@ with open(study_info_path, "r") as f:
         run_accessions = parts[1].split(",")
         study_to_runs[study_accession] = run_accessions
 
-#charge entropies from high_entropy
+#store each category for each run
 high_entropy_data = {cat: {} for cat in categories}
-
 for cat in categories:
     file_path = os.path.join(high_entropy_dir, f"{category_to_filename_prefix[cat]}_high_entropy.txt")
     if not os.path.exists(file_path):
         continue
-
     with open(file_path, "r") as f:
         for line in f:
             parts = line.strip().split("|")
             if len(parts) != 3:
                 continue
-            run_accession, entropy_value, _ = parts
+            run_accession, entropy_str, value_str = parts
             try:
-                high_entropy_data[cat][run_accession] = float(entropy_value)
+                entropy_value = float(entropy_str.strip())
+                high_entropy_data[cat][run_accession] = {"entropy": entropy_value, "value": value_str.strip()}
             except ValueError:
                 continue
 
-#get llm files + values
+#proces study files
 llm_results = defaultdict(lambda: defaultdict(dict))
-# print(study_to_runs)
-
 for filename in os.listdir(llm_results_dir):
     if not filename.endswith("_study.txt"):
         continue
 
+    #get study accession
     study_accession = filename.replace("_study.txt", "")
     if study_accession not in study_to_runs:
         continue
@@ -69,39 +78,70 @@ for filename in os.listdir(llm_results_dir):
         if not line:
             continue
 
+        #get value
         for cat in categories:
             if line.startswith(f"{cat}:"):
-                value = line.split(":", 1)[1].strip()
-                llm_results[study_accession][cat]["value"] = value
-                current_category = cat
-                # print(value)
-                # print(current_category)
+                if "Entropy" not in line:
+                    value = line.split(":", 1)[1].strip()
+                    llm_results[study_accession][cat]["value"] = value
+                    current_category = cat
                 break
 
-        if current_category and "Entropy:" in line:
-            print(line)
-            try:
-                entropy_value = float(line.split(":")[1].strip())
-                llm_results[study_accession][current_category]["entropy"] = entropy_value
-            except ValueError:
-                continue
+        #get entropy per category
+        for cat in categories:
+            if line.startswith(f"{cat} Entropy:"):
+                try:
+                    entropy_value = float(line.split(":", 1)[1].strip())
+                    llm_results[study_accession][cat]["entropy"] = entropy_value
+                    # On peut réinitialiser current_category si besoin
+                    current_category = None
+                except ValueError:
+                    pass
+                break
+
 
 final_results = []
-
 for study_accession, category_data in llm_results.items():
-    for run_accession in study_to_runs.get(study_accession, []):
+    #get list run for a study from study_info
+    print("\nStudy accession from study.txt:", study_accession, flush=True)
+    run_list = study_to_runs.get(study_accession, [])
+    #process run in study
+    for run_accession in run_list:
+        print("\nruns in study:", run_accession, flush=True)
         best_values = {}
+        for cat in categories:
+            #get study entropy
+            print("cat:", cat, flush=True)
+            llm_entry = category_data.get(cat, {})
+            llm_entropy = llm_entry.get("entropy", float("inf"))
+            print("llm_entropy:", llm_entropy, flush=True)
+            llm_value = llm_entry.get("value", None)
+            print("llm_value:", llm_value, flush=True)
+            #get entropy and run value
+            # print("tessst", high_entropy_data)
+            hr_entry = high_entropy_data.get(cat, {}).get(run_accession, None)
+            print("hr_entry:", hr_entry, flush=True)
+            if hr_entry:
+                hr_entropy = hr_entry.get("entropy", float("inf"))
+                hr_value = hr_entry.get("value", None)
+            else:
+                hr_entropy = float("inf")
+                hr_value = None
+            #keep lowest entropy
+            if llm_entropy <= hr_entropy:
+                # print("c'est la study")
+                best = llm_value if llm_value is not None else "NA"
+            else:
+                # print("c'est le run based")
+                best = hr_value if hr_value is not None else "NA"
+            best_values[cat] = best
 
-        for category, data in category_data.items():
-            llm_entropy = data.get("entropy", float("inf"))
-            high_entropy = high_entropy_data.get(category, {}).get(run_accession, float("inf"))
-
-            if llm_entropy < high_entropy:
-                best_values[category] = data["value"]
-
-        if best_values:
+        #if at least one categorie as value != than NA, add line for this run
+        if any(best_values[cat] != "NA" for cat in categories):
             final_results.append([run_accession] + [best_values.get(cat, "NA") for cat in categories])
 
+#write final result
+#warning: if study written, initial sample llm can be none, so it doesnt mean it will last in the final file
 with open(output_file, "w", newline="") as f:
     writer = csv.writer(f, delimiter=";")
     writer.writerow(["Run Accession"] + categories)

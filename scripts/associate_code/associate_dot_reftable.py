@@ -87,7 +87,8 @@ patterns = [
     r"DOID:\d+\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
-    r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)"
+    r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
+    r"[+\-]\s*([^;]+)(?:;|$)"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

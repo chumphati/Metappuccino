@@ -74,13 +74,17 @@ rows_dict = {row[header_mapping["Run accession number"]]: row for row in rows}
 
 #get uberon terms
 patterns = [
-    r"UBERON:\d{7}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
-    r"UBERON:\d{7}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"UBERON:\d{7}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"UBERON:\d{7}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"UBERON:\d{7}\s*\(([^)]+)\)",
-    r"UBERON:\d{7}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
-    r"\bEstimated\s*-\s*(.*?)\b"
+    r"UBERON:\d{4,5,6,7}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}\s*[-+]\s*(.*?)(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}[:+-]?\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"UBERON:\d{4,5,6,7}\s*\(([^)]+)\)",
+    r"UBERON:\d{4,5,6,7}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
+    r"UBERON organ and code:\s*UBERON:\d{4,5,6,7}\s*[-+]?\s*(.*?)$",
+    r"\bEstimated\s*-\s*(.*?)\b",
+    r"[+\-]\s*([^;]+)(?:;|$)"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

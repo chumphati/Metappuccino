@@ -295,7 +295,7 @@ print("Study accessions to eliminate (all run-level entropies < 2.5):", flush=Tr
 for study in studies_to_eliminate.keys():
     print(study, flush=True)
 
-# process_metadata_llm(studies_to_analyze, raw_data, study_metadata)
+process_metadata_llm(studies_to_analyze, raw_data, study_metadata)
 
 sys.stdout.close()
 

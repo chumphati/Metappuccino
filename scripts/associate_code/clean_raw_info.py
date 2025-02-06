@@ -6,41 +6,48 @@ import pandas as pd
 import argparse
 
 ##########################################################################################
-#PATHS
-parser = argparse.ArgumentParser(description="Clean final output")
+# PATHS
+parser = argparse.ArgumentParser(description="Clean raw final info and override with initial metadata")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
 args = parser.parse_args()
 
-base_path = args.base_path
-input_file = os.path.join(base_path, "raw_final_info.txt")
-output_file = os.path.join(base_path, "final_llm_sample_analysis.csv")
-FLAG_FILE = os.path.join(base_path, "STEP3.flag")
+base_dir = args.base_path
 
-# input_file = "/MetaMap/ccle_results/tmp/raw_final_info.txt"
-# output_file = "/MetaMap/ccle_results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+raw_final_info_path = os.path.join(base_dir, "raw_final_info.txt")
+initial_raw_metadata_path = os.path.join(base_dir, "initial_raw_metadata.txt")
+output_file_path = os.path.join(base_dir, "final_llm_sample_analysis.csv")
+FLAG_PATH = os.path.join(base_dir, "STEP3.flag")
 
-##########################################################################################
-#FUNCTIONS
-
-
-def clean_column(value):
-    return re.sub(r"[^a-zA-Z0-9,:-]", " ", value)
+# base_dir="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+# raw_final_info_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
+# initial_raw_metadata_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/initial_raw_metadata.txt"
+# output_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
 
 ##########################################################################################
-#MAIN
+# FUNCTIONS
 
-if not os.path.exists(input_file):
-    raise FileNotFoundError(f"Error: {input_file} doesn't exist.")
+def clean_text(text):
+    return re.sub(r"[^a-zA-Z0-9,:-]", " ", text)
 
-with open(input_file, "r") as file:
-    lines = file.readlines()
+##########################################################################################
+# MAIN
 
-header = lines[0].strip().split('|')
-data = [line.strip().split('|') for line in lines[1:]]
-cleaned_data = [[clean_column(cell) for cell in row] for row in data]
-cleaned_df = pd.DataFrame(cleaned_data, columns=header)
-os.makedirs(os.path.dirname(output_file), exist_ok=True)
-cleaned_df.to_csv(output_file, sep="\t", index=False)
 
-# create flag end process before cleaning
-open(FLAG_FILE, 'w').close()
+#charge files
+raw_final_info_df = pd.read_csv(raw_final_info_path, sep='|', dtype=str)
+raw_final_info_df = raw_final_info_df.map(lambda x: clean_text(x) if isinstance(x, str) else x)
+initial_raw_metadata_df = pd.read_csv(initial_raw_metadata_path, sep='|', dtype=str)
+initial_raw_metadata_df = initial_raw_metadata_df.map(lambda x: clean_text(x) if isinstance(x, str) else x)
+
+#update col if != NA
+columns_to_update = ["Tissue type", "Cell line", "Cell type", "Library strategy", "Instrument platform", "Donor information"]
+
+#data fusion
+for col in columns_to_update:
+    mask = (initial_raw_metadata_df[col] != 'NA') & (initial_raw_metadata_df[col].notna())
+    raw_final_info_df.loc[mask, col] = initial_raw_metadata_df.loc[mask, col]
+
+#save final output file
+raw_final_info_df = raw_final_info_df.astype(str)
+raw_final_info_df.fillna('NA', inplace=True)
+raw_final_info_df.to_csv(output_file_path, sep='\t', index=False)
