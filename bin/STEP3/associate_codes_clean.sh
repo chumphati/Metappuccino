@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N assocate_codes_clean
+#PBS -N associate_codes_clean
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
@@ -15,7 +15,7 @@ SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
-exec > "$LOG_DIR/assocate_codes_clean.out" 2> "$LOG_DIR/assocate_codes_clean.err"
+exec > "$LOG_DIR/associate_codes_clean.out" 2> "$LOG_DIR/associate_codes_clean.err"
 
 #clean and copy in case of fail
 cleanup() {
@@ -33,6 +33,7 @@ cp -r "$METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM/" $SCRATCH_DIR/
 cp "$METAMAP/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAMAP/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$TMP_DIR/raw_final_info.txt" $SCRATCH_DIR/
+cp "$TMP_DIR/initial_raw_metadata.txt" $SCRATCH_DIR/
 cp "$METAMAP/scripts/associate_code/associate_uberon_reftable.py" $SCRATCH_DIR/
 cp "$METAMAP/scripts/associate_code/associate_dot_reftable.py" $SCRATCH_DIR/
 cp "$METAMAP/scripts/associate_code/associate_stable_info.py" $SCRATCH_DIR/

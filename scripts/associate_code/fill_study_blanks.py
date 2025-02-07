@@ -16,7 +16,7 @@ uberon_ref_file = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
 doid_ref_file = os.path.join(base_path, "DOT_TABLE_CLEAN.csv")
 final_file = os.path.join(base_path, "final_llm_sample_analysis.csv")
 best_inf_study = os.path.join(base_path, "best_inferences_per_run.csv")
-FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
+FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
 
 # uberon_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/UBERON_TABLE_CLEAN.csv"
 # doid_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv"

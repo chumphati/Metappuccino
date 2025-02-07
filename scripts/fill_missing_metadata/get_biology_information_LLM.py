@@ -156,15 +156,16 @@ def process_metadata_llm(metadata_lines, llm):
                         if i < len(response_lines):
                             line = response_lines[i]
                             num_tokens = len(line.split())
-
-                            #extract log-probabilités per instruction
-                            logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
-
-                            #entropy
-                            entropy = calculate_entropy_optimized(logprobs_segment)
-                            print("Entropy", entropy)
-                            entropy_dict[instruction] = entropy
+                            if line.strip().startswith(instruction):
+                                logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
+                                entropy = calculate_entropy_optimized(logprobs_segment)
+                                print("Entropy", entropy)
+                                entropy_dict[instruction] = entropy
+                            else:
+                                print(f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
                             token_index += num_tokens
+                        else:
+                            print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     print(output_file, flush=True)

@@ -10,7 +10,7 @@ import seaborn as sns
 
 ##########################################################################################
 #PATHS
-with open('/Users/fionahak/Documents/phd/phd_code/MetaMap/manual_results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv', 'r', encoding='utf-8') as f:
+with open('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/results_3fev2025/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv', 'r', encoding='utf-8') as f:
     output_lines = f.readlines()
 
 with open('/Users/fionahak/Documents/phd/phd_code/MetaMap/data/processed_ref_metadata.csv', 'r', encoding='utf-16') as f:
@@ -36,6 +36,8 @@ reference_accessions = set(reference_df['run_accession'])
 common_accessions = output_accessions.intersection(reference_accessions)
 # print(len(common_accessions))
 merged = output_df.merge(reference_df, left_on='Run accession number', right_on='run_accession', how='inner')
+
+merged['Run accession'] = merged['Run accession number']
 
 #final col to compare
 merged[llm] = merged[llm].fillna('NA').str.replace('[\\[\\]\']', '', regex=True)
@@ -91,8 +93,8 @@ for i, row in merged.iterrows():
 merged['Jaccard Similarity'] = jaccard_similarities
 
 ## PRINT ALL
-table_to_display = merged[[llm, ref, 'TF-IDF Cosine Similarity', 'BERT Cosine Similarity', 'Jaccard Similarity']]
-table_to_display.to_csv("/Users/fionahak/Documents/phd/phd_code/MetaMap/manual_results/SPECIFIC_RUN_ANALYSIS/output_similarity_table.csv", index=False, encoding='utf-8')
+table_to_display = merged[['Run accession', llm, ref, 'TF-IDF Cosine Similarity', 'BERT Cosine Similarity', 'Jaccard Similarity']]
+table_to_display.to_csv("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/results_3fev2025/SPECIFIC_RUN_ANALYSIS/output_similarity_table.csv", index=False, encoding='utf-8')
 
 ## Accuracy
 accuracy_cumulative = {}
@@ -114,31 +116,31 @@ final_accuracy = accuracy_score(merged['true_label'], merged['predicted_label'])
 print(f"Accuracy: {final_accuracy:.2f}")
 
 ## Plots
-plt.figure(figsize=(8, 6))
-plt.plot(list(accuracy_cumulative.keys()), list(accuracy_cumulative.values()), marker='o')
-plt.title("Cumulative accuracy as a function of threshold (BERT Cosine Similarity)")
-plt.xlabel("Threshold")
-plt.ylabel("Accuracy")
-plt.grid(True)
-plt.show()
-plt.figure(figsize=(18, 6))
-plt.subplot(1, 3, 1)
-sns.histplot(merged['TF-IDF Cosine Similarity'], kde=True, bins=30, color='blue', alpha=0.7)
-plt.title("Distribution of TF-IDF Cosine Similarity")
-plt.xlabel("TF-IDF Cosine Similarity")
-plt.ylabel("Frequency")
-plt.subplot(1, 3, 2)
-sns.histplot(merged['BERT Cosine Similarity'], kde=True, bins=30, color='green', alpha=0.7)
-plt.title("Distribution of BERT Cosine Similarity")
-plt.xlabel("BERT Cosine Similarity")
-plt.ylabel("Frequency")
-plt.subplot(1, 3, 3)
-sns.histplot(merged['Jaccard Similarity'], kde=True, bins=30, color='orange', alpha=0.7)
-plt.title("Distribution of Jaccard Similarity")
-plt.xlabel("Jaccard Similarity")
-plt.ylabel("Frequency")
-plt.tight_layout()
-plt.show()
+# plt.figure(figsize=(8, 6))
+# plt.plot(list(accuracy_cumulative.keys()), list(accuracy_cumulative.values()), marker='o')
+# plt.title("Cumulative accuracy as a function of threshold (BERT Cosine Similarity)")
+# plt.xlabel("Threshold")
+# plt.ylabel("Accuracy")
+# plt.grid(True)
+# plt.show()
+# plt.figure(figsize=(18, 6))
+# plt.subplot(1, 3, 1)
+# sns.histplot(merged['TF-IDF Cosine Similarity'], kde=True, bins=30, color='blue', alpha=0.7)
+# plt.title("Distribution of TF-IDF Cosine Similarity")
+# plt.xlabel("TF-IDF Cosine Similarity")
+# plt.ylabel("Frequency")
+# plt.subplot(1, 3, 2)
+# sns.histplot(merged['BERT Cosine Similarity'], kde=True, bins=30, color='green', alpha=0.7)
+# plt.title("Distribution of BERT Cosine Similarity")
+# plt.xlabel("BERT Cosine Similarity")
+# plt.ylabel("Frequency")
+# plt.subplot(1, 3, 3)
+# sns.histplot(merged['Jaccard Similarity'], kde=True, bins=30, color='orange', alpha=0.7)
+# plt.title("Distribution of Jaccard Similarity")
+# plt.xlabel("Jaccard Similarity")
+# plt.ylabel("Frequency")
+# plt.tight_layout()
+# plt.show()
 
 ## STATS
 mean_bert = merged['BERT Cosine Similarity'].mean()

@@ -51,3 +51,6 @@ for col in columns_to_update:
 raw_final_info_df = raw_final_info_df.astype(str)
 raw_final_info_df.fillna('NA', inplace=True)
 raw_final_info_df.to_csv(output_file_path, sep='\t', index=False)
+
+# create flag end process before cleaning
+open(FLAG_PATH, 'w').close()

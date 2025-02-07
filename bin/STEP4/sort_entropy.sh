@@ -34,6 +34,7 @@ cp "$METAMAP/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAMAP/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAMAP/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv" $SCRATCH_DIR/
 cp "$TMP_DIR/raw_final_info.txt" $SCRATCH_DIR/
+cp "$TMP_DIR/study_info.txt" $SCRATCH_DIR/
 
 cp "$METAMAP/scripts/associate_code/study_llm_process.py" $SCRATCH_DIR/
 cp "$METAMAP/scripts/associate_code/fill_study_blanks.py" $SCRATCH_DIR/
@@ -43,5 +44,5 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-python3 -u $SCRATCH_DIR/study_llm_process.py --base_path $SCRATCH_DIR
+python3 -u $SCRATCH_DIR/study_llm_process.py --base_path $SCRATCH_DIR && \
 python3 -u $SCRATCH_DIR/fill_study_blanks.py --base_path $SCRATCH_DIR

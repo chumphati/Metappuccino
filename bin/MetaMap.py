@@ -59,7 +59,7 @@ def main():
     get_stable_metadata = os.path.join(metamap_dir, "bin", "STEP2", "get_stable_metadata.sh")
     llm_specific_biology_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
     split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
-    associate_information = os.path.join(metamap_dir, "bin", "STEP3", "assocate_codes_clean.sh")
+    associate_information = os.path.join(metamap_dir, "bin", "STEP3", "associate_codes_clean.sh")
     llm_study_information = os.path.join(metamap_dir, "bin", "STEP4", "llm_study_information.sh")
     process_study_llm = os.path.join(metamap_dir, "bin", "STEP4", "sort_entropy.sh")
 
