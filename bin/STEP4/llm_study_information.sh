@@ -3,10 +3,10 @@
 #PBS -l walltime=1000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=100gb
 
-#METAMAP=${1:-$METAMAP}
-METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+METAMAP=${1:-$METAMAP}
+#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 
 RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp

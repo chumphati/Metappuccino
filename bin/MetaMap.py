@@ -133,7 +133,7 @@ def main():
             # process study info via entropy
             if not os.path.isfile(step8_flag):
                 subprocess.run(
-                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                    ["qsub", "-q", "common", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
                      process_study_llm], check=True)
             wait_for_flag_file(step8_flag)
             print("✔ Study information information processed successfully!")

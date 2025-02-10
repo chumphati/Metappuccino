@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N llm_specific_biology_information
-#PBS -l walltime=1000:00:00
+#PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=100gb

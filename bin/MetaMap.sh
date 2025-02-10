@@ -38,7 +38,7 @@ echo "🔄 Please wait while we analyze your data..."
 mkdir -p $METAMAP_DIR/results/logs
 mkdir -p $METAMAP_DIR/results/tmp/high_entropy
 mkdir -p $METAMAP_DIR/results/METADATA
-mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS/ENTROPY_DISTRIBUTION
+mkdir -p $METAMAP_DIR/results/SPECIFIC_RUN_ANALYSIS
 
 #call script that manage the analysis
 source "$ENV_REQUIREMENT/bin/activate"

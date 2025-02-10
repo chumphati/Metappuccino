@@ -22,7 +22,7 @@ if not os.path.isfile(INPUT_FILE):
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 #files
-donor_info_file = os.path.join(OUTPUT_DIR, "donor_info.txt")
+# donor_info_file = os.path.join(OUTPUT_DIR, "donor_info.txt")
 sample_info_file = os.path.join(OUTPUT_DIR, "sample_info.txt")
 study_info_file = os.path.join(OUTPUT_DIR, "study_info.txt")
 
@@ -39,28 +39,30 @@ def get_value(row, column_name):
 
 
 #donor_info.txt
-with open(donor_info_file, 'w', newline='') as outfile:
-    writer = csv.writer(outfile, delimiter=';')
-    writer.writerow(["run_accession", "sample_metadata_ncbi", "age"])
-    for row in rows:
-        writer.writerow([
-            get_value(row, "run_accession"),
-            get_value(row, "sample metadata ncbi"),
-            get_value(row, "age")
-        ])
+# with open(donor_info_file, 'w', newline='') as outfile:
+#     writer = csv.writer(outfile, delimiter=';')
+#     writer.writerow(["run_accession", "sample_metadata_ncbi", "age"])
+#     for row in rows:
+#         writer.writerow([
+#             get_value(row, "run_accession"),
+#             get_value(row, "sample metadata ncbi"),
+#             get_value(row, "age")
+#         ])
 
 
 #sample_info.txt
 with open(sample_info_file, 'w', newline='') as outfile:
     writer = csv.writer(outfile, delimiter=';')
-    writer.writerow(["run_accession", "sample_title", "sample_description", "description", "study_title"])
+    writer.writerow(["run_accession", "sample_title", "sample_description", "description", "study_title", "sample_metadata_ncbi", "age"])
     for row in rows:
         writer.writerow([
             get_value(row, "run_accession"),
             get_value(row, "sample_title"),
             get_value(row, "sample_description"),
             get_value(row, "description"),
-            get_value(row, "study_title")
+            get_value(row, "study_title"),
+            get_value(row, "sample metadata ncbi"),
+            get_value(row, "age")
         ])
 
 #study_info.txt

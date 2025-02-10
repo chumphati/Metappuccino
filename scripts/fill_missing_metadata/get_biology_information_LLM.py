@@ -55,6 +55,7 @@ def get_llama_model(model_path, n_ctx):
     # tensor_split = [1, 1, 1, 1, 1, 1, 1, 1]
     return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30, logits_all=True)
 
+
 def logits_to_probabilities(logits):
     max_logit = max(logits)
     exp_logits = [math.exp(logit - max_logit) for logit in logits]
@@ -90,6 +91,8 @@ def calculate_entropy_optimized(token_logprobs):
 
 total_processed = 0
 skipped_entries = []
+
+
 # prompt to llm metadata
 def process_metadata_llm(metadata_lines, llm):
     global total_processed
@@ -115,22 +118,22 @@ def process_metadata_llm(metadata_lines, llm):
                 if "UBERON organ and code" in na_columns:
                     instructions.append("UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
-                    instructions.append("Disease Ontology Term – The Disease Ontology Term for the disease type + the name (e.g., DOID:XXXXX + term related to the code). Deduce from context if not specified.")
+                    instructions.append("Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                if "Donor information" in na_columns:
+                    instructions.append("Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be founded in the two last columns.")
 
                 prompt = f"""
                 Run accession: {run_accession}
                 Metadata to analyze: {clean_metadata}
 
-                Attached is the metadata of a run from the NCBI SRA. The first line contains the column names. For each row in the metadata table, I would like the following concise information as a list:
+                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely:
 
                 {chr(10).join(instructions)}
-                If any information is missing in the metadata:
-
-                Provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
-                Return the result in a plain text format with one entry per row as follows (please specify all the tag fields below).
-                Write short senteces, no additionnal sentences (very important), no useless words (very important), like this):
+                
+                If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
+                Return the result strictly in the following format, ensuring each entry contains the appropriate tags and inferred values when necessary:
                 """ + chr(10).join(
-                    [f"{col}: [value]" for col in na_columns if col != "Donor information"]) + " Here is the askep output :"
+                    [f"{col}: [value]" for col in na_columns]) + " Here is the askep output :"
 
                 print("PROMPT:", flush=True)
                 print(prompt, flush=True)
@@ -156,13 +159,14 @@ def process_metadata_llm(metadata_lines, llm):
                         if i < len(response_lines):
                             line = response_lines[i]
                             num_tokens = len(line.split())
-                            if line.strip().startswith(instruction):
+                            if f"{instruction}:" in line:
                                 logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
                                 entropy = calculate_entropy_optimized(logprobs_segment)
                                 print("Entropy", entropy)
                                 entropy_dict[instruction] = entropy
                             else:
-                                print(f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
+                                print(
+                                    f"Warning: Skipping entropy calculation for {instruction} because it is not followed immediately by ':' in the line.")
                             token_index += num_tokens
                         else:
                             print(f"No response line available for {instruction}. Skipping entropy calculation.")
@@ -197,6 +201,7 @@ def process_metadata_llm(metadata_lines, llm):
 
 ##########################################################################################
 # MAIN
+
 
 # params ram / gpu
 process = psutil.Process(os.getpid())
