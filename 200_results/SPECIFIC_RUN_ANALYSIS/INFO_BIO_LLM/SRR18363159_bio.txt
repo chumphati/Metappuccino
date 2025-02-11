@@ -1,0 +1,12 @@
+ 
+                Cell line: Primary tissue
+Cell type: Adipocyte
+UBERON organ and code: UBERON:0000948 + Adipose tissue
+Disease Ontology Term: DOID:9352 + Type 2 diabetes mellitus
+Donor information: female, 54 years old, diagnosis: T2D, exercise: PRE, tissue: Adipose tissue biopsy, geo location: missing, collection date: missing, participant ID: 58.
+
+Cell line Entropy: 0.6740294098854065
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.3777339458465576
+Disease Ontology Term Entropy: 1.7914845943450928
+Donor information Entropy: 3.0150952339172363

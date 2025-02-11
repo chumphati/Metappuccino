@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Breast epithelial cells (inferred from breast tissue)
+UBERON organ and code: UBERON:0001911 + Mammary gland
+Disease Ontology Term: DOID:1612 + Breast cancer
+Donor information: Age: 47, Sex: Female, Tissue: Paired normal breast tissue.
+
+Cell line Entropy: 0.6796309947967529
+Cell type Entropy: 1.9418996572494507
+UBERON organ and code Entropy: 1.3057453632354736
+Disease Ontology Term Entropy: 1.3060661554336548
+Donor information Entropy: 2.1387739181518555

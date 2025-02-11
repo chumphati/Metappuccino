@@ -1,0 +1,12 @@
+
+
+
+            UBERON term: UBERON:0000948 + Adipose tissue (Estimated, requires GTEx validation for specificity)
+DOT term: DOID:9352 + Type 2 Diabetes (Validated), DOID:0060686 + Normal Glucose Tolerance (Validated)
+Cell line: Primary tissue
+Cell type: Adipocytes, Immune cells (inferred from Adipose tissue context)
+
+UBERON term Entropy: 2.4135308265686035
+DOT term Entropy: 2.526711940765381
+Cell line Entropy: 1.3651014566421509
+Cell type Entropy: 2.301206111907959

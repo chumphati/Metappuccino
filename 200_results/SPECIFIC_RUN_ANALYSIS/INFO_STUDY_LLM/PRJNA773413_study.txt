@@ -1,0 +1,11 @@
+ 
+
+            UBERON term: UBERON:0000955 + Brain; UBERON:0001876 + Hippocampus; UBERON:0001388 + Cortex 
+DOT term: DOID:3312 + Epilepsy (Validated) 
+Cell line: Primary tissue 
+Cell type: Neuron (Inferred)
+
+UBERON term Entropy: 2.3324718475341797
+DOT term Entropy: 1.654179573059082
+Cell line Entropy: 1.3844325542449951
+Cell type Entropy: 1.153200626373291

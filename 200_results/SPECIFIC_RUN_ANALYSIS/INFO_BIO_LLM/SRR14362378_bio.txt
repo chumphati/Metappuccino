@@ -1,0 +1,13 @@
+ 
+                
+Cell line: Primary tissue
+Cell type: Cardiac cell (inferred from Heart Atrial Appendage tissue)
+UBERON organ and code: UBERON:0000948 + Heart
+Disease Ontology Term: DOID:0070121 + Ischemic Heart Disease
+Donor information: ICA positive, undergoing coronary artery bypass surgery, 28-01-15-AP, age not specified, sex not specified, other medical information not provided.
+
+Cell line Entropy: 0.30982401967048645
+Cell type Entropy: 2.0366358757019043
+UBERON organ and code Entropy: 1.0786856412887573
+Disease Ontology Term Entropy: 1.514535903930664
+Donor information Entropy: 2.925884485244751

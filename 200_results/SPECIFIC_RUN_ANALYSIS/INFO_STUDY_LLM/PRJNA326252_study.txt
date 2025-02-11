@@ -1,0 +1,10 @@
+ 
+            UBERON term: UBERON:0000178 - Thyroid gland (Inferred from study context)
+DOT term: DOID:2945 - Papillary thyroid carcinoma (Validated)
+Cell line: Primary tissue
+Cell type: Thyroid epithelial cells (Inferred from tissue type)
+
+UBERON term Entropy: 2.2732295989990234
+DOT term Entropy: 2.0053982734680176
+Cell line Entropy: 1.1654623746871948
+Cell type Entropy: 2.1446216106414795

@@ -1,0 +1,14 @@
+ 
+                Tissue type: heart
+Cell line: Primary tissue
+Cell type: Cardiomyocyte (inferred)
+UBERON organ and code: UBERON:0000948 + heart
+Disease Ontology Term: NA
+Donor information: Fetal, 18 weeks.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.6150153875350952
+Cell type Entropy: 0.6931456327438354
+UBERON organ and code Entropy: 0.7769634127616882
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.0986112356185913

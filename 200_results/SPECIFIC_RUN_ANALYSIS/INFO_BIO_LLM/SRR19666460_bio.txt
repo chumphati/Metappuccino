@@ -1,0 +1,14 @@
+ 
+
+**Answer**
+Cell line: Primary tissue
+Cell type: Fibroblast
+UBERON organ and code: UBERON:0000178 + Cervix
+Disease Ontology Term: DOID:10534 + Cervical cancer
+Donor information: NA.
+
+Cell line Entropy: 0.5316351652145386
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.049913763999939
+Disease Ontology Term Entropy: 1.386286735534668
+Donor information Entropy: -0.0

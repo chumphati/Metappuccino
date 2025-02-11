@@ -1,0 +1,15 @@
+ 
+
+                Tissue type: synovial biopsy
+Cell line: Primary tissue
+Cell type: fibroblast
+UBERON organ and code: UBERON:0007832 + synovial tissue
+Disease Ontology Term: NA
+Donor information: age: 29, sex: male, disease: Normal, acpa positivity: NA
+
+Tissue type Entropy: 0.6830793619155884
+Cell line Entropy: 0.6890683174133301
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.3750582933425903
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.196049690246582

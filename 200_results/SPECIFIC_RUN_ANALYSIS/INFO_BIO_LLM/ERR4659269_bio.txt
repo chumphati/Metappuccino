@@ -1,0 +1,14 @@
+ 
+
+
+Tissue type: thymus
+Cell line: Primary tissue
+UBERON organ and code: UBERON:0002371 - Thymus
+Disease Ontology Term: NA
+Donor information: juvenile stage, normal, no additional information available.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.5458605289459229
+UBERON organ and code Entropy: 1.0702643394470215
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.9451006650924683

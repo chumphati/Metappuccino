@@ -1,0 +1,16 @@
+ 
+
+**Output**
+Tissue type: Blood
+Cell line: Primary tissue
+Cell type: Blood cells
+UBERON organ and code: UBERON:0000178 + Blood
+Disease Ontology Term: NA
+Donor information: Pregnancy; Normal; Labor status: Not in labor.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.6866319179534912
+Cell type Entropy: 0.5710667967796326
+UBERON organ and code Entropy: 1.0986104011535645
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.94520902633667

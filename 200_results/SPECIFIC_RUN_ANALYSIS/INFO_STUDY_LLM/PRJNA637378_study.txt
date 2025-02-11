@@ -1,0 +1,10 @@
+ 
+            UBERON term: UBERON:0001876 + Amygdala
+Cell line: Primary tissue
+Cell type: Neuron (Estimated)
+DOT term: DOID:10652 + Child Abuse (Validated), DOID:162 + Psychopathology (Estimated)
+
+UBERON term Entropy: 1.55999755859375
+DOT term Entropy: 1.3860381841659546
+Cell line Entropy: 1.3689250946044922
+Cell type Entropy: 2.291795253753662

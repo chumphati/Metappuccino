@@ -1,0 +1,15 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Neuron
+UBERON organ and code: UBERON:0001876 + Amygdala
+Disease Ontology Term: NA
+Donor information: Age: S15 (interpreted as 15 years old) and inferred condition: Child Abuse
+
+The output you provided contains an inferred condition in the Donor information field. According to the instructions, non-disease conditions (like child abuse, which is more of a life experience or condition rather than a disease in the traditional medical sense) should indeed be placed in the Donor information field. However, to strictly follow the format requested and to ensure clarity, let's refine the output to focus on more personal attributes typically found in Donor information and relegate conditions like "Child Abuse" to a separate consideration, recognizing it's more accurately a contextual factor for the sample rather than a
+
+Cell line Entropy: 0.6777037382125854
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.091079831123352
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.4770092964172363

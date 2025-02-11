@@ -8,6 +8,7 @@ import sys
 import argparse
 import math
 import numpy as np
+import re
 
 ##########################################################################################
 # PATHS
@@ -64,10 +65,6 @@ def logits_to_probabilities(logits):
     return probabilities
 
 
-def calculate_entropy(probabilities):
-    return -sum(p * math.log(p) for p in probabilities if p > 0)
-
-
 # write prompt that is out of context
 def write_reload_file(filepath, header, line):
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -75,7 +72,7 @@ def write_reload_file(filepath, header, line):
         with open(filepath, 'w') as file:
             file.write(header + '\n')
 
-    #append the problematic line to the file
+    # append the problematic line to the file
     with open(filepath, 'a') as file:
         file.write("\t".join(map(str, line)) + '\n')
 
@@ -87,6 +84,29 @@ def calculate_entropy_optimized(token_logprobs):
     probabilities = exp_logprobs / np.sum(exp_logprobs)
 
     return -np.sum(probabilities * np.log(probabilities + 1e-10))
+
+
+def clean_duplicate_answers(response_lines):
+    """Remove repeated answers from the LLM output while maintaining structure."""
+    unique_answers = {}
+    cleaned_lines = []
+
+    for line in response_lines:
+        line = line.strip()
+        match = re.match(r"^(.*?):\s*(.*)$", line)
+        if match:
+            category, value = match.groups()
+            category = category.strip()
+            value = value.strip()
+
+            if category in unique_answers:
+                if value.lower() not in unique_answers[category].lower():
+                    unique_answers[category] += f", {value}"
+            else:
+                unique_answers[category] = value
+
+    cleaned_lines = [f"{key}: {value}" for key, value in unique_answers.items()]
+    return cleaned_lines
 
 
 total_processed = 0
@@ -110,30 +130,35 @@ def process_metadata_llm(metadata_lines, llm):
             if na_columns:
                 instructions = []
                 if "Tissue type" in na_columns:
-                    instructions.append("Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
+                    instructions.append(
+                        "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
                 if "Cell line" in na_columns:
-                    instructions.append("Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
+                    instructions.append(
+                        "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
                 if "Cell type" in na_columns:
-                    instructions.append("Cell type – The type of cell in the sample (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
+                    instructions.append(
+                        "Cell type – The type of cell in the sample (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
                 if "UBERON organ and code" in na_columns:
-                    instructions.append("UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+                    instructions.append(
+                        "UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
-                    instructions.append("Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                    instructions.append(
+                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
                 if "Donor information" in na_columns:
-                    instructions.append("Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be founded in the two last columns.")
+                    instructions.append(
+                        "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be founded in the two last columns.")
 
                 prompt = f"""
                 Run accession: {run_accession}
                 Metadata to analyze: {clean_metadata}
 
-                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely:
-
+                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. **Ensure that each category has only ONE distinct answer. Do not repeat information already provided in previous categories. Remove redundant text.
                 {chr(10).join(instructions)}
-                
-                If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform).
-                Return the result strictly in the following format, ensuring each entry contains the appropriate tags and inferred values when necessary:
+
+                If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
+                Strict output format (no additional text or special characters, no duplicated answers):
                 """ + chr(10).join(
-                    [f"{col}: [value]" for col in na_columns]) + " Here is the askep output :"
+                    [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
 
                 print("PROMPT:", flush=True)
                 print(prompt, flush=True)
@@ -142,31 +167,36 @@ def process_metadata_llm(metadata_lines, llm):
                 print_memory_usage(process)
 
                 try:
+                    print("toto")
                     response = llm(prompt, max_tokens=180, logprobs=True)
-
+                    print(response)
                     print("ANSWER:", flush=True)
                     print(response["choices"][0]["text"])
                     logprobs = response["choices"][0].get("logprobs", None)
                     token_logprobs = logprobs["token_logprobs"]
 
-                    #split answer to get each instruction
+                    # split answer to get each instruction
                     response_lines = response["choices"][0]["text"].strip().split("\n")
+                    response_lines = [line.replace("*", "") for line in response_lines]
+                    response_lines = clean_duplicate_answers(response_lines)
+                    response_lines = [re.sub(r'^\d+\.\s*', '', line) for line in response_lines]
+
                     entropy_dict = {}
                     token_index = 0
 
-                    #entropie calculation for each instruction
+                    # entropy calculation for each instruction
                     for i, instruction in enumerate(na_columns):
                         if i < len(response_lines):
                             line = response_lines[i]
                             num_tokens = len(line.split())
-                            if f"{instruction}:" in line:
+                            if line.strip().startswith(instruction):
                                 logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
                                 entropy = calculate_entropy_optimized(logprobs_segment)
                                 print("Entropy", entropy)
                                 entropy_dict[instruction] = entropy
                             else:
                                 print(
-                                    f"Warning: Skipping entropy calculation for {instruction} because it is not followed immediately by ':' in the line.")
+                                    f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
                             token_index += num_tokens
                         else:
                             print(f"No response line available for {instruction}. Skipping entropy calculation.")
@@ -199,6 +229,7 @@ def process_metadata_llm(metadata_lines, llm):
                 print(f"✅ Process over: {total_processed}/{len(metadata_lines)} runs inferred.")
                 print(f"❌ Ignored runs : {len(skipped_entries)}")
 
+
 ##########################################################################################
 # MAIN
 
@@ -209,7 +240,7 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 1200
+initial_n_ctx = 1500
 llm = get_llama_model(model_path, initial_n_ctx)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
 

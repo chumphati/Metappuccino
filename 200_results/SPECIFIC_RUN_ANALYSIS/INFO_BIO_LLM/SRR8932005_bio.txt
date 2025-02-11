@@ -1,0 +1,12 @@
+ 
+                Cell line: Primary tissue
+Cell type: Epithelial cells (inference based on esophageal tissue)
+UBERON organ and code: UBERON:0000944 + Esophagus
+Disease Ontology Term: NA
+Donor information: Patient 10, Homo sapiens, no other information provided.
+
+Cell line Entropy: 0.6561926603317261
+Cell type Entropy: 1.9412134885787964
+UBERON organ and code Entropy: 1.087383508682251
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.934410810470581

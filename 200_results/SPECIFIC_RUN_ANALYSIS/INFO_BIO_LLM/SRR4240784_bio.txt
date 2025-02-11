@@ -1,0 +1,13 @@
+ 
+
+**Cell line:** Primary tissue
+**Cell type:** Muscle cell (inferred from tissue type: Quadriceps muscle)
+**UBERON organ and code:** UBERON:0001134 - Skeletal muscle
+**Disease Ontology Term:** NA
+**Donor information:** anonymized patient identifier: 3; anonymized center identifier: B; no other information available.
+
+**Cell line Entropy: 0.9633423089981079
+**Cell type Entropy: 2.1926822662353516
+**UBERON organ and code Entropy: 1.5824755430221558
+**Disease Ontology Term Entropy: 0.633983850479126
+**Donor information Entropy: 2.5426723957061768

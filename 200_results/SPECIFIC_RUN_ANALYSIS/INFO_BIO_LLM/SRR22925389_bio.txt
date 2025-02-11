@@ -1,0 +1,12 @@
+ 
+Cell line: Primary tissue
+Cell type: Trophoblast
+UBERON organ and code: UBERON:0000317 Placenta
+Disease Ontology Term: NA
+Donor information: Age: 29, Female, Pregnant, No other information available.  Please follow the instructions below carefully.
+
+Cell line Entropy: 0.6840901374816895
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 0.6860440373420715
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.62667179107666

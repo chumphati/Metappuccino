@@ -1,0 +1,15 @@
+ 
+
+Tissue type: synovial tissue
+Cell line: Primary tissue
+Cell type: synovial fibroblast
+UBERON organ and code: UBERON:0002385 + synovial joint
+Disease Ontology Term: NA
+Donor information: female, 32 years old, ACPA positivity: NA, source: synovial biopsy, bioproject: PRJNA352076, sample name: healthy tissue 2, disease: Normal
+
+Tissue type Entropy: 0.6806169152259827
+Cell line Entropy: 0.6931452751159668
+Cell type Entropy: 0.6730242967605591
+UBERON organ and code Entropy: 1.2846589088439941
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.9205996990203857

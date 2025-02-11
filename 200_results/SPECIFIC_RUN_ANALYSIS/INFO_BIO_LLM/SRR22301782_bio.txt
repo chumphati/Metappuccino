@@ -1,0 +1,11 @@
+ 
+
+Cell line: Primary tissue
+UBERON organ and code: UBERON:0000992 + Placenta
+Disease Ontology Term: DOID:10573 + Preeclampsia
+Donor information: male, fetal development context related to retinopathy of prematurity risk.
+
+Cell line Entropy: 0.6841236352920532
+UBERON organ and code Entropy: 1.092265009880066
+Disease Ontology Term Entropy: 1.0985527038574219
+Donor information Entropy: 2.302577495574951

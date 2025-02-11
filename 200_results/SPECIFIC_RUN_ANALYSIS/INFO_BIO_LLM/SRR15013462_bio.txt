@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Hepatocyte
+UBERON organ and code: UBERON:0002107 + Liver
+Disease Ontology Term: NA
+Donor information: Age: 49; Sex: Female.
+
+Cell line Entropy: 0.6583364605903625
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.0921077728271484
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.384558081626892

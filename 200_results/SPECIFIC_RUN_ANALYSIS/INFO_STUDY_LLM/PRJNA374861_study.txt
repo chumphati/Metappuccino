@@ -1,0 +1,12 @@
+
+
+
+            UBERON term: UBERON:0002115 - Duodenum (Estimated, requires validation)
+            DOT term: DOID:2841 - Familial adenomatous polyposis (Validated), DOID:684 - Adenoma (Validated)
+            Cell line: Primary tissue
+            Cell type: Epithelial cells (Inferred from duodenum context)
+
+UBERON term Entropy: 1.9828753471374512
+DOT term Entropy: 2.3794243335723877
+Cell line Entropy: 1.3327592611312866
+Cell type Entropy: 1.9475575685501099

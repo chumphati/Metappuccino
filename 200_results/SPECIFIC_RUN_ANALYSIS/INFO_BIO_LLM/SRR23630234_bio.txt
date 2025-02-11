@@ -1,0 +1,13 @@
+ 
+
+Tissue type: skin
+Cell line: Primary tissue
+UBERON organ and code: UBERON:0000007 + skin
+Disease Ontology Term: NA
+Donor information: age: 67, sex: female, age-related condition.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.4699006676673889
+UBERON organ and code Entropy: 1.034314513206482
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.791757345199585

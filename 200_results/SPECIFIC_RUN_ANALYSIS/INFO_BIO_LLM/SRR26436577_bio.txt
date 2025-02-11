@@ -1,0 +1,22 @@
+ 
+Cell line: Primary tissue
+Cell type: Epithelial
+UBERON organ and code: UBERON:0001155 Colon
+Disease Ontology Term: NA
+Donor information: healthy controls, missing collection date, missing geo loc name, age unknown, sex unknown
+Cell line: Primary tissue
+Cell type: Epithelial
+UBERON organ and code: UBERON:0001155 Colon
+Disease Ontology Term: DOID:0060081 Lymphocytic colitis
+Donor information: age unknown, sex unknown, missing collection date, missing geo loc name
+Cell line: Primary tissue
+Cell type: Epithelial
+UBERON organ and code: UBERON:0001155 Colon
+Disease Ontology Term: NA
+Donor information: healthy controls, missing collection date, missing geo loc name,
+
+Cell line Entropy: 0.6931470632553101
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 0.6662043333053589
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.0436131954193115

@@ -1,0 +1,11 @@
+ 
+
+Cell line: Primary tissue
+UBERON organ and code: UBERON:0000178 + Blood
+Disease Ontology Term: NA
+Donor information: Age: 28, Sex: Male, BMI: 23.3, Race: White, B naïve: 64.5, CD4 T: 0.0, CD8 T: 0.0, NK: 0.0, Granulocyte: 0.0, Monocyte: 0.0, Smoking status: non-smoker
+
+Cell line Entropy: 0.6855881214141846
+UBERON organ and code Entropy: 1.0937981605529785
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 3.2279741764068604

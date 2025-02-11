@@ -1,0 +1,10 @@
+ 
+            UBERON term: UBERON:0002048 - Lung; Estimated
+DOT term: DOID:0050150 - Idiopathic Pulmonary Fibrosis; Validated
+Cell line: Primary tissue
+Cell type: Inferred - Respiratory epithelial cells, Fibroblasts, and other lung tissue constituent cells; Estimated
+
+UBERON term Entropy: 1.7478053569793701
+DOT term Entropy: 2.072253704071045
+Cell line Entropy: 1.1230669021606445
+Cell type Entropy: 2.6382880210876465

@@ -1,0 +1,2 @@
+/scratchlocal/fiona.hak/2211927.pbsserver/fill_study_blanks.py:278: FutureWarning: Setting an item of incompatible dtype is deprecated and will raise an error in a future version of pandas. Value 'nan' has dtype incompatible with float64, please explicitly cast to a compatible dtype first.
+  merged_df.fillna("nan", inplace=True)

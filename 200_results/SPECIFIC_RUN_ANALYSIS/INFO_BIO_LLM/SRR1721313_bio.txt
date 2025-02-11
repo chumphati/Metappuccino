@@ -1,0 +1,16 @@
+ 
+```
+Tissue type: Stomach
+Cell line: Primary tissue
+Cell type: Epithelial
+UBERON organ and code: UBERON:0000945 + Stomach
+Disease Ontology Term: NA
+Donor information: Fetal development, 20 weeks
+```
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.18706320226192474
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.0986123085021973
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.385627031326294

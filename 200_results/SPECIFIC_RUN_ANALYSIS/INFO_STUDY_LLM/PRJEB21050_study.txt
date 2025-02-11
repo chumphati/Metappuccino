@@ -1,0 +1,12 @@
+ 
+            UBERON term: UBERON:0003708 (Terminal ileum) 
+DOT term: DOID:877 (Crohn's disease) (Estimated) 
+Cell line: Primary tissue
+Tissue type: Ileal tissue
+Cell type: Epithelial cells, immune cells (Inferred)
+
+UBERON term Entropy: 1.5711640119552612
+DOT term Entropy: 1.791724443435669
+Cell line Entropy: 1.0048363208770752
+Tissue type Entropy: 1.3427233695983887
+Cell type Entropy: 1.8772779703140259

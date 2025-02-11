@@ -1,0 +1,14 @@
+ 
+Tissue type: lung
+Cell line: Primary tissue
+Cell type: lung epithelial cells
+UBERON organ and code: UBERON:0002048 + lung
+Disease Ontology Term: DOID:0100306 + Pulmonary tuberculosis
+Donor information: female, 28 years old, secondary pulmonary tuberculosis with multi-drug resistance, sputum-negative, low metabolic activity.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.4143671989440918
+Cell type Entropy: 1.0866925716400146
+UBERON organ and code Entropy: 1.0914316177368164
+Disease Ontology Term Entropy: 1.386292815208435
+Donor information Entropy: 2.5703980922698975

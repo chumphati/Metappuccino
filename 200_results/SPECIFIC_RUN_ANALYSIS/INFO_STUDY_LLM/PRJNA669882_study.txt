@@ -1,0 +1,10 @@
+ 
+            Cell line: Primary tissue
+            Cell type: Inferred - Motor neurons and skeletal muscle cells (based on spinal cord, diaphragm, and iliopsoas tissues)
+            UBERON term: UBERON:0002240 (spinal cord), UBERON:0000945 (diaphragm), UBERON:0000976 (iliopsoas muscle)
+            DOT term: Estimated - DOID:8875 (Spinal Muscular Atrophy) - Validation: Estimated based on study title "SMA cases"
+
+UBERON term Entropy: 1.1512590646743774
+DOT term Entropy: 2.7460849285125732
+Cell line Entropy: 2.2866499423980713
+Cell type Entropy: 2.830482006072998

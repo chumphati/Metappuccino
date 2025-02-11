@@ -84,7 +84,8 @@ patterns = [
     r"UBERON:\d{4,5,6,7}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"UBERON organ and code:\s*UBERON:\d{4,5,6,7}\s*[-+]?\s*(.*?)$",
     r"\bEstimated\s*-\s*(.*?)\b",
-    r"[+\-]\s*([^;]+)(?:;|$)"
+    r"[+\-]\s*([^;]+)(?:;|$)",
+    r"UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

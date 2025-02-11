@@ -44,7 +44,7 @@ def load_final_info(raw_final_info_path):
         for line in raw_lines[1:]:
             values = line.strip().split("\t")
             run_accession = values[0]
-            na_columns = [headers[i] for i in na_indices if values[i] == "NA"]
+            na_columns = [headers[i] for i in na_indices if values[i] == "nan"]
             if na_columns:
                 raw_data[run_accession] = na_columns
 
@@ -158,6 +158,29 @@ def calculate_entropy_optimized(token_logprobs):
     return -np.sum(probabilities * np.log(probabilities + 1e-10))
 
 
+def clean_duplicate_answers(response_lines):
+    """Remove repeated answers from the LLM output while maintaining structure."""
+    unique_answers = {}
+    cleaned_lines = []
+
+    for line in response_lines:
+        line = line.strip()
+        match = re.match(r"^(.*?):\s*(.*)$", line)
+        if match:
+            category, value = match.groups()
+            category = category.strip()
+            value = value.strip()
+
+            if category in unique_answers:
+                if value.lower() not in unique_answers[category].lower():
+                    unique_answers[category] += f", {value}"
+            else:
+                unique_answers[category] = value
+
+    cleaned_lines = [f"{key}: {value}" for key, value in unique_answers.items()]
+    return cleaned_lines
+
+
 # prompt to llm metadata
 def process_metadata_llm(filtered_studies, raw_data, study_metadata):
     for study_accession, run_accessions in filtered_studies.items():
@@ -175,35 +198,30 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
             instructions = []
             if "Tissue type" in fields_for_prompt:
                 instructions.append(
-                    "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain).")
+                    "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
             if "Cell line" in fields_for_prompt:
                 instructions.append(
                     "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
             if "Cell type" in fields_for_prompt:
                 instructions.append(
-                    "Cell type – The list of type of cells in the study (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
+                    "Cell type – The type of cell in the sample (e.g., neuron). If not provided, deduce based on the tissue type and state the inference.")
             if "UBERON term" in fields_for_prompt:
                 instructions.append(
-                    "UBERON organ code – The list of UBERON code and organ for the tissue types (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+                    "UBERON term – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
             if "DOT term" in fields_for_prompt:
                 instructions.append(
-                    "Disease Ontology Term – The list of possible Disease Ontology Term for all the study (e.g., DOID:XXXXX + term related to the code) with validation status (e.g., 'Validated' or 'Estimated'). Deduce from context if not specified.")
+                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
 
             prompt = f"""
             Study accession: {study_accession}
             Metadata to analyze: {study_metadata[study_accession]}
 
-            This metadata corresponds to a study from the NCBI SRA. The study-level information provides essential context for understanding the biological and experimental conditions. Based on the details available, I would like to determine the missing information globally for this study, even if specific values for individual runs are unavailable.
-            Please infer the following key attributes based on the study metadata and general biological knowledge:
-
+            For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. **Ensure that each category has only ONE distinct answer. Do not repeat information already provided in previous categories. Remove redundant text.
             {chr(10).join(instructions)}
 
-            If any information is missing:
-            - Provide an informed estimate when possible, based on common knowledge, study context, or platform-specific standards.
-            - Indicate if further validation is required (e.g., using external databases such as GTEx for UBERON codes).
-
-            Return the results in a structured plain text format with one entry per row as follows. Do not add any other sentence. Keep answers short. Ensure that all fields are explicitly stated, even if inferred from general study details:
-            """ + chr(10).join([f"{col}: [value]" for col in fields_for_prompt]) + " Here is the askep output :"
+            If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
+            Strict output format (no additional text or special characters, no duplicated answers):
+            """ + chr(10).join([f"{col}: [single unique answer]" for col in fields_for_prompt]) + " Here is the strict output: "
 
             print("PROMPT:", flush=True)
             print(prompt, flush=True)
@@ -221,24 +239,31 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
 
                 # split answer to get each instruction
                 response_lines = response["choices"][0]["text"].strip().split("\n")
+                response_lines = [line.replace("*", "") for line in response_lines]
+                response_lines = clean_duplicate_answers(response_lines)
+                response_lines = [re.sub(r'^\d+\.\s*', '', line) for line in response_lines]
                 entropy_dict = {}
                 token_index = 0
 
                 # entropie calculation for each instruction (using fields_for_prompt)
-                for i, field in enumerate(fields_for_prompt):
+                for i, instruction in enumerate(na_columns):
                     if i < len(response_lines):
                         line = response_lines[i]
                         num_tokens = len(line.split())
-
-                        # extract log-probabilités per instruction
-                        logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
-
-                        # entropy
-                        entropy = calculate_entropy_optimized(logprobs_segment)
-                        entropy_dict[field] = entropy
+                        if line.strip().startswith(instruction):
+                            logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
+                            entropy = calculate_entropy_optimized(logprobs_segment)
+                            print("Entropy", entropy)
+                            entropy_dict[instruction] = entropy
+                        else:
+                            print(
+                                f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
                         token_index += num_tokens
+                    else:
+                        print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
-                output_file = os.path.join(output_dir, f"{study_accession}_study.txt")
+                output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
+                print(output_file, flush=True)
                 with open(output_file, "w") as f:
                     f.write(response["choices"][0]["text"])
                     f.write(f"\n")
@@ -282,7 +307,7 @@ study_map, study_metadata = load_study_info(input_metadata_path)
 filtered_studies = filter_studies_for_llm(study_map, raw_data)
 excluded_studies = set(study_map.keys()) - set(filtered_studies.keys())
 if len(excluded_studies) > 0:
-    print("Warning: the following studies are excluded before run_accession already complete:", flush=True)
+    print("Warning: the following studies are excluded because run_accession already complete:", flush=True)
     for study in excluded_studies:
         print(study, flush=True)
 

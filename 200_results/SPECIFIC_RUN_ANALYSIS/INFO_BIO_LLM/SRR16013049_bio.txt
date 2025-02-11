@@ -1,0 +1,11 @@
+ Cell line: Primary tissue
+Cell type: Epithelial
+UBERON organ and code: UBERON:0000165 + Tongue
+Disease Ontology Term: DOID:2945 + Oral Squamous Cell Carcinoma
+Donor information: Age: 33, Sex: Male, Smoking: No, Condition: Adjacent Normal, Patient ID: OSCC_2-N, Diagnosis: HPV-negative Oral Squamous Cell Carcinoma, Patient name: Tongue
+
+Cell line Entropy: 0.13176670670509338
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.0889403820037842
+Disease Ontology Term Entropy: 1.7633894681930542
+Donor information Entropy: 3.0103344917297363

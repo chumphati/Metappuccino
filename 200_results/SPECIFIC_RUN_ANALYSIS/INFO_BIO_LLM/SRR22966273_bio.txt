@@ -1,0 +1,8 @@
+ 
+UBERON organ and code: UBERON:0002167 + airway epithelium 
+Disease Ontology Term: DOID:2841 + Asthma
+Donor information: Rhinovirus B48 infection.
+
+UBERON organ and code Entropy: 1.157982587814331
+Disease Ontology Term Entropy: 1.0986019372940063
+Donor information Entropy: 1.0968194007873535

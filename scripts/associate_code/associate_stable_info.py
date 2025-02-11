@@ -16,6 +16,7 @@ TEMP_FILE = os.path.join(base_path, "raw_final_info_temp.txt")
 tt_high_entropy = os.path.join(base_path, "tissue_high_entropy.txt")
 cl_high_entropy = os.path.join(base_path, "cellline_high_entropy.txt")
 ct_high_entropy = os.path.join(base_path, "celltype_high_entropy.txt")
+di_high_entropy = os.path.join(base_path, "donorinfo_high_entropy.txt")
 
 entropy_thresold = 2.5
 
@@ -55,6 +56,7 @@ try:
     tissue_index = header.index("Tissue type")
     cell_line_index = header.index("Cell line")
     cell_type_index = header.index("Cell type")
+    donor_information_index = header.index("Donor information")
 except ValueError:
     print("Error: Required columns are missing in the output file.")
     exit(1)
@@ -70,14 +72,17 @@ for row in data:
     tissue_type = "NA"
     cell_line = "NA"
     cell_type = "NA"
+    donor_information = "NA"
 
     tissue_entropy = None
     cell_line_entropy = None
     cell_type_entropy = None
+    donor_information_entropy = None
 
     tissue_full_line = None
     cell_line_full_line = None
     cell_type_full_line = None
+    donor_information_full_line = None
 
     file_path = os.path.join(LLM_OUT, f"{run_accession_number}_bio.txt")
     if os.path.exists(file_path):
@@ -94,6 +99,8 @@ for row in data:
                     entropy_dict["Cell line"] = entropy
                 elif "Cell type Entropy" in line:
                     entropy_dict["Cell type"] = entropy
+                elif "Donor information Entropy" in line:
+                    entropy_dict["Donor information"] = entropy
         # print(run_accession_number)
         # print(entropy_dict)
         for line in lines:
@@ -126,9 +133,16 @@ for row in data:
                     ct_high_entropy_rows.append([run_accession_number, entropy, cell_type_full_line])
                     continue
 
+            elif normalized_line.startswith("Donor information:"):
+                entropy = entropy_dict.get("Donor information", None)
+                donor_information_full_line = normalized_line
+                donor_information = clean_info(normalized_line.split("Donor information:", 1)[1].strip())
+
+
     row[tissue_index] = tissue_type
     row[cell_line_index] = cell_line
     row[cell_type_index] = cell_type
+    row[donor_information_index] = donor_information
     updated_data.append(row)
 
 with open(OUTPUT_FILE, 'w', newline='') as outfile:

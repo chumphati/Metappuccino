@@ -1,0 +1,12 @@
+ 
+Cell line: Primary tissue
+Cell type: Thyroid cell (inferred from tissue type)
+UBERON organ and code: UBERON:0002048 - Thyroid gland
+Disease Ontology Term: DOID:2352 - Papillary thyroid carcinoma
+Donor information: Female, Age: 32, Lymphocytic thyroiditis status: LT
+
+Cell line Entropy: 0.6843637228012085
+Cell type Entropy: 1.7855085134506226
+UBERON organ and code Entropy: 1.3834742307662964
+Disease Ontology Term Entropy: 1.568819284439087
+Donor information Entropy: 1.9344327449798584

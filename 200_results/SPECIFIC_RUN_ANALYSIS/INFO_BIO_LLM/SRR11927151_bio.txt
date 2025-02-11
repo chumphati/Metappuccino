@@ -1,0 +1,12 @@
+ 
+Cell line: Primary tissue
+Cell type: Neuron
+UBERON organ and code: UBERON:0001876 - Amygdala
+Disease Ontology Term: NA
+Donor information: Age: S20 (inferred as 20 years old, assuming S20 refers to age in years)
+
+Cell line Entropy: 0.682725191116333
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.0880985260009766
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.632391929626465

@@ -1,0 +1,12 @@
+ 
+            UBERON term: UBERON:0001255 (Adipose tissue) 
+            DOT term: Estimated: DOID:10652 (Obesity) 
+            Cell line: Primary tissue 
+            Tissue type: Adipose tissue 
+            Cell type: Adipocytes (inferred from context - Adipose tissue)
+
+UBERON term Entropy: 1.5656306743621826
+DOT term Entropy: 1.6092629432678223
+Cell line Entropy: 1.1609159708023071
+Tissue type Entropy: 1.2636889219284058
+Cell type Entropy: 2.098829984664917

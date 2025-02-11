@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Hepatocyte (inferred from liver tissue)
+UBERON organ and code: UBERON:0002107 + Liver
+Disease Ontology Term: DOID:684 + Hepatocellular carcinoma
+Donor information: male, 44 years old, replicate 50, biomaterial provider: Ming D Li lab.
+
+Cell line Entropy: 0.6773196458816528
+Cell type Entropy: 1.6017029285430908
+UBERON organ and code Entropy: 1.0986101627349854
+Disease Ontology Term Entropy: 1.3146014213562012
+Donor information Entropy: 2.4697933197021484

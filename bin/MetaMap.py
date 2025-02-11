@@ -109,9 +109,6 @@ def main():
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 
-            #donor information
-            #merge in final table
-
         ##STEP 3: ASSOCIATE TERMS WITH CODE
         if args.associateinformation:
             #association uberon/dot with ref table and clean

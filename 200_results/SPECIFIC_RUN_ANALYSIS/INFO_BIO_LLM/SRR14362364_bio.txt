@@ -1,0 +1,12 @@
+ 
+                Cell line: Primary tissue
+Cell type: Cardiomyocyte
+UBERON organ and code: UBERON:0000948 + Heart
+Disease Ontology Term: DOID:0070122 + Ischemic heart disease
+Donor information: Undergoing coronary artery bypass surgery.
+
+Cell line Entropy: 0.6762610077857971
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.090273380279541
+Disease Ontology Term Entropy: 1.6091439723968506
+Donor information Entropy: 1.5111552476882935

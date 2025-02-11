@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Retinal cell
+UBERON organ and code: UBERON:0000977 + Peripheral retina
+Disease Ontology Term: NA
+Donor information: Age: 84, Sex: Male, Race: Caucasian
+
+Cell line Entropy: 0.685637354850769
+Cell type Entropy: 0.6931471824645996
+UBERON organ and code Entropy: 1.3815418481826782
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.7147808074951172

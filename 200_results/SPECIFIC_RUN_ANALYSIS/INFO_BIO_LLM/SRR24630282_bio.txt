@@ -1,0 +1,14 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Epithelial 
+UBERON organ and code: UBERON:0000002 + Organ (Body)
+UBERON organ and code: UBERON:0000948 + Uterus
+Disease Ontology Term: NA
+Donor information: age=38, menstrual phase=Secretory, days in menstrual cycle=LH 7, geo location=missing, collection date=missing
+
+Cell line Entropy: 0.6845670938491821
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.0986108779907227
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.42659068107605

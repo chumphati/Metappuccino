@@ -1,0 +1,4 @@
+ 
+            UBERON term: UBERON:0002371 - caudate nucleus, likely extending to UBERON:0002370 - putamen as mentioned "caudate-putamen tissue" in the metadata. Further validation is recommended.
+
+UBERON term Entropy: 2.934575080871582

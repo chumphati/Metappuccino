@@ -1,0 +1,14 @@
+ 
+                Tissue type: Lung
+Cell line: Primary tissue
+Cell type: Respiratory epithelial cell
+UBERON organ and code: UBERON:0000065 + Lung
+Disease Ontology Term: NA
+Donor information: Fetal development, 20 weeks old, Homo sapiens.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.6212894916534424
+Cell type Entropy: 1.098611831665039
+UBERON organ and code Entropy: 1.097846508026123
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.945896029472351

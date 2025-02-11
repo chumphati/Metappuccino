@@ -1,0 +1,27 @@
+ 
+                Cell line: Primary tissue
+Cell type: Hepatocyte
+UBERON organ and code: UBERON:0002107 Liver
+Disease Ontology Term: NA
+Donor information: Sex: male, Age: 62
+                
+                **Output with the provided metadata:**
+                Cell line: Primary tissue
+Cell type: Hepatocyte
+UBERON organ and code: UBERON:0002107 Liver
+Disease Ontology Term: NA
+Donor information: Sex: male, Age: 62
+
+**Given new metadata:**
+                Run accession: SRR15013574
+                Metadata to analyze: ['SRR15013574', 'SJLB358', 'SJLB358', 'Illumina HiSeq 2000 sequencing: GSM5412209: SJLB358 Homo sapiens RNA-Seq', 'A resource for
+
+Cell line Entropy: 0.6914799809455872
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 0.6743284463882446
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.386269450187683
+**Output with the provided metadata Entropy: -0.0
+**Given new metadata Entropy: -0.0
+Run accession Entropy: -0.0
+Metadata to analyze Entropy: 2.675445556640625

@@ -1,0 +1,12 @@
+ 
+Cell line: Primary tissue
+Cell type: Neuron (inferred from 'brain' and 'prefrontal cortex')
+UBERON organ and code: UBERON:0000955 + Brain
+Disease Ontology Term: NA
+Donor information: Sex: female
+
+Cell line Entropy: 0.6873513460159302
+Cell type Entropy: 1.9416539669036865
+UBERON organ and code Entropy: 1.0935652256011963
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 0.6929787397384644

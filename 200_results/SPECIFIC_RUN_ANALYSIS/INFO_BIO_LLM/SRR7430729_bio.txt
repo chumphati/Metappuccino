@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Testicular cells (inferred from 'Testis' tissue)
+UBERON organ and code: UBERON:0002369 + Testis
+Disease Ontology Term: NA
+Donor information: sex: Male; age: 7 gestational weeks (5 days)
+
+Cell line Entropy: 0.6782840490341187
+Cell type Entropy: 1.7864508628845215
+UBERON organ and code Entropy: 0.8761225342750549
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 2.004605293273926

@@ -1,0 +1,14 @@
+ 
+                Tissue type: blood 
+Cell line: Primary tissue 
+Cell type: leukocyte 
+UBERON organ and code: UBERON:0000178 + Blood 
+Disease Ontology Term: NA 
+Donor information: maternal, pregnancy, gestational age, normal.
+
+Tissue type Entropy: -0.0
+Cell line Entropy: 0.6213991641998291
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 0.9674230217933655
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 1.6063711643218994

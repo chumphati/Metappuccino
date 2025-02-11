@@ -1,0 +1,13 @@
+ 
+
+Cell line: Primary tissue
+Cell type: Skeletal muscle cell
+UBERON organ and code: UBERON:0002368 + Skeletal muscle tissue
+Disease Ontology Term: DOID:9357 + Type 2 Diabetes
+Donor information: male, 61 years old, BMI: 29.0, HbA1c: 4.4%
+
+Cell line Entropy: 0.6692233085632324
+Cell type Entropy: 1.0896518230438232
+UBERON organ and code Entropy: 1.609369158744812
+Disease Ontology Term Entropy: 1.596572756767273
+Donor information Entropy: 2.0794262886047363

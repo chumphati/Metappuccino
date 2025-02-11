@@ -1,0 +1,12 @@
+
+
+
+            UBERON term: UBERON:0004539 + Upper limb vein; UBERON:0004539 + Upper limb vein
+DOT term: Estimated: DOID:114 + Kidney disease
+Cell line: Primary tissue
+Cell type: Estimated: Venous endothelial cells, Smooth muscle cells, Fibroblasts (inferred from tissue type: Upper limb vein)
+
+UBERON term Entropy: 2.421908378601074
+DOT term Entropy: 1.7567154169082642
+Cell line Entropy: 1.3121349811553955
+Cell type Entropy: 2.7054643630981445

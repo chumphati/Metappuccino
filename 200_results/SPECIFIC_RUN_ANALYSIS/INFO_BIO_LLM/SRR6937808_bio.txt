@@ -1,0 +1,15 @@
+ 
+
+```
+Cell line: Primary tissue
+Cell type: Fibroblast
+UBERON organ and code: UBERON:0000178 + Skin
+Disease Ontology Term: NA
+Donor information: 24, male
+```
+
+Cell line Entropy: 0.4784797728061676
+Cell type Entropy: -0.0
+UBERON organ and code Entropy: 1.093705415725708
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 0.6931393146514893

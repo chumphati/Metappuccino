@@ -1,0 +1,8 @@
+ 
+            UBERON term: UBERON:0000178 + Peripheral blood
+Cell line: Primary tissue
+DOT term: DOID:5062 + Cigarette dependence (Estimated)
+
+UBERON term Entropy: 1.7227815389633179
+Cell line Entropy: 1.3860749006271362
+DOT term Entropy: 1.8918867111206055

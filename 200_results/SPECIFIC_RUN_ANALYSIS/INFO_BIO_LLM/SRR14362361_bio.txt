@@ -1,0 +1,20 @@
+ 
+                
+Cell line: [value]
+Cell type: [value]
+UBERON organ and code: [value]
+Disease Ontology Term: [value]
+Donor information: [value] 
+Please answer with this format.
+                
+                Cell line: Primary tissue
+Cell type: Cardiac myocyte
+UBERON organ and code: UBERON:0000948 + Right atrial appendage
+Disease Ontology Term: DOID:9352 + Ischemic heart disease
+Donor information: undergoing coronary artery bypass surgery, ICA-positive, IHD.  The patient is likely an adult given the context of coronary artery bypass surgery.
+
+Cell line Entropy: 0.3864624500274658
+Cell type Entropy: 0.6915692090988159
+UBERON organ and code Entropy: 1.6094369888305664
+Disease Ontology Term Entropy: 1.6094144582748413
+Donor information Entropy: 3.04137921333313

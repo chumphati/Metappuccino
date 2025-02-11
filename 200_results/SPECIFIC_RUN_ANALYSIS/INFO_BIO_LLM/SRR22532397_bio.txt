@@ -1,0 +1,10 @@
+ 
+Cell line: Primary tissue
+UBERON organ and code: UBERON:0000178 + Peripheral blood
+Disease Ontology Term: NA
+Donor information: Age: 55, Race: Black, Sex: Female, BMI: 37.8, B naïve: 53.3, CD4T: 0.0, CD8T: 1.5, NK: 1.0, Granulocyte: 3.3, Monocyte: 0.0, Lifestyle factor: Smoker.
+
+Cell line Entropy: 0.6921641826629639
+UBERON organ and code Entropy: 1.3813486099243164
+Disease Ontology Term Entropy: -0.0
+Donor information Entropy: 3.1743030548095703
