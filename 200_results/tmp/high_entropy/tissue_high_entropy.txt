@@ -1,1 +1,0 @@
-Run accession number|Entropy|Tissue type

@@ -1,6 +1,0 @@
- 
-            UBERON term: UBERON:0001134 + Skeletal Muscle Tissue
-
-            UBERON term: UBERON:0001134 + Skeletal Muscle Tissue
-
-UBERON term Entropy: 1.8984166383743286

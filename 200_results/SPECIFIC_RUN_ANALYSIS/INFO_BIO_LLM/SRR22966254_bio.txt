@@ -1,8 +1,0 @@
- 
-                UBERON organ and code: UBERON:0006499 + airway epithelium
-Disease Ontology Term: NA
-Donor information: Sex: Male, Health Status: Healthy, Age: Not specified, Treatment: None.
-
-UBERON organ and code Entropy: 1.3107404708862305
-Disease Ontology Term Entropy: -0.0
-Donor information Entropy: 2.232848882675171

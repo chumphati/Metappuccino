@@ -1,9 +1,0 @@
- 
-
-                UBERON organ and code: UBERON:0006499 + airway epithelium
-Disease Ontology Term: DOID:2841 + Asthma
-Donor information: NA
-
-UBERON organ and code Entropy: 1.1858937740325928
-Disease Ontology Term Entropy: 1.098604440689087
-Donor information Entropy: -0.0
