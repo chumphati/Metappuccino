@@ -17,6 +17,7 @@ llm_out = os.path.join(base_path, "INFO_BIO_LLM")
 output_file = os.path.join(base_path, "raw_final_info.txt")
 high_entropy_output = os.path.join(base_path, "uberon_high_entropy.txt")
 
+
 #check files
 if not os.path.exists(uberon_ref):
     print(f"error: {uberon_ref} doesn't exist.")
@@ -85,7 +86,8 @@ patterns = [
     r"UBERON organ and code:\s*UBERON:\d{4,5,6,7}\s*[-+]?\s*(.*?)$",
     r"\bEstimated\s*-\s*(.*?)\b",
     r"[+\-]\s*([^;]+)(?:;|$)",
-    r"UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$"
+    r"UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$",
+    r"UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
@@ -152,13 +154,18 @@ for fichier in os.listdir(llm_out):
                                                 break
                                     if not matched:
                                         uberon_terms.add(f"{term} (!)")
-
                 else:
                     high_entropy_rows.append([run_accession, uberon_entropy, uberon_full_line])
-                    continue
+                    # For high entropy, assign the full line as the term if available.
+                    if uberon_full_line:
+                        uberon_terms.add(uberon_full_line)
+                    else:
+                        uberon_terms.add("NA")
 
             row[header_mapping["UBERON code"]] = ', '.join(sorted(uberon_codes)) if uberon_codes else 'NA'
             row[header_mapping["UBERON term"]] = ', '.join(sorted(uberon_terms)) if uberon_terms else 'NA'
+            if uberon_entropy is not None:
+                row[header_mapping["UBERON term"]] += f" (e={uberon_entropy})"
 
 #update raw_final_info
 with open(output_file, 'w') as output_file:
@@ -171,5 +178,3 @@ with open(high_entropy_output, 'w') as high_entropy_file:
     high_entropy_file.write("Run accession number|Entropy|UBERON term\n")
     for row in high_entropy_rows:
         high_entropy_file.write('|'.join(map(str, row)) + '\n')
-
-

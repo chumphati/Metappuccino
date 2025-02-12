@@ -54,7 +54,7 @@ else:
 # load llama
 def get_llama_model(model_path, n_ctx):
     # tensor_split = [1, 1, 1, 1, 1, 1, 1, 1]
-    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30, logits_all=True)
+    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=8, logits_all=True)
 
 
 def logits_to_probabilities(logits):
@@ -117,7 +117,7 @@ def process_metadata_llm(metadata_lines, llm):
         clean_metadata = line.strip().split(";")
         run_accession = clean_metadata[0]
         total_processed += 1
-        print(f"🔄 Process on going {total_processed}/{len(metadata_lines)}: {run_accession}", flush=True)
+        # print(f"🔄 Process on going {total_processed}/{len(metadata_lines)}: {run_accession}", flush=True)
 
         if run_accession in raw_data:
             print(run_accession)
@@ -143,13 +143,13 @@ def process_metadata_llm(metadata_lines, llm):
                         "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
                 if "Donor information" in na_columns:
                     instructions.append(
-                        "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be founded in the two last columns.")
+                        "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be principally founded in the two last columns.")
 
                 prompt = f"""
                 Run accession: {run_accession}
                 Metadata to analyze: {clean_metadata}
 
-                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely.                 For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
+                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
                 {chr(10).join(instructions)}
                 
                 If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
@@ -157,8 +157,8 @@ def process_metadata_llm(metadata_lines, llm):
                 """ + chr(10).join(
                     [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
 
-                print("PROMPT:", flush=True)
-                print(prompt, flush=True)
+                # print("PROMPT:", flush=True)
+                # print(prompt, flush=True)
 
                 # ram before answer
                 print_memory_usage(process)
@@ -166,8 +166,8 @@ def process_metadata_llm(metadata_lines, llm):
                 try:
                     response = llm(prompt, max_tokens=180, logprobs=True)
                     print(response)
-                    print("ANSWER:", flush=True)
-                    print(response["choices"][0]["text"])
+                    # print("ANSWER:", flush=True)
+                    # print(response["choices"][0]["text"])
                     logprobs = response["choices"][0].get("logprobs", None)
                     token_logprobs = logprobs["token_logprobs"]
 
@@ -202,7 +202,7 @@ def process_metadata_llm(metadata_lines, llm):
                             print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
-                    print(output_file, flush=True)
+                    # print(output_file, flush=True)
                     with open(output_file, "w") as f:
                         f.write(clean_duplicate_answers(response_text))
                         f.write(f"\n")
@@ -219,7 +219,7 @@ def process_metadata_llm(metadata_lines, llm):
                     break
 
                 except Exception as e:
-                    print(f"Error in {run_accession} process: {e}", flush=True)
+                    # print(f"Error in {run_accession} process: {e}", flush=True)
                     skipped_entries.append(run_accession)
                     continue
 

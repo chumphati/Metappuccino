@@ -27,7 +27,7 @@ FLAG_PATH = os.path.join(base_dir, "STEP3.flag")
 # FUNCTIONS
 
 def clean_text(text):
-    return re.sub(r"[^a-zA-Z0-9,:-]", " ", text)
+    return re.sub(r"[^a-zA-Z0-9,:\-()=.]", " ", text)
 
 ##########################################################################################
 # MAIN

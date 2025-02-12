@@ -160,11 +160,10 @@ def calculate_entropy_optimized(token_logprobs):
 
 
 def clean_duplicate_answers(response_lines):
-    """Remove repeated answers from the LLM output while maintaining structure."""
     unique_answers = {}
     cleaned_lines = []
 
-    for line in response_lines:
+    for line in response_lines.split("\n"):
         line = line.strip()
         match = re.match(r"^(.*?):\s*(.*)$", line)
         if match:
@@ -178,8 +177,7 @@ def clean_duplicate_answers(response_lines):
             else:
                 unique_answers[category] = value
 
-    cleaned_lines = [f"{key}: {value}" for key, value in unique_answers.items()]
-    return cleaned_lines
+    return "\n".join([f"{key}: {value}" for key, value in unique_answers.items()])
 
 
 # prompt to llm metadata
@@ -265,7 +263,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     if not found:
                         print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
-                output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
+                output_file = os.path.join(output_dir, f"{study_accession}_bio.txt")
                 print(output_file, flush=True)
                 with open(output_file, "w") as f:
                     f.write(clean_duplicate_answers(response_text))

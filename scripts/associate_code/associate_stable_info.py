@@ -110,7 +110,8 @@ for row in data:
                 entropy = entropy_dict.get("Tissue type", None)
                 tissue_full_line = normalized_line
                 if entropy is not None and entropy < entropy_thresold:
-                    tissue_type = clean_info(normalized_line.split("Tissue type:", 1)[1].strip())
+                    tissue_info = clean_info(normalized_line.split("Tissue type:", 1)[1].strip())
+                    tissue_type = f"{tissue_info} (e={entropy})"
                 else:
                     tt_high_entropy_rows.append([run_accession_number, entropy, tissue_full_line])
                     continue
@@ -119,7 +120,8 @@ for row in data:
                 entropy = entropy_dict.get("Cell line", None)
                 cell_line_full_line = normalized_line
                 if entropy is not None and entropy < entropy_thresold:
-                    cell_line = clean_info(normalized_line.split("Cell line:", 1)[1].strip())
+                    cell_line_info = clean_info(normalized_line.split("Cell line:", 1)[1].strip())
+                    cell_line = f"{cell_line_info} (e={entropy})"
                 else:
                     cl_high_entropy_rows.append([run_accession_number, entropy, cell_line_full_line])
                     continue
@@ -128,14 +130,19 @@ for row in data:
                 entropy = entropy_dict.get("Cell type", None)
                 cell_type_full_line = normalized_line
                 if entropy is not None and entropy < entropy_thresold:
-                    cell_type = clean_info(normalized_line.split("Cell type:", 1)[1].strip())
+                    cell_type_info = clean_info(normalized_line.split("Cell type:", 1)[1].strip())
+                    cell_type = f"{cell_type_info} (e={entropy})"
                 else:
                     ct_high_entropy_rows.append([run_accession_number, entropy, cell_type_full_line])
                     continue
 
             elif normalized_line.startswith("Donor information:"):
                 entropy = entropy_dict.get("Donor information", None)
-                donor_information = normalized_line.split("Donor information:", 1)[1].strip()
+                donor_info = normalized_line.split("Donor information:", 1)[1].strip()
+                if entropy is not None:
+                    donor_information = f"{donor_info} (e={entropy})"
+                else:
+                    donor_information = donor_info
 
     row[tissue_index] = tissue_type
     row[cell_line_index] = cell_line

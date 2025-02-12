@@ -88,7 +88,8 @@ patterns = [
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
     r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
-    r"[+\-]\s*([^;]+)(?:;|$)"
+    r"[+\-]\s*([^;]+)(?:;|$)",
+    r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
@@ -154,13 +155,15 @@ for fichier in os.listdir(llm_out):
                                     if not matched:
                                         print(run_accession, term)
                                         dot_terms.add(f"{term} (!)")
-
                 else:
                     high_entropy_rows.append([run_accession, dot_entropy, dot_full_line])
                     continue
 
             row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes)) if dot_codes else 'normal'
-            row[header_mapping["DOT term"]] = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'
+            dot_term_val = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'
+            if dot_entropy is not None:
+                dot_term_val += f" (e={dot_entropy})"
+            row[header_mapping["DOT term"]] = dot_term_val
 
 #update raw_final_info
 with open(output_file, 'w') as output_file:
@@ -173,4 +176,3 @@ with open(high_entropy_output, 'w') as high_entropy_file:
     high_entropy_file.write("Run accession number|Entropy|DOT term\n")
     for row in high_entropy_rows:
         high_entropy_file.write('|'.join(map(str, row)) + '\n')
-
