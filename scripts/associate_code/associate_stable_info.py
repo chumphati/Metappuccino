@@ -82,7 +82,6 @@ for row in data:
     tissue_full_line = None
     cell_line_full_line = None
     cell_type_full_line = None
-    donor_information_full_line = None
 
     file_path = os.path.join(LLM_OUT, f"{run_accession_number}_bio.txt")
     if os.path.exists(file_path):
@@ -105,6 +104,7 @@ for row in data:
         # print(entropy_dict)
         for line in lines:
             normalized_line = line.strip()
+            normalized_line = re.sub(r"^\d+[\.\)\-]\s*", "", normalized_line)
 
             if normalized_line.startswith("Tissue type:"):
                 entropy = entropy_dict.get("Tissue type", None)
@@ -135,9 +135,7 @@ for row in data:
 
             elif normalized_line.startswith("Donor information:"):
                 entropy = entropy_dict.get("Donor information", None)
-                donor_information_full_line = normalized_line
-                donor_information = clean_info(normalized_line.split("Donor information:", 1)[1].strip())
-
+                donor_information = normalized_line.split("Donor information:", 1)[1].strip()
 
     row[tissue_index] = tissue_type
     row[cell_line_index] = cell_line

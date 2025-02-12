@@ -82,16 +82,14 @@ def calculate_entropy_optimized(token_logprobs):
     max_logprob = np.max(logprobs_array)
     exp_logprobs = np.exp(logprobs_array - max_logprob)
     probabilities = exp_logprobs / np.sum(exp_logprobs)
-
     return -np.sum(probabilities * np.log(probabilities + 1e-10))
 
 
 def clean_duplicate_answers(response_lines):
-    """Remove repeated answers from the LLM output while maintaining structure."""
     unique_answers = {}
     cleaned_lines = []
 
-    for line in response_lines:
+    for line in response_lines.split("\n"):
         line = line.strip()
         match = re.match(r"^(.*?):\s*(.*)$", line)
         if match:
@@ -105,8 +103,7 @@ def clean_duplicate_answers(response_lines):
             else:
                 unique_answers[category] = value
 
-    cleaned_lines = [f"{key}: {value}" for key, value in unique_answers.items()]
-    return cleaned_lines
+    return "\n".join([f"{key}: {value}" for key, value in unique_answers.items()])
 
 
 total_processed = 0
@@ -152,9 +149,9 @@ def process_metadata_llm(metadata_lines, llm):
                 Run accession: {run_accession}
                 Metadata to analyze: {clean_metadata}
 
-                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. **Ensure that each category has only ONE distinct answer. Do not repeat information already provided in previous categories. Remove redundant text.
+                For each row in the metadata line (the first line contains the column names), extract and format the following information concisely.                 For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
                 {chr(10).join(instructions)}
-
+                
                 If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
                 Strict output format (no additional text or special characters, no duplicated answers):
                 """ + chr(10).join(
@@ -167,7 +164,6 @@ def process_metadata_llm(metadata_lines, llm):
                 print_memory_usage(process)
 
                 try:
-                    print("toto")
                     response = llm(prompt, max_tokens=180, logprobs=True)
                     print(response)
                     print("ANSWER:", flush=True)
@@ -176,35 +172,39 @@ def process_metadata_llm(metadata_lines, llm):
                     token_logprobs = logprobs["token_logprobs"]
 
                     # split answer to get each instruction
-                    response_lines = response["choices"][0]["text"].strip().split("\n")
+                    response_text = response["choices"][0]["text"].strip()
+                    response_text = re.sub(r'(?<!^)(\d+\.\s*)', r'\n\1', response_text)
+                    response_lines = response_text.split("\n")
+                    response_lines = [re.sub(r'^\d+[\.\)\-]\s*', '', line) for line in response_lines]
                     response_lines = [line.replace("*", "") for line in response_lines]
-                    response_lines = clean_duplicate_answers(response_lines)
-                    response_lines = [re.sub(r'^\d+\.\s*', '', line) for line in response_lines]
+                    print("response line", response_lines)
 
                     entropy_dict = {}
-                    token_index = 0
 
                     # entropy calculation for each instruction
-                    for i, instruction in enumerate(na_columns):
-                        if i < len(response_lines):
-                            line = response_lines[i]
-                            num_tokens = len(line.split())
-                            if line.strip().startswith(instruction):
+                    for instruction in na_columns:
+                        found = False
+                        for idx, line in enumerate(response_lines):
+                            stripped_line = line.strip()
+                            if stripped_line and stripped_line.startswith(instruction):
+                                token_index = sum(len(l.split()) for l in response_lines[:idx])
+                                num_tokens = len(stripped_line.split())
                                 logprobs_segment = token_logprobs[token_index: token_index + num_tokens]
                                 entropy = calculate_entropy_optimized(logprobs_segment)
-                                print("Entropy", entropy)
+                                print(f"Entropy for {instruction}: {entropy}")
                                 entropy_dict[instruction] = entropy
+                                found = True
+                                break
                             else:
                                 print(
                                     f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
-                            token_index += num_tokens
-                        else:
+                        if not found:
                             print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     print(output_file, flush=True)
                     with open(output_file, "w") as f:
-                        f.write(response["choices"][0]["text"])
+                        f.write(clean_duplicate_answers(response_text))
                         f.write(f"\n")
                         for key, value in entropy_dict.items():
                             f.write(f"\n{key} Entropy: {value}")
