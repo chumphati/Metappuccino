@@ -4,6 +4,7 @@ import os
 import csv
 from collections import defaultdict
 import argparse
+import re
 
 ##########################################################################################
 # PATHS
@@ -31,7 +32,7 @@ category_to_filename_prefix = {
 #load study_info.txt
 study_to_runs = {}
 with open(study_info_path, "r") as f:
-    next(f)  # ignore l'en-tête
+    next(f)
     for line in f:
         parts = line.strip().split(";")
         if len(parts) < 2:
@@ -58,6 +59,8 @@ for cat in categories:
             except ValueError:
                 continue
 
+# print(high_entropy_data)
+
 #proces study files
 llm_results = defaultdict(lambda: defaultdict(dict))
 for filename in os.listdir(llm_results_dir):
@@ -66,6 +69,7 @@ for filename in os.listdir(llm_results_dir):
 
     #get study accession
     study_accession = filename.replace("_study.txt", "")
+    # print(study_accession)
     if study_accession not in study_to_runs:
         continue
 
@@ -77,6 +81,9 @@ for filename in os.listdir(llm_results_dir):
         line = line.strip()
         if not line:
             continue
+
+        # Remove preceding numbering, stars, or similar characters before the category name
+        line = re.sub(r'^[^A-Za-z]+', '', line)
 
         #get value
         for cat in categories:
@@ -93,7 +100,6 @@ for filename in os.listdir(llm_results_dir):
                 try:
                     entropy_value = float(line.split(":", 1)[1].strip())
                     llm_results[study_accession][cat]["entropy"] = entropy_value
-                    # On peut réinitialiser current_category si besoin
                     current_category = None
                 except ValueError:
                     pass
@@ -118,7 +124,7 @@ for study_accession, category_data in llm_results.items():
             llm_value = llm_entry.get("value", None)
             print("llm_value:", llm_value, flush=True)
             #get entropy and run value
-            # print("tessst", high_entropy_data)
+            print("high_entropy_data", high_entropy_data)
             hr_entry = high_entropy_data.get(cat, {}).get(run_accession, None)
             print("hr_entry:", hr_entry, flush=True)
             if hr_entry:
@@ -128,17 +134,32 @@ for study_accession, category_data in llm_results.items():
                 hr_entropy = float("inf")
                 hr_value = None
             #keep lowest entropy
-            if llm_entropy <= hr_entropy:
-                # print("c'est la study")
-                best = llm_value if llm_value is not None else "NA"
+            if llm_value is None and hr_value is None:
+                best = "nan"
+                best_entropy = "nan"
+            elif llm_value is None:
+                best = hr_value
+                best_entropy = hr_entropy
+            elif hr_value is None:
+                best = llm_value
+                best_entropy = llm_entropy
             else:
-                # print("c'est le run based")
-                best = hr_value if hr_value is not None else "NA"
-            best_values[cat] = best
+                if llm_entropy <= hr_entropy:
+                    best = llm_value
+                    best_entropy = llm_entropy
+                else:
+                    best = hr_value
+                    best_entropy = hr_entropy
+            # Remove the category prefix and any existing entropy marker from the best value
+            if best != "nan":
+                pattern_cat = re.compile(rf"^{re.escape(cat)}\s*[:\-]?\s*", re.IGNORECASE)
+                best = pattern_cat.sub("", best)
+                best = re.sub(r'\s*\(e=\d+(?:\.\d+)?\)', '', best)
+            best_values[cat] = f"{best} (e={best_entropy})" if best != "nan" else "nan"
 
-        #if at least one categorie as value != than NA, add line for this run
-        if any(best_values[cat] != "NA" for cat in categories):
-            final_results.append([run_accession] + [best_values.get(cat, "NA") for cat in categories])
+        #if at least one categorie as value != than nan, add line for this run
+        if any(best_values[cat] != "nan" for cat in categories):
+            final_results.append([run_accession] + [best_values.get(cat, "nan") for cat in categories])
 
 #write final result
 #warning: if study written, initial sample llm can be none, so it doesnt mean it will last in the final file

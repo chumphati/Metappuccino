@@ -87,7 +87,13 @@ patterns = [
     r"\bEstimated\s*-\s*(.*?)\b",
     r"[+\-]\s*([^;]+)(?:;|$)",
     r"UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$",
-    r"UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?"
+    r"UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s*(?:[-+])?\s*(.*?)(?=\s*\(|$)",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:\d{4,7}\s*\+\s*([^(]+)(?:\s*\(.*?\))?\*\*",
+    r"UBERON:\d{4,7}\s*[+-]\s*([\w\s]+?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
+    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

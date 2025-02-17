@@ -32,13 +32,23 @@ HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_acc
 
 
 #from annotated total rna extract runs
+#annotated_totalRNA.csv
+# def extract_run_accessions_from_file():
+#     with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
+#         reader = csv.reader(infile, delimiter=';')
+#         writer = csv.writer(outfile, delimiter=';')
+#         for row in reader:
+#             if len(row) > 4 and row[4].strip():
+#                 writer.writerow([row[4]])
+
+#mela-select.tsv
 def extract_run_accessions_from_file():
     with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
-        reader = csv.reader(infile, delimiter=';')
-        writer = csv.writer(outfile, delimiter=';')
+        reader = csv.reader(infile, delimiter='\t')
+        writer = csv.writer(outfile, delimiter='\t')
         for row in reader:
-            if len(row) > 4 and row[4].strip():
-                writer.writerow([row[4]])
+            if len(row) > 0 and row[0].strip():
+                writer.writerow([row[0]])
 
 
 #get header for out file
@@ -96,7 +106,7 @@ def extract_and_save_metadata(run_accession):
         sample_metadata = "".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
         study_metadata = "".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
 
-        time.sleep(2)
+        time.sleep(4)
 
         #search in sample and study
         curl_command = [
@@ -136,7 +146,7 @@ def extract_and_save_metadata(run_accession):
 def main():
     ensure_output_file_header()
     #run extraction from file (columns 1)
-    extract_run_accessions_from_file()
+    # extract_run_accessions_from_file()
 
     #run extraction from project accession
     # get_run_accessions("PRJNA523380")
@@ -149,10 +159,10 @@ def main():
             return
 
     # Execute Bash script to download metadata
-    execute_bash_download_metadata()
+    # execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
-    with Pool(10) as pool:  # multiprocess on 10 CPUs
+    with Pool(5) as pool:  # multiprocess on 5 CPUs
         pool.map(extract_and_save_metadata, run_accessions)
 
     #create flag end process before cleaning

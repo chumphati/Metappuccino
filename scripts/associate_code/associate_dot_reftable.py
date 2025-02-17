@@ -89,7 +89,8 @@ patterns = [
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
     r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
     r"[+\-]\s*([^;]+)(?:;|$)",
-    r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
+    r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

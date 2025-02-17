@@ -208,7 +208,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     "UBERON term – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
             if "DOT term" in fields_for_prompt:
                 instructions.append(
-                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). If the disease is missing and cannot be inferred from the context, return 'NA' instead of making an assumption. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
 
             prompt = f"""
             Study accession: {study_accession}
@@ -263,7 +263,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     if not found:
                         print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
-                output_file = os.path.join(output_dir, f"{study_accession}_bio.txt")
+                output_file = os.path.join(output_dir, f"{study_accession}_study.txt")
                 print(output_file, flush=True)
                 with open(output_file, "w") as f:
                     f.write(clean_duplicate_answers(response_text))
@@ -293,7 +293,7 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 3000
+initial_n_ctx = 15000
 llm = get_llama_model(model_path, initial_n_ctx)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
 

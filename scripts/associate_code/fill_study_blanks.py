@@ -30,16 +30,34 @@ FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
 def clean_generic(val):
     if not isinstance(val, str):
         return val
-    val = re.sub(r'\(.*?\)', '', val)
     val = re.sub(r'\b(?:inferred|simulated|estimated)\b', '', val, flags=re.IGNORECASE)
-    val = re.sub(r'[^\w\s]', '', val, flags=re.UNICODE)
+
+    def replace_parentheses(match):
+        group = match.group(0)
+        if re.fullmatch(r'\(e=\d+(?:\.\d+)?\)', group):
+            return group
+        else:
+            return ''
+
+    val = re.sub(r'\(.*?\)', replace_parentheses, val)
+    val = re.sub(r'[^\w\s\(\)=\.]', '', val, flags=re.UNICODE)
     return val.strip()
 
 
 def clean_string(s):
     if not isinstance(s, str):
         return ""
-    return re.sub(r'[^a-zA-Z\s]', '', s).lower().strip()
+
+    def replace_parentheses(match):
+        group = match.group(0)
+        if re.fullmatch(r'\(e=\d+(?:\.\d+)?\)', group):
+            return group
+        else:
+            return ''
+
+    s = re.sub(r'\(.*?\)', replace_parentheses, s)
+    s = re.sub(r'[^a-zA-Z0-9\s\(\)=\.]', '', s)
+    return s.lower().strip()
 
 
 uberon_patterns = [
@@ -53,7 +71,15 @@ uberon_patterns = [
     r"UBERON:\d{4,5,6,7}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"UBERON organ and code:\s*UBERON:\d{4,5,6,7}\s*[-+]?\s*(.*?)$",
     r"\bEstimated\s*-\s*(.*?)\b",
-    r"[+\-]\s*([^;]+)(?:;|$)"
+    r"[+\-]\s*([^;]+)(?:;|$)",
+    r"UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$",
+    r"UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s+(.+)$",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:(\d{4,7})\s*\+\s*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s*(?:[-+])?\s*(.*?)(?=\s*\(|$)",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:\d{4,7}\s*\+\s*([^(]+)(?:\s*\(.*?\))?\*\*",
+    r"UBERON:\d{4,7}\s*[+-]\s*([\w\s]+?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
+    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?"
 ]
 uberon_compiled = [re.compile(p, re.IGNORECASE) for p in uberon_patterns]
 
@@ -68,7 +94,9 @@ doid_patterns = [
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
     r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
-    r"[+\-]\s*([^;]+)(?:;|$)"
+    r"[+\-]\s*([^;]+)(?:;|$)",
+    r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
 ]
 doid_compiled = [re.compile(p, re.IGNORECASE) for p in doid_patterns]
 
@@ -221,7 +249,7 @@ merged_df = df1.merge(df2, on="Run accession number", suffixes=("", "_new"), how
 
 for col in columns_to_check:
     new_col = col + "_new"
-    merged_df[col] = merged_df.apply(lambda row: row[new_col] if pd.isna(row[col]) and row[new_col] != "NA" else row[col], axis=1)
+    merged_df[col] = merged_df.apply(lambda row: row[new_col] if pd.isna(row[col]) and row[new_col] != "nan" else row[col], axis=1)
     merged_df.drop(columns=[new_col], inplace=True)
 
 ##########################################################################################
