@@ -3,7 +3,7 @@
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=20:mem=16gb
+#PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}

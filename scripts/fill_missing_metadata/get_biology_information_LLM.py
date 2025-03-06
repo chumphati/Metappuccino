@@ -14,17 +14,25 @@ import re
 # PATHS
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--input_metadata_path", type=str, required=True, help="Path to input metadata file")
+parser.add_argument("--error_file_path", type=str, required=True, help="Path to error log file")
+parser.add_argument("--log_file_path", type=str, required=True, help="Path to log file")
+parser.add_argument("--flag_file", type=str, required=True, help="Path to flag file for process completion")
+parser.add_argument("--initial_n_ctx", type=int, default=1200, help="Initial context size for Llama model")
+
 args = parser.parse_args()
 
 base_path = args.base_path
-input_metadata_path = os.path.join(base_path, "sample_info.txt")
+input_metadata_path = args.input_metadata_path
+error_file_path = args.error_file_path
+log_file_path = args.log_file_path
+FLAG_FILE = args.flag_file
+initial_n_ctx = args.initial_n_ctx
+
 raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
-model_path = os.path.join(base_path, "DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf")
-log_file_path = os.path.join(base_path, "llm_log_SB.txt")
-error_file_path = os.path.join(base_path, "reload_model_bio_info.txt")
+model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
-FLAG_FILE = os.path.join(base_path, "STEP2_3.flag")
 
 ##########################################################################################
 # FUNCTIONS
@@ -54,7 +62,20 @@ else:
 # load llama
 def get_llama_model(model_path, n_ctx):
     # tensor_split = [1, 1, 1, 1, 1, 1, 1, 1]
-    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=8, logits_all=True)
+    # return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=8, logits_all=True)
+    return Llama(
+        model_path=model_path,
+        n_ctx=n_ctx,
+        n_gpu_layers=-1,
+        use_mmap=True,
+        n_threads=30,
+        logits_all=True,
+        n_batch=2000,
+        n_ubatch=2000,
+        n_threads_batch=30,
+        offload_kqv=True,
+        flash_attn=True,
+    )
 
 
 def logits_to_probabilities(logits):
@@ -74,7 +95,7 @@ def write_reload_file(filepath, header, line):
 
     # append the problematic line to the file
     with open(filepath, 'a') as file:
-        file.write("\t".join(map(str, line)) + '\n')
+        file.write(";".join(map(str, line)) + '\n')
 
 
 def calculate_entropy_optimized(token_logprobs):
@@ -117,7 +138,7 @@ def process_metadata_llm(metadata_lines, llm):
         clean_metadata = line.strip().split(";")
         run_accession = clean_metadata[0]
         total_processed += 1
-        # print(f"🔄 Process on going {total_processed}/{len(metadata_lines)}: {run_accession}", flush=True)
+        print(f"🔄 Process on going {total_processed}/{len(metadata_lines)}: {run_accession}", flush=True)
 
         if run_accession in raw_data:
             print(run_accession)
@@ -153,7 +174,7 @@ def process_metadata_llm(metadata_lines, llm):
                 {chr(10).join(instructions)}
                 
                 If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
-                Strict output format (no additional text or special characters, no duplicated answers):
+                Strict output format (no additional text or special characters, no duplicated answers) I wait from you:
                 """ + chr(10).join(
                     [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
 
@@ -164,7 +185,8 @@ def process_metadata_llm(metadata_lines, llm):
                 print_memory_usage(process)
 
                 try:
-                    response = llm(prompt, max_tokens=180, logprobs=True)
+                    print("BEGIN:", flush=True)
+                    response = llm(prompt, max_tokens=100, logprobs=True)
                     print(response)
                     print("ANSWER:", flush=True)
                     print(response["choices"][0]["text"])
@@ -199,7 +221,8 @@ def process_metadata_llm(metadata_lines, llm):
                                 print(
                                     f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
                         if not found:
-                            print(f"No response line available for {instruction}. Skipping entropy calculation.")
+                            print(f"Error: No response line available for {instruction}. Skipping entropy calculation.")
+                            write_reload_file(error_file_path, error_file_header, clean_metadata)
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     # print(output_file, flush=True)
@@ -218,8 +241,8 @@ def process_metadata_llm(metadata_lines, llm):
                     print(f"Memory error: line {idx}")
                     break
 
-                except Exception as e:
-                    # print(f"Error in {run_accession} process: {e}", flush=True)
+                except Exception as excep:
+                    print(f"Error in {run_accession} process: {excep}", flush=True)
                     skipped_entries.append(run_accession)
                     continue
 
@@ -240,7 +263,6 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 3000
 llm = get_llama_model(model_path, initial_n_ctx)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
 
@@ -248,7 +270,8 @@ print(f"Model loaded with {gpu_to_use} GPU layers.")
 torch.backends.cudnn.benchmark = True
 
 # read metadata
-os.makedirs(output_dir, exist_ok=True)
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 with open(input_metadata_path, "r") as metadata_file:
     metadata_lines = metadata_file.readlines()[1:]
 

@@ -3,7 +3,7 @@
 #PBS -l walltime=1000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=10:mem=16gb
+#PBS -l select=1:ncpus=1:mem=8gb
 
 METAMAP_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"

@@ -3,10 +3,13 @@
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=20:mem=64gb
+#PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+
+#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
@@ -29,8 +32,8 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
-#cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
+#cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
+cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
 #cp "$METAMAP/results/METADATA/runs.tsv" $SCRATCH_DIR/

@@ -49,6 +49,7 @@ def main():
     step3_flag = os.path.join(tmp_dir, "STEP2_1.flag")
     step4_flag = os.path.join(tmp_dir, "STEP2_2.flag")
     step5_flag = os.path.join(tmp_dir, "STEP2_3.flag")
+    step5_2_flag = os.path.join(tmp_dir, "STEP2_4.flag")
     step6_flag = os.path.join(tmp_dir, "STEP3.flag")
     step7_flag = os.path.join(tmp_dir, "STEP4_1.flag")
     step8_flag = os.path.join(tmp_dir, "STEP4_2.flag")
@@ -58,6 +59,7 @@ def main():
     clean_script = os.path.join(metamap_dir, "bin", "STEP1", "clean_metadata.sh")
     get_stable_metadata = os.path.join(metamap_dir, "bin", "STEP2", "get_stable_metadata.sh")
     llm_specific_biology_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
+    reload_context_llm = os.path.join(metamap_dir, "bin", "STEP2", "reload_model.sh")
     split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
     associate_information = os.path.join(metamap_dir, "bin", "STEP3", "associate_codes_clean.sh")
     llm_study_information = os.path.join(metamap_dir, "bin", "STEP4", "llm_study_information.sh")
@@ -108,6 +110,12 @@ def main():
                 subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
+
+            #reload context
+            if not os.path.isfile(step5_2_flag):
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, reload_context_llm], check=True)
+            wait_for_flag_file(step5_2_flag)
+            print("✔ Context reloaded successfully!")
 
         ##STEP 3: ASSOCIATE TERMS WITH CODE
         if args.associateinformation:
