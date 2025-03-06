@@ -20,7 +20,7 @@ base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "sample_info.txt")
 raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
-model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
+model_path = os.path.join(base_path, "DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf")
 log_file_path = os.path.join(base_path, "llm_log_SB.txt")
 error_file_path = os.path.join(base_path, "reload_model_bio_info.txt")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
@@ -140,7 +140,7 @@ def process_metadata_llm(metadata_lines, llm):
                         "UBERON organ code – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
                     instructions.append(
-                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
                 if "Donor information" in na_columns:
                     instructions.append(
                         "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be principally founded in the two last columns.")
@@ -157,8 +157,8 @@ def process_metadata_llm(metadata_lines, llm):
                 """ + chr(10).join(
                     [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
 
-                # print("PROMPT:", flush=True)
-                # print(prompt, flush=True)
+                print("PROMPT:", flush=True)
+                print(prompt, flush=True)
 
                 # ram before answer
                 print_memory_usage(process)
@@ -166,8 +166,8 @@ def process_metadata_llm(metadata_lines, llm):
                 try:
                     response = llm(prompt, max_tokens=180, logprobs=True)
                     print(response)
-                    # print("ANSWER:", flush=True)
-                    # print(response["choices"][0]["text"])
+                    print("ANSWER:", flush=True)
+                    print(response["choices"][0]["text"])
                     logprobs = response["choices"][0].get("logprobs", None)
                     token_logprobs = logprobs["token_logprobs"]
 
@@ -240,7 +240,7 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 1500
+initial_n_ctx = 3000
 llm = get_llama_model(model_path, initial_n_ctx)
 print(f"Model loaded with {gpu_to_use} GPU layers.")
 

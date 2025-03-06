@@ -3,7 +3,7 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=100gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -32,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
+cp $METAMAP/models/DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/

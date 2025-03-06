@@ -16,7 +16,7 @@ parser.add_argument("--base_path", type=str, required=True, help="Base path to M
 args = parser.parse_args()
 
 base_path = args.base_path
-RAW_CSV = os.path.join(base_path, "annotated_totalRNA.csv")
+RAW_CSV = os.path.join(base_path, "mela-select.tsv")
 RUNS_TSV = os.path.join(base_path, "runs.tsv")
 METADATA_DIR = os.path.join(base_path, "metadata")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra.txt")
@@ -146,7 +146,7 @@ def extract_and_save_metadata(run_accession):
 def main():
     ensure_output_file_header()
     #run extraction from file (columns 1)
-    # extract_run_accessions_from_file()
+    extract_run_accessions_from_file()
 
     #run extraction from project accession
     # get_run_accessions("PRJNA523380")
@@ -159,7 +159,7 @@ def main():
             return
 
     # Execute Bash script to download metadata
-    # execute_bash_download_metadata()
+    execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
     with Pool(5) as pool:  # multiprocess on 5 CPUs

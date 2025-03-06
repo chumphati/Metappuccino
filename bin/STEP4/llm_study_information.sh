@@ -31,7 +31,7 @@ trap cleanup EXIT
 
 #necessary files
 cp -r $METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
-cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
+cp $METAMAP/models/DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
 cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/similar_study_accession_process.py $SCRATCH_DIR/

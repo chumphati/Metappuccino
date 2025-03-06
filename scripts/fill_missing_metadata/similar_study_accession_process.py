@@ -20,7 +20,7 @@ base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "study_info.txt")
 raw_final_info_path = os.path.join(base_path, "final_llm_sample_analysis.csv")
 output_dir = os.path.join(base_path, "INFO_STUDY_LLM")
-model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
+model_path = os.path.join(base_path, "DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf")
 log_file_path = os.path.join(base_path, "llm_log_study.txt")
 error_file_path = os.path.join(base_path, "reload_model_study_info.txt")
 error_file_header = "study_accession\trun_accession_list\tlibrary_construction_protocol\tstudy_metadata_ncbi"
@@ -123,7 +123,7 @@ else:
 
 # load llama
 def get_llama_model(model_path, n_ctx):
-    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=30, logits_all=True)
+    return Llama(model_path=model_path, n_ctx=n_ctx, n_gpu_layers=-1, use_mmap=True, n_threads=8, logits_all=True)
 
 
 def logits_to_probabilities(logits):
@@ -208,13 +208,13 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     "UBERON term – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
             if "DOT term" in fields_for_prompt:
                 instructions.append(
-                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                    "DOT term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
 
             prompt = f"""
             Study accession: {study_accession}
             Metadata to analyze: {study_metadata[study_accession]}
 
-            For each row in the metadata line (the first line contains the column names), extract and format the following information concisely.                 For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
+            For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
             {chr(10).join(instructions)}
 
             If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.

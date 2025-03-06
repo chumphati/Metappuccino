@@ -3,8 +3,8 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 
-directory = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/results_3fev2025/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
-output_directory = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/results_3fev2025/ENTROPY_DISTRIBUTION"
+directory = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/V1_MANUAL_METAMAP/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
+output_directory = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/V1_MANUAL_METAMAP/ENTROPY_DISTRIBUTION"
 
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)

@@ -85,15 +85,15 @@ uberon_compiled = [re.compile(p, re.IGNORECASE) for p in uberon_patterns]
 
 
 doid_patterns = [
-    r"DOID:\d+\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s*\(([^)]+)\)",
-    r"DOID:\d+\s*\(([^)]+)\)\s*\*\*.*?\*\*",
+    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,2,3,4,5,6}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,2,3,4,5,6}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,2,3,4,5,6}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)",
+    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
-    r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
+    r"Estimated:\s*DOID:\d{1,2,3,4,5,6}\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
     r"[+\-]\s*([^;]+)(?:;|$)",
     r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
     r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
@@ -112,7 +112,7 @@ def process_uberon_term(val, uberon_data):
                 if isinstance(match, tuple):
                     for part in match:
                         candidate = part.strip()
-                        candidate = re.sub(r"UBERON:\d{7}", "", candidate, flags=re.IGNORECASE)
+                        candidate = re.sub(r"UBERON:\d{4,5,6,7}", "", candidate, flags=re.IGNORECASE)
                         candidate = candidate.strip(" ;,")
                         if candidate and not any(kw in candidate.lower() for kw in [
                             "requires", "applicable", "estimated", "validated",
@@ -121,7 +121,7 @@ def process_uberon_term(val, uberon_data):
                             candidates.append(candidate)
                 else:
                     candidate = match.strip()
-                    candidate = re.sub(r"UBERON:\d{7}", "", candidate, flags=re.IGNORECASE)
+                    candidate = re.sub(r"UBERON:\d{4,5,6,7}", "", candidate, flags=re.IGNORECASE)
                     candidate = candidate.strip(" ;,")
                     if candidate and not any(kw in candidate.lower() for kw in [
                         "requires", "applicable", "estimated", "validated",
@@ -167,7 +167,7 @@ def process_doid_term(val, doid_data):
                 if isinstance(match, tuple):
                     for part in match:
                         candidate = part.strip()
-                        candidate = re.sub(r"DOID:\d+", "", candidate, flags=re.IGNORECASE)
+                        candidate = re.sub(r"DOID:\d{1,2,3,4,5,6}", "", candidate, flags=re.IGNORECASE)
                         candidate = candidate.strip(" +;,")
                         if candidate and not any(kw in candidate.lower() for kw in [
                             "requires", "applicable", "estimated", "validated",
@@ -176,7 +176,7 @@ def process_doid_term(val, doid_data):
                             candidates.append(candidate)
                 else:
                     candidate = match.strip()
-                    candidate = re.sub(r"DOID:\d+", "", candidate, flags=re.IGNORECASE)
+                    candidate = re.sub(r"DOID:\d{1,2,3,4,5,6}", "", candidate, flags=re.IGNORECASE)
                     candidate = candidate.strip(" +;,")  # on retire également le '+' ici
                     if candidate and not any(kw in candidate.lower() for kw in [
                         "requires", "applicable", "estimated", "validated",

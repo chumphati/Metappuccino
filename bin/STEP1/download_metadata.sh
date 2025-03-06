@@ -29,8 +29,8 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-#cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
-cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
+cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
+#cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
 #cp "$METAMAP/results/METADATA/runs.tsv" $SCRATCH_DIR/
