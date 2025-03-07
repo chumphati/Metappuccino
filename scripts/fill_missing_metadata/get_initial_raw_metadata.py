@@ -28,7 +28,8 @@ columns_mapping = {
     "cell_line": "Cell line",
     "cell_type": "Cell type",
     "library_strategy": "Library strategy",
-    "instrument_platform": "Instrument platform"
+    "instrument_platform": "Instrument platform",
+    "host_phenotype": "Phenotype",
 }
 
 #final columns out
@@ -40,7 +41,13 @@ final_columns = [
     "Cell type",
     "UBERON organ and code",
     "Disease Ontology Term",
+    "Treatment",
+    "Treatment Time",
+    "Response",
+    "Phenotype",
     "Library strategy",
+    "Library selection fixed",
+    "Library source",
     "Instrument platform",
     "Donor information"
 ]

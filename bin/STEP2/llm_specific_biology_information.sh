@@ -42,5 +42,5 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 1000
+python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 3000
 
