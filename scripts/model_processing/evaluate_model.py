@@ -1,7 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM
 
-model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned"
+model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-struct"
 model = AutoModelForCausalLM.from_pretrained(model_path)
 
 total_params = sum(p.numel() for p in model.parameters())

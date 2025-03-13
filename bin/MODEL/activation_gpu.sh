@@ -1,9 +1,9 @@
 #!/bin/bash
-#PBS -N evaluate_ml
+#PBS -N activation_gpu
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node41:ncpus=30:mem=600gb
+#PBS -l select=1:host=node50:ncpus=80:ngpus=2:mem=250gb
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
@@ -15,13 +15,14 @@ mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
 mkdir -p $RESULT_DIR
 
-exec > "$LOG_DIR/evaluate_ml.out" 2> "$LOG_DIR/evaluate_ml.err"
-echo "Begin job : $(date)"
+exec > "$LOG_DIR/activation_gpu.out" 2> "$LOG_DIR/activation_gpu.err"
+echo "Début du job : $(date)"
 
 #clean and copy in case of fail
 cleanup() {
+    cp $SCRATCH_DIR/activations_gpu.pkl $RESULT_DIR/ 2>/dev/null || echo "Activations non trouvées."
     rm -rf "$SCRATCH_DIR"
-    echo "End job : $(date)"
+    echo "Fin du job : $(date)"
 }
 trap cleanup EXIT
 
@@ -32,10 +33,11 @@ mkdir -p $METAMAP/results/PRUNING_MODEL
 source $ENV/bin/activate
 
 #necessary files
-cp $METAMAP/scripts/model_processing/evaluate_model.py $SCRATCH_DIR
-
+cp $METAMAP/scripts/model_processing/activation_gpu.py $SCRATCH_DIR
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TRANSFORMERS_CACHE=$METAMAP/results/PRUNING_MODEL/hf_cache
+mkdir -p $TRANSFORMERS_CACHE
 cd $SCRATCH_DIR
 
-python evaluate_model.py
+python activation_gpu.py --base_path $SCRATCH_DIR
 

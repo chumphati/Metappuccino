@@ -17,7 +17,7 @@ study_info_path = os.path.join(base_path, "study_info.txt")
 llm_results_dir = os.path.join(base_path, "INFO_STUDY_LLM")
 high_entropy_dir = os.path.join(base_path, "high_entropy")
 output_file = os.path.join(base_path, "best_inferences_per_run.csv")
-categories = ["Cell type", "UBERON term", "Tissue type", "Cell line", "DOT term"]
+categories = ["Cell type", "UBERON term", "Tissue type", "Cell line", "DOT term", "Treatment", "Treatment Time", "Response", "Phenotype", "Library selection fixed", "Library source"]
 
 ##########################################################################################
 # MAIN
@@ -26,7 +26,13 @@ category_to_filename_prefix = {
     "UBERON term": "uberon",
     "Tissue type": "tissue",
     "Cell line": "cellline",
-    "DOT term": "dot"
+    "DOT term": "dot",
+    "Treatment": "treatment",
+    "Treatment Time": "treatment_time",
+    "Response": "response",
+    "Phenotype": "phenotype",
+    "Library selection fixed": "libselect",
+    "Library source": "libsource"
 }
 
 #load study_info.txt

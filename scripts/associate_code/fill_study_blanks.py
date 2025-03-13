@@ -244,7 +244,7 @@ df1 = pd.read_csv(final_file, sep='\t')
 df2 = pd.read_csv(best_inf_study, sep=';')
 
 df2.rename(columns={"Run Accession": "Run accession number"}, inplace=True)
-columns_to_check = ["Cell type", "UBERON term", "Tissue type", "Cell line", "DOT term"]
+columns_to_check = ["Cell type", "UBERON term", "Tissue type", "Cell line", "DOT term", "Treatment", "Treatment Time", "Response", "Phenotype", "Library selection fixed", "Library source"]
 merged_df = df1.merge(df2, on="Run accession number", suffixes=("", "_new"), how="left")
 
 for col in columns_to_check:
@@ -258,7 +258,7 @@ for col in columns_to_check:
 df1_indexed = df1.set_index("Run accession number")
 
 
-for col in ["Cell type", "Tissue type", "Cell line"]:
+for col in ["Cell type", "Tissue type", "Cell line", "Treatment", "Treatment Time", "Response", "Phenotype", "Library selection fixed", "Library source"]:
     merged_df[col] = merged_df.apply(
         lambda row: clean_generic(row[col]) if pd.isna(df1_indexed.loc[row["Run accession number"], col]) else row[col],
         axis=1

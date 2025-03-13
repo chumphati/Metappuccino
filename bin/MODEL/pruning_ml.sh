@@ -3,8 +3,7 @@
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=9:mem=600gb
-
+#PBS -l select=1:ncpus=18:mem=600gb
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
@@ -21,8 +20,7 @@ echo "Début du job : $(date)"
 
 #clean and copy in case of fail
 cleanup() {
-    cp -r $SCRATCH_DIR/llama-3-pruned $RESULT_DIR/ 2>/dev/null || echo "Modèle pruné non trouvé."
-    cp $SCRATCH_DIR/activations.pkl $RESULT_DIR/ 2>/dev/null || echo "Activations non trouvées."
+    cp $SCRATCH_DIR/activations_unstruct.pkl $RESULT_DIR/ 2>/dev/null || echo "Activations non trouvées."
     rm -rf "$SCRATCH_DIR"
     echo "Fin du job : $(date)"
 }

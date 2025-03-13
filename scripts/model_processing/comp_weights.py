@@ -25,6 +25,6 @@ def compare_models(original_path, pruned_path):
 
 
 original_model_path = "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF"
-pruned_model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned"
+pruned_model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-unstruct"
 
 compare_models(original_model_path, pruned_model_path)

@@ -3,7 +3,7 @@
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=18:mem=600gb
+#PBS -l select=1:host=node41:ncpus=30:mem=600gb
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
@@ -20,6 +20,7 @@ echo "Begin job : $(date)"
 
 #clean and copy in case of fail
 cleanup() {
+    cp $SCRATCH_DIR/activations_struct.pkl $RESULT_DIR/ 2>/dev/null || echo "Activations non trouvées."
     rm -rf "$SCRATCH_DIR"
     echo "End job : $(date)"
 }
@@ -37,5 +38,5 @@ cp $METAMAP/scripts/model_processing/structural_pruning.py $SCRATCH_DIR
 export TRANSFORMERS_CACHE=$METAMAP/results/PRUNING_MODEL/hf_cache
 cd $SCRATCH_DIR
 
-python structural_pruning.py
+python structural_pruning.py --base_path $SCRATCH_DIR
 
