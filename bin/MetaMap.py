@@ -72,7 +72,7 @@ def main():
             sys.exit(1)
 
         if args.requirements:
-            subprocess.run(["qsub", "-q", "ssfa", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
+            subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
             print("✔ Installation requirements completed!")
 
         ##STEP 1: GET AND CLEAN METADATA
@@ -80,13 +80,13 @@ def main():
             #get metadata from sra ncbi if asked from a sra list
             if not os.path.isfile(step1_flag):
                 # print("qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script)
-                subprocess.run(["qsub", "-q", "ssfa", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
-                subprocess.run(["qsub", "-q", "ssfa", "-v", "METAMAP="+metamap_dir, clean_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir, clean_script], check=True)
             wait_for_flag_file(step2_flag)
             print("✔ Metadata cleaned!")
 
@@ -94,13 +94,13 @@ def main():
         if args.fillmetadata:
             #get basic information for each run in output final table
             if not os.path.isfile(step3_flag):
-                subprocess.run(["qsub", "-q", "ssfa", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
             wait_for_flag_file(step3_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #split specific, study and donor analysis
             if not os.path.isfile(step4_flag):
-                subprocess.run(["qsub", "-q", "ssfa", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
             wait_for_flag_file(step4_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
@@ -121,7 +121,7 @@ def main():
         if args.associateinformation:
             #association uberon/dot with ref table and clean
             if not os.path.isfile(step6_flag):
-                subprocess.run(["qsub", "-q", "ssfa", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
 
@@ -138,7 +138,7 @@ def main():
             # process study info via entropy
             if not os.path.isfile(step8_flag):
                 subprocess.run(
-                    ["qsub", "-q", "ssfa", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
                      process_study_llm], check=True)
             wait_for_flag_file(step8_flag)
             print("✔ Study information information processed successfully!")
