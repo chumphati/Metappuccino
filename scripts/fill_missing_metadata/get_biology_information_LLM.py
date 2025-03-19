@@ -158,20 +158,20 @@ def process_metadata_llm(metadata_lines, llm):
                         "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
                 if "Cell type" in na_columns:
                     instructions.append(
-                        "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and state the inference. Use thee Cell Ontology terms terminology.")
+                        "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and the rest of the context and state the inference. Use thee Cell Ontology terms terminology.")
                 if "UBERON organ and code" in na_columns:
                     instructions.append(
                         "UBERON organ and code – Provide me the organ concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
                     instructions.append(
-                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease', infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
                 if "Treatment" in na_columns:
                     instructions.append(
-                        "Treatment - Determine from the context and the desease estimated with treatment could be possible for the pathology (eg: Nivolumab, Ipilimumab, vemurafenib, etc...). If no treatment avaible, try to find with your knowledge a path to create a new treatment or a gene to target for example."
+                        "Treatment - Determine from the context the treatment that could be used for the pathology identified. It can be the name of a medicamentation (eg: Doliprane, Nivolumab, Ipilimumab, vemurafenib, etc...) or a biological treatment technique (eg: gene therapy, siRNA, etc...). If no pathology identified, return 'no treatment'. If you don't find the treatment from context, don't try to inferrate ot and return 'no treatment'. If there is PBS or Phosphate Buffered Saline written, it means 'no treatment'."
                     )
                 if "Treatment Time" in na_columns:
                     instructions.append(
-                        "Treatment Time - Based on the given context, determine the treatment time category by searching in which state the tratment is on the given sample. Only two answer are possible: Assign 'Pre-treatment' if the context indicates that the sample or data was collected before the start of treatment. Or assign 'On-treatment' if the context suggests that the sample or data was collected while the patient was undergoing treatment. If no clear indication is found, return 'nan'."
+                        "Treatment Time - Based on the given context, determine the treatment time category by searching in which state the treatment is on the given sample. Only two answer are possible: Assign 'Pre-treatment' if the context indicates that the sample or data was collected before the start of treatment. Or assign 'On-treatment' if the context suggests that the sample or data was collected while the patient was undergoing treatment. If no clear indication is found or if the treatment is unknown, return 'nan'."
                     )
                 if "Response" in na_columns:
                     instructions.append(
@@ -195,7 +195,7 @@ def process_metadata_llm(metadata_lines, llm):
                     )
                 if "Donor information" in na_columns:
                     instructions.append(
-                        "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can be principally founded in the two last columns.")
+                        "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can also be protocol summary information,methods or information about how the sample has been obtained (eg. Patient-Derived Xenograf, control cells, etc...). If no information founded, just specify 'nan', no other sentence.")
 
                 prompt = f"""
                 Run accession: {run_accession}
@@ -204,7 +204,7 @@ def process_metadata_llm(metadata_lines, llm):
                 For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
                 {chr(10).join(instructions)}
                 
-                If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
+                If any information is missing in the metadat can't be inferred for previous instruction, specify 'nan'. Don't double the answer. I want only one answer per category.
                 Strict output format (no additional text or special characters, no duplicated answers) I wait from you:
                 """ + chr(10).join(
                     [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
@@ -254,6 +254,13 @@ def process_metadata_llm(metadata_lines, llm):
                         if not found and not is_run_accession_logged(run_accession, error_file_path):
                             print(f"Error: No response line available for {instruction}. Skipping entropy calculation.")
                             write_reload_file(error_file_path, error_file_header, clean_metadata)
+
+                    num_filled_categories = sum(1 for value in unique_answers.values() if value.strip() != "")
+                    total_categories = len(na_columns)
+                    filled_percentage = (num_filled_categories / total_categories) * 100
+                    if filled_percentage < 50:
+                        write_reload_file(error_file_path, error_file_header, clean_metadata)
+                        print(f"Warning: Only {filled_percentage}% of categories filled for {run_accession}. Data written to reload file.")
 
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     # print(output_file, flush=True)

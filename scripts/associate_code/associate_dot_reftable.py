@@ -90,7 +90,8 @@ patterns = [
     r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
     r"[+\-]\s*([^;]+)(?:;|$)",
     r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
-    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
+    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"Disease Ontology Term:\s*DOID:\d+\s+([^\s].*?)\b(?:,|\)|\.|$)"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
@@ -136,6 +137,7 @@ for fichier in os.listdir(llm_out):
                                     elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
                                         medical_terms.append(clean_string(match))
 
+                            medical_terms = [term for term in medical_terms if len(term) >= 3]
                             for term in medical_terms:
                                 matched = False
                                 for entry in dot_data:
@@ -160,11 +162,24 @@ for fichier in os.listdir(llm_out):
                     high_entropy_rows.append([run_accession, dot_entropy, dot_full_line])
                     continue
 
-            row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes)) if dot_codes else 'normal'
-            dot_term_val = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'
-            if dot_entropy is not None:
-                dot_term_val += f" (e={dot_entropy})"
+            if not dot_codes:
+                row[header_mapping["DOT code"]] = 'nan'
+            else:
+                row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes))
+
+            if not dot_terms:
+                dot_term_val = 'nan'
+            else:
+                dot_term_val = ', '.join(sorted(dot_terms))
+                if dot_entropy is not None:
+                    dot_term_val += f" (e={dot_entropy})"
             row[header_mapping["DOT term"]] = dot_term_val
+
+            # row[header_mapping["DOT code"]] = ', '.join(sorted(dot_codes)) if dot_codes else 'normal'
+            # dot_term_val = ', '.join(sorted(dot_terms)) if dot_terms else 'normal'
+            # if dot_entropy is not None:
+            #     dot_term_val += f" (e={dot_entropy})"
+            # row[header_mapping["DOT term"]] = dot_term_val
 
 #update raw_final_info
 with open(output_file, 'w') as output_file:

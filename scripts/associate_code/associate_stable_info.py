@@ -24,7 +24,15 @@ phe_high_entropy = os.path.join(base_path, "phenotype_high_entropy.txt")
 libselec_high_entropy = os.path.join(base_path, "libselec_high_entropy.txt")
 libsource_high_entropy = os.path.join(base_path, "libsource_high_entropy.txt")
 
-entropy_thresold = 2.5
+entropy_tt = 1.7
+entropy_cl = 1.5
+entropy_ct = 2
+entropy_treatment = 1.5
+entropy_treattime = 1.5
+entropy_res = 1.5
+entropy_phe = 1.5
+entropy_libselec = 1.5
+entropy_libsource = 1.5
 
 if not os.path.exists(LLM_OUT):
     print(f"Error: Directory {LLM_OUT} does not exist.")
@@ -157,7 +165,7 @@ for row in data:
             if normalized_line.startswith("Tissue type:"):
                 entropy = entropy_dict.get("Tissue type", None)
                 tissue_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_tt:
                     tissue_info = clean_info(normalized_line.split("Tissue type:", 1)[1].strip())
                     tissue_type = f"{tissue_info} (e={entropy})"
                 else:
@@ -167,7 +175,7 @@ for row in data:
             elif normalized_line.startswith("Cell line:"):
                 entropy = entropy_dict.get("Cell line", None)
                 cell_line_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_cl:
                     cell_line_info = clean_info(normalized_line.split("Cell line:", 1)[1].strip())
                     cell_line = f"{cell_line_info} (e={entropy})"
                 else:
@@ -177,7 +185,7 @@ for row in data:
             elif normalized_line.startswith("Cell type:"):
                 entropy = entropy_dict.get("Cell type", None)
                 cell_type_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_ct:
                     cell_type_info = clean_info(normalized_line.split("Cell type:", 1)[1].strip())
                     cell_type = f"{cell_type_info} (e={entropy})"
                 else:
@@ -187,7 +195,7 @@ for row in data:
             elif normalized_line.startswith("Treatment:"):
                 entropy = entropy_dict.get("Treatment", None)
                 treatment_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_treatment:
                     treatment_info = clean_info(normalized_line.split("Treatment:", 1)[1].strip())
                     treatment = f"{treatment_info} (e={entropy})"
                 else:
@@ -197,7 +205,7 @@ for row in data:
             elif normalized_line.startswith("Treatment Time:"):
                 entropy = entropy_dict.get("Treatment Time", None)
                 treatmenttime_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_treattime:
                     treatmenttime_info = clean_info(normalized_line.split("Treatment Time:", 1)[1].strip())
                     treatmenttime = f"{treatmenttime_info} (e={entropy})"
                 else:
@@ -207,7 +215,7 @@ for row in data:
             elif normalized_line.startswith("Response:"):
                 entropy = entropy_dict.get("Response", None)
                 res_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_res:
                     res_info = clean_info(normalized_line.split("Response:", 1)[1].strip())
                     res = f"{res_info} (e={entropy})"
                 else:
@@ -217,7 +225,7 @@ for row in data:
             elif normalized_line.startswith("Phenotype:"):
                 entropy = entropy_dict.get("Phenotype", None)
                 phe_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_phe:
                     phe_info = clean_info(normalized_line.split("Phenotype:", 1)[1].strip())
                     phe = f"{phe_info} (e={entropy})"
                 else:
@@ -227,7 +235,7 @@ for row in data:
             elif normalized_line.startswith("Library selection fixed:"):
                 entropy = entropy_dict.get("Library selection fixed", None)
                 libselec_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_libselec:
                     libselec_info = clean_info(normalized_line.split("Library selection fixed:", 1)[1].strip())
                     libselec = f"{libselec_info} (e={entropy})"
                 else:
@@ -237,7 +245,7 @@ for row in data:
             elif normalized_line.startswith("Library source:"):
                 entropy = entropy_dict.get("Library source", None)
                 libsource_full_line = normalized_line
-                if entropy is not None and entropy < entropy_thresold:
+                if entropy is not None and entropy < entropy_libsource:
                     libsource_info = clean_info(normalized_line.split("Library source:", 1)[1].strip())
                     libsource = f"{libsource_info} (e={entropy})"
                 else:

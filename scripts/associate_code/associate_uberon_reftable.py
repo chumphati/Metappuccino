@@ -120,7 +120,7 @@ for fichier in os.listdir(llm_out):
                     if "UBERON organ and code:" in ligne:
                         uberon_full_line = ligne.strip()
 
-                if uberon_entropy is None or uberon_entropy < 2.5:
+                if uberon_entropy is None or uberon_entropy < 2.2:
                     f.seek(0)
                     for ligne in f:
                         if "UBERON organ and code:" in ligne:
@@ -141,6 +141,7 @@ for fichier in os.listdir(llm_out):
                                     elif match and not any(keyword in match.lower() for keyword in ["requires", "applicable", "estimated", "validated", "suggested", "validation", "based", "inferred", "context"]):
                                         medical_terms.append(clean_string(match))
 
+                            medical_terms = [term for term in medical_terms if len(term) >= 3]
                             for term in medical_terms:
                                 matched = False
                                 for entry in uberon_data:
