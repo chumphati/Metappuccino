@@ -145,15 +145,15 @@ for row in data:
                 elif "Treatment Entropy" in line:
                     entropy_dict["Treatment"] = entropy
                 elif "Treatment Time Entropy" in line:
-                    entropy_dict["Treatment"] = entropy
+                    entropy_dict["Treatment Time"] = entropy
                 elif "Response Entropy" in line:
-                    entropy_dict["Treatment"] = entropy
+                    entropy_dict["Response"] = entropy
                 elif "Phenotype Entropy" in line:
-                    entropy_dict["Treatment"] = entropy
+                    entropy_dict["Phenotype"] = entropy
                 elif "Library selection fixed Entropy" in line:
-                    entropy_dict["Treatment"] = entropy
+                    entropy_dict["Library selection fixed"] = entropy
                 elif "Library source Entropy" in line:
-                    entropy_dict["Treatment"] = entropy
+                    entropy_dict["Library source"] = entropy
                 elif "Donor information Entropy" in line:
                     entropy_dict["Donor information"] = entropy
         # print(run_accession_number)

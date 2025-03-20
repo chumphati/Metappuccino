@@ -127,7 +127,9 @@ def clean_duplicate_answers(response_lines):
             else:
                 unique_answers[category] = value
 
-    return "\n".join([f"{key}: {value}" for key, value in unique_answers.items()])
+    # return "\n".join([f"{key}: {value}" for key, value in unique_answers.items()])
+    cleaned_text = "\n".join([f"{key}: {value}" for key, value in unique_answers.items()])
+    return cleaned_text, unique_answers
 
 
 total_processed = 0
@@ -164,14 +166,14 @@ def process_metadata_llm(metadata_lines, llm):
                         "UBERON organ and code – Provide me the organ concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
                     instructions.append(
-                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.")
+                        "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
                 if "Treatment" in na_columns:
                     instructions.append(
                         "Treatment - Determine from the context the treatment that could be used for the pathology identified. It can be the name of a medicamentation (eg: Doliprane, Nivolumab, Ipilimumab, vemurafenib, etc...) or a biological treatment technique (eg: gene therapy, siRNA, etc...). If no pathology identified, return 'no treatment'. If you don't find the treatment from context, don't try to inferrate ot and return 'no treatment'. If there is PBS or Phosphate Buffered Saline written, it means 'no treatment'."
                     )
                 if "Treatment Time" in na_columns:
                     instructions.append(
-                        "Treatment Time - Based on the given context, determine the treatment time category by searching in which state the treatment is on the given sample. Only two answer are possible: Assign 'Pre-treatment' if the context indicates that the sample or data was collected before the start of treatment. Or assign 'On-treatment' if the context suggests that the sample or data was collected while the patient was undergoing treatment. If no clear indication is found or if the treatment is unknown, return 'nan'."
+                        "Treatment Time - Based on the given context, determine the treatment time category by searching in which state the treatment is on the given sample. Only two answer are possible: Assign 'Pre-treatment' if the context indicates that the sample or data was collected before the start of treatment. Or assign 'On-treatment' if the context suggests that the sample or data was collected while the patient was undergoing treatment. If no pathology identified, return 'no treatment'. If no clear indication is found or if the treatment is unknown, return 'nan'."
                     )
                 if "Response" in na_columns:
                     instructions.append(
@@ -255,6 +257,7 @@ def process_metadata_llm(metadata_lines, llm):
                             print(f"Error: No response line available for {instruction}. Skipping entropy calculation.")
                             write_reload_file(error_file_path, error_file_header, clean_metadata)
 
+                    cleaned_text, unique_answers = clean_duplicate_answers(response_text)
                     num_filled_categories = sum(1 for value in unique_answers.values() if value.strip() != "")
                     total_categories = len(na_columns)
                     filled_percentage = (num_filled_categories / total_categories) * 100
@@ -265,7 +268,7 @@ def process_metadata_llm(metadata_lines, llm):
                     output_file = os.path.join(output_dir, f"{run_accession}_bio.txt")
                     # print(output_file, flush=True)
                     with open(output_file, "w") as f:
-                        f.write(clean_duplicate_answers(response_text))
+                        f.write(cleaned_text)
                         f.write(f"\n")
                         for key, value in entropy_dict.items():
                             f.write(f"\n{key} Entropy: {value}")
