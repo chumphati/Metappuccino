@@ -13,7 +13,7 @@ current_synonyms=""
 current_disease=""
 
 while IFS= read -r line || [ -n "$line" ]; do
-    if [[ $line =~ ^id:\ (UBERON:[0-9]+) ]]; then
+    if [[ $line =~ ^id:\ (CVCL_[A-Z0-9]+) ]]; then
         if [[ -n $current_id ]]; then
             echo "$current_id,$current_name,\"$current_synonyms\",\"$current_disease\"" >> "$output_file"
         fi
@@ -21,16 +21,20 @@ while IFS= read -r line || [ -n "$line" ]; do
         current_name=""
         current_synonyms=""
         current_disease=""
-    elif [[ $line =~ ^name:\ (.+) ]]; then
-        current_name="${BASH_REMATCH[1]}"
+    elif [[ $line =~ ^name:\ *(.*) ]]; then
+        current_name="$(echo "${BASH_REMATCH[1]}" | sed 's/#//g')"  # Supprime tous les #
     elif [[ $line =~ ^synonym:\ \"(.+)\" ]]; then
         if [[ -n $current_synonyms ]]; then
             current_synonyms="$current_synonyms;${BASH_REMATCH[1]}"
         else
             current_synonyms="${BASH_REMATCH[1]}"
         fi
-    elif [[ $line =~ NCIt:(.+) ]]; then
-        current_disease="${BASH_REMATCH[1]}"
+    elif [[ $line =~ ^xref:\ NCIt:[A-Za-z0-9]+\ !\ (.+) ]]; then
+        if [[ -n $current_disease ]]; then
+            current_disease="$current_disease;${BASH_REMATCH[1]}"
+        else
+            current_disease="${BASH_REMATCH[1]}"
+        fi
     fi
 done < "$input_file"
 

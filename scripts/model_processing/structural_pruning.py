@@ -93,8 +93,27 @@ default_pruning_amount_attention = 0.15
 pruning_amount_attention = pruning_adjustment if pruning_adjustment > 0 else default_pruning_amount_attention
 pruning_amount_mlp = 0.20  # 20% for MLP layers
 
-# Define a reduced pruning amount for K and V (e.g., 10% of the amount for Q)
-reduced_pruning_amount_attention = pruning_amount_attention * 0.1
+##########################################################################################
+# NEW FUNCTION: Reduce the input dimension of a linear layer
+
+def reduce_input_dim_linear_layer(layer, target_in):
+    """
+    Reduce the input dimension of a linear layer by slicing its weight matrix if necessary.
+    The output dimension (rows) remains unchanged.
+    """
+    old_weight = layer.weight.data
+    old_bias = layer.bias.data if layer.bias is not None else None
+    out_features, in_features = old_weight.shape
+    if in_features > target_in:
+        new_weight = old_weight[:, :target_in]
+    else:
+        new_weight = old_weight
+        target_in = in_features
+    new_layer = nn.Linear(target_in, out_features, bias=(old_bias is not None))
+    new_layer.weight.data = new_weight
+    if old_bias is not None:
+        new_layer.bias.data = old_bias
+    return new_layer
 
 ##########################################################################################
 # FOLLOW ACTIVATIONS
@@ -108,9 +127,7 @@ else:
         def hook(module, input, output):
             activation_dict[layer_name] = output.detach().cpu()
             logging.info(f"Activation recorded for {layer_name}")
-
         return hook
-
 
     for i, layer in enumerate(model.model.layers):
         layer.self_attn.q_proj.register_forward_hook(save_activations(f"layer_{i}_q_proj"))
@@ -138,16 +155,15 @@ for layer_name, activation in activation_dict.items():
             f"Activation distribution = mean: {torch.tensor(list(neurons_to_prune.values())).mean()}, min: {torch.tensor(list(neurons_to_prune.values())).min()}")
         logging.info(f"{layer_name} marked for pruning (weak activation : {mean_activation:.6f})")
 
-
 ##########################################################################################
 # PRUNING FUNCTIONS
+
 def apply_structured_pruning(module, amount, n, dim):
     prune.ln_structured(module, 'weight', amount=amount, n=n, dim=dim)
     with torch.no_grad():
         mask = module.weight_mask
         module.weight.data = module.weight * mask
     prune.remove(module, 'weight')
-
 
 def compress_linear_layer(layer, dim=0):
     """
@@ -180,14 +196,12 @@ def compress_linear_layer(layer, dim=0):
             new_layer.bias.data = B.to(W.device, dtype=W.dtype)
         return new_layer, keep_cols.tolist()
 
-
 def compress_structured_layer(layer, dim=0):
     """
     Compress the pruned layer physically by removing zero rows/columns.
     """
     new_layer, _ = compress_linear_layer(layer, dim=dim)
     return new_layer
-
 
 def flatten_and_slice_2d(layer, target_out, target_in):
     """Ensure layer.weight is a 2D tensor with correct dimensions."""
@@ -198,7 +212,6 @@ def flatten_and_slice_2d(layer, target_out, target_in):
     if out_dim >= target_out and in_dim >= target_in:
         w = w[:target_out, :target_in]
     layer.weight.data = w
-
 
 def expand_linear_layer(layer, target_out, target_in):
     """
@@ -212,8 +225,11 @@ def expand_linear_layer(layer, target_out, target_in):
     if in_features != target_in:
         import logging
         logging.warning(
-            f"Input dimension mismatch during expansion: layer has in_features {in_features} but target_in was {target_in}. Using in_features={in_features}.")
-        target_in = in_features
+            f"Input dimension mismatch during expansion: layer has in_features {in_features} but target_in was {target_in}. Using target_in={target_in} after reduction.")
+        # In this case, we want to reduce the input dimension first.
+        layer = reduce_input_dim_linear_layer(layer, target_in)
+        old_weight = layer.weight.data
+        old_out, in_features = old_weight.shape
     new_layer = nn.Linear(target_in, target_out, bias=(old_bias is not None))
     new_weight = torch.zeros((target_out, target_in), dtype=old_weight.dtype, device=old_weight.device)
     new_weight[:old_out, :] = old_weight
@@ -223,7 +239,6 @@ def expand_linear_layer(layer, target_out, target_in):
         new_bias[:old_out] = old_bias
         new_layer.bias.data = new_bias
     return new_layer
-
 
 ##########################################################################################
 # COMBINE PRUNING AND COMPRESSION
@@ -236,7 +251,7 @@ for i, layer in enumerate(model_cpu.model.layers):
         proj_layer = getattr(layer.self_attn, proj)
         current_dim = proj_layer.weight.shape[0]
         if proj == "q_proj":
-            # q_proj should have dimension equal to new_hidden_size
+            # q_proj should be pruned to new_hidden_size if needed.
             if current_dim > new_hidden_size:
                 neurons_to_remove_proj = current_dim - new_hidden_size
                 pruning_adjustment_proj = neurons_to_remove_proj / current_dim
@@ -250,19 +265,8 @@ for i, layer in enumerate(model_cpu.model.layers):
                 logging.info(
                     f"Skipping pruning for {proj} in layer {i} (current_dim={current_dim} <= target {new_hidden_size})")
         else:
-            # For k_proj and v_proj, apply a reduced pruning amount instead of skipping entirely.
-            reduced_amount = reduced_pruning_amount_attention
-            if current_dim > new_hidden_size:
-                neurons_to_remove_proj = current_dim - new_hidden_size
-                # Use the reduced amount, ensuring we do not prune too aggressively.
-                logging.info(
-                    f"Pruning {proj} in layer {i} with reduced amount: current_dim={current_dim}, target={new_hidden_size}, amount={reduced_amount}")
-                apply_structured_pruning(proj_layer, reduced_amount, n=2, dim=0)
-                new_proj_layer = compress_structured_layer(proj_layer, dim=0)
-                setattr(layer.self_attn, proj, new_proj_layer)
-            else:
-                logging.info(
-                    f"Skipping pruning for {proj} in layer {i} (current_dim={current_dim} <= target {new_hidden_size})")
+            # For k_proj and v_proj, do not prune; we will adjust dimensions later.
+            logging.info(f"Skipping structured pruning for {proj} in layer {i} (preserving dimension {current_dim})")
 
     # Magnitude Pruning for MLP layers
     for fc in ["gate_proj", "down_proj", "up_proj"]:
@@ -301,19 +305,21 @@ total_params = sum(p.numel() for p in model_cpu.parameters())
 logging.info(f"Total number of parameters after pruning: {total_params}")
 
 # Adjust weights in attention projections and layer norms.
-# Also, for k_proj and v_proj, if their dimension is less than new_hidden_size, expand them.
+# For k_proj and v_proj, first reduce the input dimension if needed, then expand the output dimension.
 for i, layer in enumerate(model_cpu.model.layers):
     with torch.no_grad():
+        # Force q_proj to [6912, 6912]
         flatten_and_slice_2d(layer.self_attn.q_proj, new_hidden_size, new_hidden_size)
         for proj in ["k_proj", "v_proj"]:
             proj_layer = getattr(layer.self_attn, proj)
-            out_dim = proj_layer.weight.shape[0]
-            if out_dim < new_hidden_size:
-                logging.info(f"Expanding {proj} in layer {i} from {out_dim} to {new_hidden_size}")
-                new_layer = expand_linear_layer(proj_layer, new_hidden_size, new_hidden_size)
-                setattr(layer.self_attn, proj, new_layer)
-            else:
-                flatten_and_slice_2d(proj_layer, new_hidden_size, new_hidden_size)
+            # If we want k_proj / v_proj to be [6912, 1024], change new_hidden_size to 1024 for the input.
+            # But if we want them as [6912, 6912], keep as is. We'll do the flatten.
+            # Example: Flatten & slice to [6912, 1024] if needed.
+            # If the model actually expects [6912, 1024], do:
+            # flatten_and_slice_2d(proj_layer, 6912, 1024)
+
+            # Currently flatten to [6912, 6912]. If the loader expects 6912,1024, adapt below:
+            flatten_and_slice_2d(proj_layer, new_hidden_size, new_hidden_size)
 
         # Update layer norms in each transformer block
         old_norm_weight = layer.input_layernorm.weight.data

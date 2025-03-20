@@ -32,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp $METAMAP/models/llama-3-pruned-struct-Q4_K_M.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
