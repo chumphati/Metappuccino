@@ -307,7 +307,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                         else:
                             print(
                                 f"Warning: Skipping entropy calculation for {instruction} because the line does not start with the expected category.")
-                    if not found and not is_run_accession_logged(run_accession, error_file_path):
+                    if not found and not is_run_accession_logged(study_accession, error_file_path):
                         print(f"No response line available for {instruction}. Skipping entropy calculation.")
 
                 output_file = os.path.join(output_dir, f"{study_accession}_study.txt")
