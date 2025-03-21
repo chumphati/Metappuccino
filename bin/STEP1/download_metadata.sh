@@ -22,7 +22,7 @@ exec > "$LOG_DIR/download_metadata.out" 2> "$LOG_DIR/download_metadata.err"
 
 #clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/runs.tsv $METAMAP/results/METADATA 2>/dev/null || echo "run file not found, skipping."
+#    cp $SCRATCH_DIR/runs.tsv $METAMAP/results/METADATA 2>/dev/null || echo "run file not found, skipping."
     cp -r $SCRATCH_DIR/metadata $TMP_DIR/ 2>/dev/null || echo "Metadata extraction directory not found, skipping."
     cp $SCRATCH_DIR/metadata_sra.txt $TMP_DIR/ 2>/dev/null || echo "Final extraction file not found, skipping."
     cp $SCRATCH_DIR/STEP1_1.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
@@ -33,12 +33,12 @@ trap cleanup EXIT
 
 #necessary files
 #cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
-cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
+#cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
-#cp "$METAMAP/results/METADATA/runs.tsv" $SCRATCH_DIR/
+cp "$METAMAP/results/METADATA/runs.txt" $SCRATCH_DIR/
 #cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
-
+ls
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate
 

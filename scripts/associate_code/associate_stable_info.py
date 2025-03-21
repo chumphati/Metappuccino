@@ -162,7 +162,8 @@ for row in data:
             normalized_line = line.strip()
             normalized_line = re.sub(r"^\d+[\.\)\-]\s*", "", normalized_line)
 
-            if normalized_line.startswith("Tissue type:"):
+            # if normalized_line.startswith("Tissue type:"):
+            if re.match(r"^[^a-zA-Z0-9]*Tissue type[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Tissue type", None)
                 tissue_full_line = normalized_line
                 if entropy is not None and entropy < entropy_tt:
@@ -172,7 +173,8 @@ for row in data:
                     tt_high_entropy_rows.append([run_accession_number, entropy, tissue_full_line])
                     continue
 
-            elif normalized_line.startswith("Cell line:"):
+            # elif normalized_line.startswith("Cell line:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Cell line[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Cell line", None)
                 cell_line_full_line = normalized_line
                 if entropy is not None and entropy < entropy_cl:
@@ -182,7 +184,8 @@ for row in data:
                     cl_high_entropy_rows.append([run_accession_number, entropy, cell_line_full_line])
                     continue
 
-            elif normalized_line.startswith("Cell type:"):
+            # elif normalized_line.startswith("Cell type:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Cell type[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Cell type", None)
                 cell_type_full_line = normalized_line
                 if entropy is not None and entropy < entropy_ct:
@@ -192,7 +195,8 @@ for row in data:
                     ct_high_entropy_rows.append([run_accession_number, entropy, cell_type_full_line])
                     continue
 
-            elif normalized_line.startswith("Treatment:"):
+            # elif normalized_line.startswith("Treatment:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Treatment[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Treatment", None)
                 treatment_full_line = normalized_line
                 if entropy is not None and entropy < entropy_treatment:
@@ -202,7 +206,8 @@ for row in data:
                     treatment_high_entropy_rows.append([run_accession_number, entropy, treatment_full_line])
                     continue
 
-            elif normalized_line.startswith("Treatment Time:"):
+            # elif normalized_line.startswith("Treatment Time:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Treatment Time[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Treatment Time", None)
                 treatmenttime_full_line = normalized_line
                 if entropy is not None and entropy < entropy_treattime:
@@ -212,7 +217,8 @@ for row in data:
                     treatmenttime_high_entropy_rows.append([run_accession_number, entropy, treatmenttime_full_line])
                     continue
 
-            elif normalized_line.startswith("Response:"):
+            # elif normalized_line.startswith("Response:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Response[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Response", None)
                 res_full_line = normalized_line
                 if entropy is not None and entropy < entropy_res:
@@ -222,7 +228,8 @@ for row in data:
                     res_high_entropy_rows.append([run_accession_number, entropy, res_full_line])
                     continue
 
-            elif normalized_line.startswith("Phenotype:"):
+            # elif normalized_line.startswith("Phenotype:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Phenotype[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Phenotype", None)
                 phe_full_line = normalized_line
                 if entropy is not None and entropy < entropy_phe:
@@ -232,7 +239,8 @@ for row in data:
                     phe_high_entropy_rows.append([run_accession_number, entropy, phe_full_line])
                     continue
 
-            elif normalized_line.startswith("Library selection fixed:"):
+            # elif normalized_line.startswith("Library selection fixed:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Library selection fixed[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Library selection fixed", None)
                 libselec_full_line = normalized_line
                 if entropy is not None and entropy < entropy_libselec:
@@ -242,7 +250,8 @@ for row in data:
                     libselec_high_entropy_rows.append([run_accession_number, entropy, libselec_full_line])
                     continue
 
-            elif normalized_line.startswith("Library source:"):
+            # elif normalized_line.startswith("Library source:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Library source[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Library source", None)
                 libsource_full_line = normalized_line
                 if entropy is not None and entropy < entropy_libsource:
@@ -252,7 +261,8 @@ for row in data:
                     phe_high_entropy_rows.append([run_accession_number, entropy, libsource_full_line])
                     continue
 
-            elif normalized_line.startswith("Donor information:"):
+            # elif normalized_line.startswith("Donor information:"):
+            elif re.match(r"^[^a-zA-Z0-9]*Donor information[^a-zA-Z0-9]*:", normalized_line):
                 entropy = entropy_dict.get("Donor information", None)
                 donor_info = normalized_line.split("Donor information:", 1)[1].strip()
                 if entropy is not None:

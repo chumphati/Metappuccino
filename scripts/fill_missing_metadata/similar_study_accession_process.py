@@ -94,7 +94,7 @@ def pre_filter_studies(filtered_studies):
             else:
                 print(f"Error: file not found: {run_file}", flush=True)
 
-        if all_run_entropies and all(ent < 2.5 for ent in all_run_entropies):
+        if all_run_entropies and all(ent < 1.5 for ent in all_run_entropies):
             studies_to_eliminate[study] = run_accessions
         else:
             studies_to_analyze[study] = run_accessions
@@ -369,7 +369,7 @@ studies_to_analyze, studies_to_eliminate = pre_filter_studies(filtered_studies)
 print("Study accessions to analyze:", flush=True)
 for study in studies_to_analyze.keys():
     print(study, flush=True)
-print("Study accessions to eliminate (all run-level entropies < 2.5):", flush=True)
+print("Study accessions to eliminate (all run-level entropies < 1.5):", flush=True)
 for study in studies_to_eliminate.keys():
     print(study, flush=True)
 
