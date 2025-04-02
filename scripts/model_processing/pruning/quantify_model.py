@@ -1,6 +1,8 @@
 import subprocess
 import os
 
+#QUANTIFY MODEL IN 4 BITS GGUF FOR LLAMA.CPP
+
 pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-struct'
 quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-struct-f16.gguf'
 quantize4bits_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-struct-Q4_K_M.gguf'

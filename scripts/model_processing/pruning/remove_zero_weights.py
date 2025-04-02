@@ -1,6 +1,8 @@
 import torch
 from transformers import AutoModelForCausalLM
 
+#REMOVE 0 IN NON STRUCT MATRIX
+
 pruned_model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned"
 compact_model_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/llama-3-pruned-compact"
 

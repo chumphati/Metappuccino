@@ -8,9 +8,7 @@ import os
 import argparse
 import logging
 
-# Setup logging
-logging.basicConfig(filename='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/pruning_unstruct.log',
-                    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/PRUNING_MODEL/pruning_unstruct.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 ##########################################################################################
 # PARAMETERS

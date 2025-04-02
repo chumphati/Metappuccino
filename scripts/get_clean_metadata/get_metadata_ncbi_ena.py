@@ -159,7 +159,7 @@ def main():
             return
 
     # Execute Bash script to download metadata
-    execute_bash_download_metadata()
+    # execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
     with Pool(5) as pool:  # multiprocess on 5 CPUs

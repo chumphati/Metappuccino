@@ -37,8 +37,8 @@ trap cleanup EXIT
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
 cp "$METAMAP/results/METADATA/runs.txt" $SCRATCH_DIR/
-#cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
-ls
+cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
+
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate
 

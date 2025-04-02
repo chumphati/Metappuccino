@@ -2,6 +2,7 @@ import torch
 from transformers import AutoModelForCausalLM
 
 
+#COMPARAISON NB PARAMS BETWEEN ORIGINAL AND PRUNED MODEL
 def compare_models(original_path, pruned_path):
     model_original = AutoModelForCausalLM.from_pretrained(original_path)
     model_pruned = AutoModelForCausalLM.from_pretrained(pruned_path)
