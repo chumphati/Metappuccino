@@ -93,7 +93,8 @@ patterns = [
     r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s*(?:[-+])?\s*(.*?)(?=\s*\(|$)",
     r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:\d{4,7}\s*\+\s*([^(]+)(?:\s*\(.*?\))?\*\*",
     r"UBERON:\d{4,7}\s*[+-]\s*([\w\s]+?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
-    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?"
+    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*(?:(?:UBERON:\d{4,7}\s*[-+]\s*)?(.+))$"
 ]
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 

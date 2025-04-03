@@ -79,25 +79,29 @@ uberon_patterns = [
     r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*UBERON:\d{4,7}\s*(?:[-+])?\s*(.*?)(?=\s*\(|$)",
     r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*\*\*UBERON:\d{4,7}\s*\+\s*([^(]+)(?:\s*\(.*?\))?\*\*",
     r"UBERON:\d{4,7}\s*[+-]\s*([\w\s]+?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
-    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?"
+    r"UBERON:\d{4,7}\s*\+\s*(\w[\w\s]*?)(?:\s*\(.*?\))?(?:\s*\(e=[\d.]+\))?",
+    r"^(?:\d+[.)-]\s*)?UBERON organ and code:\s*(?:(?:UBERON:\d{4,7}\s*[-+]\s*)?(.+))$"
 ]
 uberon_compiled = [re.compile(p, re.IGNORECASE) for p in uberon_patterns]
 
 
 doid_patterns = [
-    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
-    r"DOID:\d{1,2,3,4,5,6}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d{1,2,3,4,5,6}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d{1,2,3,4,5,6}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)",
-    r"DOID:\d{1,2,3,4,5,6}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
+    r"DOID:\d{1,6}\s+([^(]+)\s*\(e=([^)]+)\)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
-    r"Estimated:\s*DOID:\d{1,2,3,4,5,6}\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
+    r"Estimated:\s*DOID:\d{1,6}\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
     r"[+\-]\s*([^;]+)(?:;|$)",
     r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
-    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?"
+    r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
+    r"Disease Ontology Term:\s*DOID:\d{1,6}\s+([^\s].*?)\b(?:,|\)|\.|$)"
 ]
+
 doid_compiled = [re.compile(p, re.IGNORECASE) for p in doid_patterns]
 
 

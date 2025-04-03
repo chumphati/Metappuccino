@@ -9,6 +9,7 @@ from datasets import Dataset, DatasetDict
 from peft import PeftModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import EarlyStoppingCallback
+import re
 
 ##########################################################################################
 # PATHS
@@ -55,11 +56,11 @@ model = get_peft_model(model, peft_config)
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
-    print(output, flush=True)
+    # print(output, flush=True)
 
     prompt_ids = tokenizer(prompt, truncation=True, padding=False, max_length=512)["input_ids"]
     output_ids = tokenizer(output, truncation=True, padding=False, max_length=128)["input_ids"]
-    print(output_ids, flush=True)
+    # print(output_ids, flush=True)
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
@@ -87,10 +88,10 @@ def tokenize_function(example):
 # MAIN
 print("Load dataset with prompts", flush=True)
 df = pd.read_csv(prompt_file)
-print(df, flush=True)
+# print(df, flush=True)
 dataset_full = Dataset.from_pandas(df)
 dataset_split = dataset_full.train_test_split(test_size=0.1, seed=42)
-print(dataset_split, flush=True)
+# print(dataset_split, flush=True)
 tokenized_datasets = dataset_split.map(tokenize_function)
 
 print("Config training args", flush=True)
@@ -130,6 +131,7 @@ trainer = Trainer(
     eval_dataset=tokenized_datasets['test'],
     tokenizer=tokenizer,
     data_collator=data_collator,
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
 )
 
 trainer.train()
@@ -147,18 +149,28 @@ print("Generating predictions on validation set", flush=True)
 eval_df = dataset_split["test"].to_pandas()
 for i, row in eval_df.iterrows():
     prompt = row["prompt"].strip()
+    print("Prompt: ", prompt, flush=True)
     expected = row["output"].strip()
+    print("Expected: ", expected, flush=True)
 
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
         # output_ids = model.generate(**input_encoded, max_new_tokens=50)
-        output_ids = model.generate(**input_encoded, max_new_tokens=10, do_sample=False, early_stopping=True)
+        output_ids = model.generate(**input_encoded, max_new_tokens=20, do_sample=False, early_stopping=True)
 
     prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
+    split_output = prediction.split("Here is the output:")
+    if len(split_output) > 1:
+        after_output = split_output[1].strip()
+    else:
+        after_output = prediction
 
-    print(f"🧠 Predicted output {i+1}: {prediction}", flush=True)
-    print(f"✅ Expected output {i+1}: {expected}", flush=True)
+    match = re.match(r"^(.*?)([,\-\[\(\n]|$)", after_output)
+    clean_prediction = match.group(1).strip() if match else after_output
+
+    print(f"--- Predicted output {i+1}: {clean_prediction}", flush=True)
+    print(f"--- Expected output {i+1}: {expected}", flush=True)
     print("-" * 50, flush=True)
-    writer.add_text(f"Prediction/Example_{i+1}", f"Pred: {prediction} | Label: {expected}", global_step=trainer.state.global_step)
+    writer.add_text(f"Prediction/Example_{i+1}", f"Pred: {clean_prediction} | Label: {expected}", global_step=trainer.state.global_step)
 
 writer.close()

@@ -23,7 +23,8 @@ cd $SCRATCH_DIR
 #clean and copy in case of fail
 cleanup() {
     cp -r $SCRATCH_DIR/INFO_BIO_LLM $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/ 2>/dev/null || echo "INFO_BIO_LLM not found, skipping."
-    cp $SCRATCH_DIR/reload_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "No additional context to increase."
+    cp $SCRATCH_DIR/reload_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "No additional file to process."
+    cp $SCRATCH_DIR/context_model_bio_info.txt $TMP_DIR/ 2>/dev/null || echo "No additional context to increase."
     cp $SCRATCH_DIR/llm_log_SB.txt $LOG_DIR/ 2>/dev/null || echo "Log file not found, skipping."
     cp $SCRATCH_DIR/STEP2_3.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
@@ -32,7 +33,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp $METAMAP/models/Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-f16.gguf $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
@@ -42,5 +43,5 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 2500
+python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --context_file_path $SCRATCH_DIR/context_model_bio_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 2500
 

@@ -1,4 +1,5 @@
 import csv
+import re
 
 
 def get_value(row, key):
@@ -15,7 +16,7 @@ def create_prompt(run_accession, metadata):
             If any information is missing in the metadata and can't be inferred, specify 'nan'. Don't double the answer. I want only one answer per category.
 
             Strict output format (no additional text or special characters, no duplicated answers), ONLY print the answer. Do not elaborate.:
-            Output in this form: "Organ: [single unique answer]"
+            OUTPUT IN THIS FORM= Organ: [single unique answer]
 
             Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after "Organ:".
 
@@ -23,7 +24,7 @@ def create_prompt(run_accession, metadata):
     return prompt
 
 
-input_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/raw/all_annotated_totalRNA.csv'
+input_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/raw/annotated_totalRNA.csv'
 output_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data.csv'
 
 metadata_columns = [
@@ -47,6 +48,8 @@ with open(input_file, 'r', encoding='ISO-8859-1') as infile, \
         metadata_values = [get_value(row, col) for col in metadata_columns]
         metadata = ", ".join(metadata_values)
         prompt = create_prompt(get_value(row, "run_accession"), metadata)
-        output = get_value(row, "Gtex")
-        output = f"Organ: {output}"
+
+        raw_output = get_value(row, "Gtex")
+        output = f"Organ: {raw_output}"
+
         writer.writerow([prompt, output])

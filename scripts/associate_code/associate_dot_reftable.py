@@ -79,20 +79,23 @@ rows_dict = {row[header_mapping["Run accession number"]]: row for row in rows}
 
 #get dot terms
 patterns = [
-    r"DOID:\d+\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
-    r"DOID:\d+\s*\(([^)]+)\)",
-    r"DOID:\d+\s*\(([^)]+)\)\s*\*\*.*?\*\*",
+    r"DOID:\d{1,6}\s+([^(]+)\s*\(e=([^)]+)\)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)\s*[-+]?\s*(.*?)\s*(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s+-\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s+\+\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}[:+-]\s+(.*?)(?:\)|\(|,|\+|$)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)",
+    r"DOID:\d{1,6}\s*\(([^)]+)\)\s*\*\*.*?\*\*",
     r"\bEstimated\s*-\s*(.*?)\b",
     r"Estimated:\s*(.*?)\b(?:,|\)|\.|$)",
-    r"Estimated:\s*DOID:\d+\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
+    r"Estimated:\s*DOID:\d{1,6}\s*[+\-]\s*(.*?)(?:\)|,|\.|\$)",
     r"[+\-]\s*([^;]+)(?:;|$)",
     r"Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
     r"^(?:\d+[.)-]\s*)?Disease Ontology Term:\s*\*\*(.*?)\*\*(?:\s*\(([^)]+)\))?",
-    r"Disease Ontology Term:\s*DOID:\d+\s+([^\s].*?)\b(?:,|\)|\.|$)"
+    r"Disease Ontology Term:\s*DOID:\d{1,6}\s+([^\s].*?)\b(?:,|\)|\.|$)"
 ]
+
+
 compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
 
 ##########################################################################################

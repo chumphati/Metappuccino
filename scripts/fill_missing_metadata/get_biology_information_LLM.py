@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description="Process metadata with LLM")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
 parser.add_argument("--input_metadata_path", type=str, required=True, help="Path to input metadata file")
 parser.add_argument("--error_file_path", type=str, required=True, help="Path to error log file")
+parser.add_argument("--context_file_path", type=str, required=True, help="Path to context log file")
 parser.add_argument("--log_file_path", type=str, required=True, help="Path to log file")
 parser.add_argument("--flag_file", type=str, required=True, help="Path to flag file for process completion")
 parser.add_argument("--initial_n_ctx", type=int, default=1200, help="Initial context size for Llama model")
@@ -25,13 +26,14 @@ args = parser.parse_args()
 base_path = args.base_path
 input_metadata_path = args.input_metadata_path
 error_file_path = args.error_file_path
+context_file_path = args.context_file_path
 log_file_path = args.log_file_path
 FLAG_FILE = args.flag_file
 initial_n_ctx = args.initial_n_ctx
 
 raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
-model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
+model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-f16.gguf")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
 
 ##########################################################################################
@@ -163,7 +165,7 @@ def process_metadata_llm(metadata_lines, llm):
                         "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and the rest of the context and state the inference. Use thee Cell Ontology terms terminology.")
                 if "UBERON organ and code" in na_columns:
                     instructions.append(
-                        "UBERON organ and code – Provide me the organ concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+                        "UBERON organ and code – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
                 if "Disease Ontology Term" in na_columns:
                     instructions.append(
                         "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
@@ -207,9 +209,12 @@ def process_metadata_llm(metadata_lines, llm):
                 {chr(10).join(instructions)}
                 
                 If any information is missing in the metadat can't be inferred for previous instruction, specify 'nan'. Don't double the answer. I want only one answer per category.
-                Strict output format (no additional text or special characters, no duplicated answers) I wait from you:
+                Strict output format (no additional text or special characters, no duplicated answers), ONLY print the answer. Do not elaborate.:
+                Output in this form: Organ: [single unique answer]
+    
+                Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after the "Category:".
                 """ + chr(10).join(
-                    [f"{col}: [single unique answer]" for col in na_columns]) + " Here is the strict output: "
+                    [f"{col}: [single unique answer]" for col in na_columns]) + " RETURN ALL CATEGORIES. Here is the strict output: "
 
                 print("PROMPT:", flush=True)
                 print(prompt, flush=True)
@@ -219,7 +224,7 @@ def process_metadata_llm(metadata_lines, llm):
 
                 try:
                     print("BEGIN:", flush=True)
-                    response = llm(prompt, max_tokens=100, logprobs=True)
+                    response = llm(prompt, max_tokens=180, logprobs=True)
                     print(response)
                     print("ANSWER:", flush=True)
                     print(response["choices"][0]["text"])
@@ -229,6 +234,7 @@ def process_metadata_llm(metadata_lines, llm):
                     # split answer to get each instruction
                     response_text = response["choices"][0]["text"].strip()
                     response_text = re.sub(r'(?<!^)(\d+\.\s*)', r'\n\1', response_text)
+                    response_text = re.sub(r'^(["\'])(.*?)(["\'])$', r'\2', response_text, flags=re.MULTILINE)
                     response_lines = response_text.split("\n")
                     response_lines = [re.sub(r'^\d+[\.\)\-]\s*', '', line) for line in response_lines]
                     response_lines = [line.replace("*", "") for line in response_lines]
@@ -261,7 +267,7 @@ def process_metadata_llm(metadata_lines, llm):
                     num_filled_categories = sum(1 for value in unique_answers.values() if value.strip() != "")
                     total_categories = len(na_columns)
                     filled_percentage = (num_filled_categories / total_categories) * 100
-                    if filled_percentage < 50:
+                    if filled_percentage < 30:
                         write_reload_file(error_file_path, error_file_header, clean_metadata)
                         print(f"Warning: Only {filled_percentage}% of categories filled for {run_accession}. Data written to reload file.")
 
@@ -276,7 +282,7 @@ def process_metadata_llm(metadata_lines, llm):
                 except ValueError as e:
                     if "Requested tokens" in str(e):
                         print("Warning: context size too large, analysis postponed to wait for other model.")
-                        write_reload_file(error_file_path, error_file_header, clean_metadata)
+                        write_reload_file(context_file_path, error_file_header, clean_metadata)
 
                 except MemoryError:
                     print(f"Memory error: line {idx}")

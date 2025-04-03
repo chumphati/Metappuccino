@@ -20,7 +20,7 @@ base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "study_info.txt")
 raw_final_info_path = os.path.join(base_path, "final_llm_sample_analysis.csv")
 output_dir = os.path.join(base_path, "INFO_STUDY_LLM")
-model_path = os.path.join(base_path, "Llama-3.1-Nemotron-70B-Instruct-HF-Q4_K_M.gguf")
+model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-f16.gguf")
 log_file_path = os.path.join(base_path, "llm_log_study.txt")
 error_file_path = os.path.join(base_path, "reload_model_study_info.txt")
 error_file_header = "study_accession\trun_accession_list\tlibrary_construction_protocol\tstudy_metadata_ncbi"
@@ -224,7 +224,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and state the inference. Use thee Cell Ontology terms terminology.")
             if "UBERON term" in fields_for_prompt:
                 instructions.append(
-                    "UBERON term – The UBERON code and organ for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+                    "UBERON term – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
             if "DOT term" in fields_for_prompt:
                 instructions.append(
                     "DOT term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
@@ -264,9 +264,12 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
             For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
             {chr(10).join(instructions)}
 
-            If any information is missing in the metadata, provide an informed estimate when possible (e.g., based on general knowledge or known standards of the platform). Don't double the answer. I want only one answer per category.
-            Strict output format (no additional text or special characters, no duplicated answers) I wait from you:
-            """ + chr(10).join([f"{col}: [single unique answer]" for col in fields_for_prompt]) + " Here is the strict output: "
+            If any information is missing in the metadat can't be inferred for previous instruction, specify 'nan'. Don't double the answer. I want only one answer per category.
+            Strict output format (no additional text or special characters, no duplicated answers), ONLY print the answer. Do not elaborate.:
+            Output in this form: Organ: [single unique answer]
+
+            Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after the "Category:".
+            """ + chr(10).join([f"{col}: [single unique answer]" for col in fields_for_prompt]) + " RETURN ALL CATEGORIES. Here is the strict output: "
 
             print("PROMPT:", flush=True)
             print(prompt, flush=True)
@@ -284,10 +287,11 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 # split answer to get each instruction
                 response_text = response["choices"][0]["text"].strip()
                 response_text = re.sub(r'(?<!^)(\d+\.\s*)', r'\n\1', response_text)
+                response_text = re.sub(r'^(["\'])(.*?)(["\'])$', r'\2', response_text, flags=re.MULTILINE)
                 response_lines = response_text.split("\n")
                 response_lines = [re.sub(r'^\d+[\.\)\-]\s*', '', line) for line in response_lines]
                 response_lines = [line.replace("*", "") for line in response_lines]
-
+                print("response line", response_lines)
                 entropy_dict = {}
 
                 # entropie calculation for each instruction (using fields_for_prompt)
