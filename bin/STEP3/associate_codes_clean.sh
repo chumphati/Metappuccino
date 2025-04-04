@@ -5,10 +5,10 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
-#ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
-METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
+#METAMAP=${1:-$METAMAP}
+#ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 FINAL_DIR=$METAMAP/results/SPECIFIC_RUN_ANALYSIS
@@ -47,6 +47,8 @@ cp "$METAMAP/scripts/associate_code/unif_cell_line.py" $SCRATCH_DIR/
 source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
+
+sed -i -e 's/[*"\x27]//g' $SCRATCH_DIR/INFO_BIO_LLM/*
 
 python3 -u $SCRATCH_DIR/associate_uberon_reftable.py --base_path $SCRATCH_DIR
 python3 -u $SCRATCH_DIR/associate_dot_reftable.py --base_path $SCRATCH_DIR

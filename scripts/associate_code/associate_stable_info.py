@@ -94,6 +94,7 @@ libsource_high_entropy_rows = []
 
 for row in data:
     run_accession_number = row[0]
+    print(run_accession_number, flush=True)
 
     tissue_type = "NA"
     cell_line = "NA"
@@ -156,11 +157,16 @@ for row in data:
                     entropy_dict["Library source"] = entropy
                 elif "Donor information Entropy" in line:
                     entropy_dict["Donor information"] = entropy
-        # print(run_accession_number)
+        print("totoooooo")
+        print(run_accession_number, flush=True)
         # print(entropy_dict)
         for line in lines:
+            print(line, flush=True)
             normalized_line = line.strip()
-            normalized_line = re.sub(r"^\d+[\.\)\-]\s*", "", normalized_line)
+            # normalized_line = re.sub(r"^\d+[\.\)\-]\s*", "", normalized_line)
+            normalized_line = re.sub(r"^\d+[\.\)\-\*]*\s*", "", normalized_line)
+            print("norm line", flush=True)
+            print(normalized_line, flush=True)
 
             # if normalized_line.startswith("Tissue type:"):
             if re.match(r"^[^a-zA-Z0-9]*Tissue type[^a-zA-Z0-9]*:", normalized_line):
