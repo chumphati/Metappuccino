@@ -42,7 +42,7 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-iteration_limit=15
+iteration_limit=3
 for (( i=0; i<$iteration_limit; i++ )); do
 
     if [ -f "$TMP_DIR/reload_model_bio_info.txt" ]; then

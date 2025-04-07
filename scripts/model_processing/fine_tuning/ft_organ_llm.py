@@ -112,6 +112,18 @@ dataset_split = {
 print(dataset_split, flush=True)
 tokenized_datasets = {k: v.map(tokenize_function) for k, v in dataset_split.items()}
 
+print("Content of test set:\n", flush=True)
+test_dataset = dataset_split["test"].to_pandas()
+run_accessions_list = []
+for i, row in test_dataset.iterrows():
+    prompt = row["prompt"].strip()
+    first_line = prompt.splitlines()[0]
+    match = re.search(r"Run accession:\s*(\S+)", first_line)
+    run_accession = match.group(1) if match else "N/A"
+    run_accessions_list.append(run_accession)
+    print(f"Test example {i+1} → Run accession: {run_accession}", flush=True)
+print(run_accessions_list, flush=True)
+
 print("Config training args", flush=True)
 training_args = TrainingArguments(
     output_dir=train_model,

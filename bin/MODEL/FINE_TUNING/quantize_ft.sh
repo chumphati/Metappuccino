@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N pruning_ft
+#PBS -N quantize_ft
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
@@ -15,7 +15,7 @@ mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
 mkdir -p $RESULT_DIR
 
-exec > "$LOG_DIR/pruning_ft.out" 2> "$LOG_DIR/pruning_ft.err"
+exec > "$LOG_DIR/quantize_ft.out" 2> "$LOG_DIR/quantize_ft.err"
 echo "Début du job : $(date)"
 
 #clean and copy in case of fail
