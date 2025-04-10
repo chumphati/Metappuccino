@@ -2,7 +2,7 @@ import os
 import re
 import pandas as pd
 
-input_folder = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/INFO_BIO_LLM_FT"
+input_folder = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
 output_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/llm_FT_sort_output.csv"
 
 data = []

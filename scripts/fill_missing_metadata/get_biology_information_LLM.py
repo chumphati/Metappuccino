@@ -87,13 +87,19 @@ def logits_to_probabilities(logits):
 # write prompt that is out of context
 def write_reload_file(filepath, header, line):
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    line_str = ";".join(map(str, line))
+    line_exists = False
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as file:
+            existing_lines = set(l.strip() for l in file)
+            line_exists = line_str in existing_lines
     if not os.path.exists(filepath):
         with open(filepath, 'w') as file:
             file.write(header + '\n')
-
-    # append the problematic line to the file
-    with open(filepath, 'a') as file:
-        file.write(";".join(map(str, line)) + '\n')
+    #append the problematic line to the file
+    if not line_exists:
+        with open(filepath, 'a') as file:
+            file.write(line_str + '\n')
 
 
 def is_run_accession_logged(run_accession, error_file_path):

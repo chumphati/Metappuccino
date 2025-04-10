@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N ft_organ_llm
+#PBS -N ft_complete_cv
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
@@ -16,7 +16,7 @@ mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
 mkdir -p $RESULT_DIR
 
-exec > "$LOG_DIR/ft_organ_llm.out" 2> "$LOG_DIR/ft_organ_llm.err"
+exec > "$LOG_DIR/ft_complete_cv.out" 2> "$LOG_DIR/ft_complete_cv.err"
 echo "Begin job : $(date)"
 
 cleanup() {
@@ -31,11 +31,11 @@ trap cleanup EXIT
 source $ENV/bin/activate
 
 cp -r /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/Mistral-7B-Instruct-v0.3 $SCRATCH_DIR
-cp $RESULT_DIR/finetune_train.csv $SCRATCH_DIR
-cp $METAMAP/scripts/model_processing/fine_tuning/ft_organ_llm.py $SCRATCH_DIR
+cp $RESULT_DIR/finetune_data.csv $SCRATCH_DIR
+cp $METAMAP/scripts/model_processing/fine_tuning/ft_complete_cv.py $SCRATCH_DIR
 
 cd $SCRATCH_DIR
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python ft_organ_llm.py --base_path $SCRATCH_DIR
+python ft_complete_cv.py --base_path $SCRATCH_DIR

@@ -1,22 +1,22 @@
 #!/bin/bash
-#PBS -N ft_organ_llm
+#PBS -N ft_complete_cv_eval
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:host=node50:ncpus=30:ngpus=2:mem=80gb
 
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 LOG_DIR="$METAMAP/results/logs"
-RESULT_DIR="$METAMAP/results/FINE_TUNING"
+RESULT_DIR="$METAMAP/results/FINE_TUNING_COMPLETE"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 
 mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
 mkdir -p $RESULT_DIR
 
-exec > "$LOG_DIR/ft_organ_llm.out" 2> "$LOG_DIR/ft_organ_llm.err"
+exec > "$LOG_DIR/ft_complete_cv_eval.out" 2> "$LOG_DIR/ft_complete_cv_eval.err"
 echo "Begin job : $(date)"
 
 cleanup() {
@@ -31,11 +31,11 @@ trap cleanup EXIT
 source $ENV/bin/activate
 
 cp -r /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/Mistral-7B-Instruct-v0.3 $SCRATCH_DIR
-cp $RESULT_DIR/finetune_train.csv $SCRATCH_DIR
-cp $METAMAP/scripts/model_processing/fine_tuning/ft_organ_llm.py $SCRATCH_DIR
+cp $RESULT_DIR/finetune_data.csv $SCRATCH_DIR
+cp $METAMAP/scripts/model_processing/fine_tuning/ft_complete_cv_eval.py $SCRATCH_DIR
 
 cd $SCRATCH_DIR
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python ft_organ_llm.py --base_path $SCRATCH_DIR
+python ft_complete_cv_eval.py --base_path $SCRATCH_DIR
