@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
+PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results_train"
 TAX="tax_eq(9606)%20AND%20"  # restrict to tax (human=9606)
 STRAT="library_strategy%3D%22RNA-seq%22%20AND%20"  # Strategy= RNA-Seq, WXS, WGS
 DATES="first_public%3E%3D2012-01-01%20AND%20first_public%3C2025-01-01%20AND%20"
@@ -17,7 +17,7 @@ END_STEP1_1="${PATH}/logs/STEP1_1.flag"
 #     "https://www.ebi.ac.uk/ena/portal/api/search" > ${PATH}/runs.tsv
 
 #from annotated total rna
-/usr/bin/awk -F';' 'NR==1 || $5 != "" { print $5 }' "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/raw/annotated_totalRNA.csv" > "${PATH}/runs.tsv"
+#/usr/bin/awk -F';' 'NR==1 || $5 != "" { print $5 }' "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/raw/annotated_totalRNA.csv" > "${PATH}/runs.tsv"
 
 ##RECUP METADATA
 #créer dossier out pour les metadatas

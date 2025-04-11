@@ -3,7 +3,7 @@ import os
 
 #QUANTIFY MODEL IN 4 BITS GGUF FOR LLAMA.CPP
 
-pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/MISTRAL7B_RESULTS/FINE_TUNING/mistral7B_full_finetuned'
+pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING_COMPLETE/mistral7B_full_finetuned'
 quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Mistral-7B-Instruct-v0.3-f16.gguf'
 quantize4bits_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf'
 

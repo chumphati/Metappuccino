@@ -40,7 +40,7 @@ train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = os.path.join(base_path, "results", "FINE_TUNING_COMPLETE", "tensorboard")
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING_COMPLETE/tensorboard"
 
 ##########################################################################################
 # MODEL
@@ -179,7 +179,7 @@ def objective(trial):
         output_dir=f"./tmp_model_trial_{trial.number}",
         evaluation_strategy="epoch",
         learning_rate=learning_rate,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         per_device_eval_batch_size=1,
         num_train_epochs=num_train_epochs,
         weight_decay=0.01,
@@ -187,7 +187,7 @@ def objective(trial):
         logging_strategy="steps",
         logging_steps=10,
         fp16=True,
-        gradient_accumulation_steps=2,
+        gradient_accumulation_steps=4,
         report_to=[],
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss"
@@ -260,7 +260,7 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="epoch",
     learning_rate=best_params["learning_rate"],
-    per_device_train_batch_size=1,
+    per_device_train_batch_size=4,
     per_device_eval_batch_size=1,
     num_train_epochs=best_params["num_train_epochs"],
     weight_decay=0.01,
@@ -268,7 +268,7 @@ training_args_final = TrainingArguments(
     logging_strategy='steps',
     logging_steps=10,
     fp16=True,
-    gradient_accumulation_steps=2,
+    gradient_accumulation_steps=4,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
