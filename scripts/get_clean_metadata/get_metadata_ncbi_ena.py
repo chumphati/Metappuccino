@@ -154,6 +154,7 @@ def main():
     with open(RUNS_TSV, 'r') as file:
         next(file)
         run_accessions = [line.strip() for line in file if line.strip()]
+        print(run_accessions, flush=True)
         if not run_accessions:
             print("Error: no run accessions found")
             return

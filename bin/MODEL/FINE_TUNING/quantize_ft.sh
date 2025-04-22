@@ -7,20 +7,17 @@
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-LOG_DIR="$METAMAP/results/logs"
-RESULT_DIR="$METAMAP/results/FINE_TUNING"
+LOG_DIR="$METAMAP/results_train/logs"
 
 SCRATCH_DIR="/scratchlocal/$USER/$PBS_JOBID"
 mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
-mkdir -p $RESULT_DIR
 
 exec > "$LOG_DIR/quantize_ft.out" 2> "$LOG_DIR/quantize_ft.err"
 echo "Début du job : $(date)"
 
 #clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/activations_unstruct.pkl $RESULT_DIR/ 2>/dev/null || echo "Activations non trouvées."
     rm -rf "$SCRATCH_DIR"
     echo "Fin du job : $(date)"
 }
@@ -28,7 +25,6 @@ trap cleanup EXIT
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
-mkdir -p $METAMAP/results/FINE_TUNING
 
 source $ENV/bin/activate
 

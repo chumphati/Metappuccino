@@ -5,10 +5,11 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=8:mem=16gb
 
-METAMAP=${1:-$METAMAP}
+#METAMAP=${1:-$METAMAP}
+METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 
-LOG_DIR=$METAMAP/results/logs
-TMP_DIR=$METAMAP/results/tmp
+LOG_DIR=$METAMAP/results_train/logs
+TMP_DIR=$METAMAP/results_train/tmp
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
@@ -18,7 +19,7 @@ exec > "$LOG_DIR/clean_metadata.out" 2> "$LOG_DIR/clean_metadata.err"
 
 #clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/cleaned_metadata_sra.txt $METAMAP/results/METADATA 2>/dev/null || echo "Cleaned metadata file not found, skipping."
+    cp $SCRATCH_DIR/cleaned_metadata_sra.txt $METAMAP/results_train/METADATA 2>/dev/null || echo "Cleaned metadata file not found, skipping."
     cp $SCRATCH_DIR/STEP1_2.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
@@ -28,7 +29,7 @@ trap cleanup EXIT
 echo "Begin date: $(date)"
 
 #necessary files
-cp "$METAMAP/results/tmp/metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAMAP/results_train/tmp/metadata_sra.txt" $SCRATCH_DIR/
 
 awk -F'\t' '{
   for (i=NF-1; i<=NF; i++) {

@@ -172,4 +172,4 @@ results/
 models/
 store/
 data/raw/cellosaurus.txt
-
+results_train/

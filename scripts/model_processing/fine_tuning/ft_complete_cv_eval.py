@@ -40,7 +40,7 @@ train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING_COMPLETE/tensorboard"
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results_train/FINE_TUNING_COMPLETE/tensorboard"
 
 ##########################################################################################
 # MODEL
@@ -56,17 +56,15 @@ model_base = AutoModelForCausalLM.from_pretrained(
 
 print("Config LoRA", flush=True)
 
-
 ##########################################################################################
 # FUNCTIONS
-
 
 # tokenize input
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
-    prompt_ids = tokenizer(prompt, truncation=True, padding=False, max_length=512)["input_ids"]
-    output_ids = tokenizer(output, truncation=True, padding=False, max_length=128)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=512)["input_ids"]
+    output_ids = tokenizer(output, truncation=True, max_length=128)["input_ids"]
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
@@ -74,29 +72,18 @@ def tokenize_function(example):
 
     max_length = 640
     padding_length = max_length - len(input_ids)
-    if padding_length > 0:
-        input_ids += [tokenizer.pad_token_id] * padding_length
-        attention_mask += [0] * padding_length
-        labels += [-100] * padding_length
-    else:
-        input_ids = input_ids[:max_length]
-        attention_mask = attention_mask[:max_length]
-        labels = labels[:max_length]
+    input_ids += [tokenizer.pad_token_id] * padding_length
+    attention_mask += [0] * padding_length
+    labels += [-100] * padding_length
 
-    return {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-        "labels": labels,
-    }
-
+    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
 # extract output LLM answer
 def extract_clean_response(text):
     split_output = text.split("Here is the output:")
     after_output = split_output[1].strip() if len(split_output) > 1 else text
-    match = re.match(r'^(.*?)([\-\[\(\n,\"\']|$)', after_output)
+    match = re.match(r'^(.*?)([\-\[\("\',]|$)', after_output)
     return match.group(1).strip().lower() if match else after_output.strip().lower()
-
 
 # see if match between prediction and reference
 def semantic_match(pred, ref):
@@ -104,10 +91,26 @@ def semantic_match(pred, ref):
     ref = extract_clean_response(ref)
     return ref in pred or pred in ref
 
+# deduplicate prediction categories
+def deduplicate_categories(pred_text):
+    seen = set()
+    final_output = []
+    for line in pred_text.splitlines():
+        if ':' in line:
+            cat, val = line.split(':', 1)
+            cat = cat.strip()
+            if cat not in seen:
+                final_output.append(f"{cat}: {val.strip()}")
+                seen.add(cat)
+    return '\n'.join(final_output)
+
+# clean output before tokenization
+def clean_output_text(example):
+    example["output"] = deduplicate_categories(example["output"])
+    return example
 
 ##########################################################################################
 # MAIN
-
 
 print("Load dataset with prompts", flush=True)
 df = pd.read_csv(prompt_file)
@@ -135,6 +138,8 @@ print(run_accessions_list, flush=True)
 
 subsample_train_frac = 0.2  #20% train+val for optimisation
 subsample_val_frac = 0.1    #10% du train+val for eval
+
+writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
 def objective(trial):
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True)
@@ -171,15 +176,17 @@ def objective(trial):
     train_dataset_fold = Dataset.from_pandas(df_sub_train)
     val_dataset_fold = Dataset.from_pandas(df_sub_val)
 
-    train_tokenized = train_dataset_fold.map(tokenize_function)
-    val_tokenized = val_dataset_fold.map(tokenize_function)
+    train_tokenized = train_dataset_fold.map(clean_output_text).map(tokenize_function)
+    val_tokenized = val_dataset_fold.map(clean_output_text).map(tokenize_function)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True)
 
     training_args = TrainingArguments(
         output_dir=f"./tmp_model_trial_{trial.number}",
+        logging_dir=os.path.join(tensorboard_log_dir, f"fold_{trial.number}"),
+        run_name=f"fold_{trial.number}",
         evaluation_strategy="epoch",
         learning_rate=learning_rate,
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         num_train_epochs=num_train_epochs,
         weight_decay=0.01,
@@ -187,8 +194,8 @@ def objective(trial):
         logging_strategy="steps",
         logging_steps=10,
         fp16=True,
-        gradient_accumulation_steps=4,
-        report_to=[],
+        gradient_accumulation_steps=2,
+        report_to=["tensorboard"],
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss"
     )
@@ -209,6 +216,10 @@ def objective(trial):
 
     eval_results = trainer.evaluate()
     eval_loss = eval_results.get("eval_loss")
+
+    writer_folds.add_scalar("fold/train_size", len(df_sub_train), trial.number)
+    writer_folds.add_scalar("fold/val_size", len(df_sub_val), trial.number)
+    writer_folds.add_scalar("fold/eval_loss", eval_loss, trial.number)
 
     trainer.save_model(training_args.output_dir)
     del model
@@ -233,10 +244,15 @@ df_train_final = df_train_final.reset_index(drop=True)
 df_val_final = df_val_final.reset_index(drop=True)
 print(f"Final training set size: {len(df_train_final)}, Final validation set size: {len(df_val_final)}", flush=True)
 
+final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
+final_writer_training.add_scalar("final/train_size", len(df_train_final), 0)
+final_writer_training.add_scalar("final/val_size", len(df_val_final), 0)
+final_writer_training.close()
+
 train_dataset_final = Dataset.from_pandas(df_train_final)
 val_dataset_final = Dataset.from_pandas(df_val_final)
-tokenized_train_final = train_dataset_final.map(tokenize_function)
-tokenized_val_final = val_dataset_final.map(tokenize_function)
+tokenized_train_final = train_dataset_final.map(clean_output_text).map(tokenize_function)
+tokenized_val_final = val_dataset_final.map(clean_output_text).map(tokenize_function)
 
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
@@ -260,7 +276,7 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="epoch",
     learning_rate=best_params["learning_rate"],
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
     num_train_epochs=best_params["num_train_epochs"],
     weight_decay=0.01,
@@ -268,7 +284,7 @@ training_args_final = TrainingArguments(
     logging_strategy='steps',
     logging_steps=10,
     fp16=True,
-    gradient_accumulation_steps=4,
+    gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
@@ -313,16 +329,25 @@ for i, row in eval_df.iterrows():
     print("EXPECTED OUTPUT", flush=True)
     expected = row["output"].strip()
     print(expected, flush=True)
+
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
+
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=20, do_sample=False, early_stopping=True)
-    prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
+
+    raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
+    split_output = raw_pred.split("Here is the output:")
+    after_output = split_output[1].strip() if len(split_output) > 1 else raw_pred
+    prediction = deduplicate_categories(after_output)
+
     print("AFTER", flush=True)
     print("PREDICTION", flush=True)
     print(prediction, flush=True)
     print("-" * 50, flush=True)
+
     predictions.append(prediction)
     references.append(expected)
+
     print("EXPECTED OUTPUT", flush=True)
     print(expected, flush=True)
 
@@ -346,13 +371,12 @@ for i, row in test_df.iterrows():
     expected = row["output"].strip()
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=20, do_sample=False, early_stopping=True)
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
     prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
 
     split_output = prediction.split("Here is the output:")
     after_output = split_output[1].strip() if len(split_output) > 1 else prediction
-    match = re.match(r'^(.*?)([\-\[\(\n,\"\']|$)', after_output)
-    clean_prediction = match.group(1).strip() if match else after_output
+    clean_prediction = deduplicate_categories(after_output)
 
     print(f"--- Predicted output {i+1}: {clean_prediction}", flush=True)
     print(f"--- Expected output {i+1}: {expected}", flush=True)

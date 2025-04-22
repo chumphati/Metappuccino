@@ -36,7 +36,7 @@ trap cleanup EXIT
 #cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
-cp "$METAMAP/results_train/runs.txt" $SCRATCH_DIR/
+cp "$METAMAP/results_train/METADATA/runs.txt" $SCRATCH_DIR/
 #cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
 
 #activate requirements venv
@@ -45,5 +45,3 @@ source $ENV_REQUIREMENT/bin/activate
 echo "Begin date: $(date)"
 
 python3 -u $SCRATCH_DIR/get_metadata_ncbi_ena.py --base_path $SCRATCH_DIR
-#python3 -u $SCRATCH_DIR/get_metadata_ncbi_ena.sh
-
