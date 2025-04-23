@@ -1,5 +1,5 @@
 ##########################################################################################
-# IMPORT
+#IMPORT
 import random
 import numpy as np
 import torch
@@ -15,9 +15,11 @@ from transformers import EarlyStoppingCallback, TrainerCallback
 import re
 from sklearn.model_selection import KFold, train_test_split
 import optuna
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 ##########################################################################################
-# SEEDS
+#SEEDS
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
@@ -26,8 +28,8 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
 ##########################################################################################
-# PATHS
-parser = argparse.ArgumentParser(description="Fine-tune model (with optional cross-validation)")
+#PATHS
+parser = argparse.ArgumentParser(description="Fine-tune model")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
 parser.add_argument("--n_splits", type=int, default=5, help="Number of CV folds")
 args = parser.parse_args()
@@ -40,10 +42,16 @@ train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results_train/FINE_TUNING_COMPLETE/tensorboard"
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/tensorboard"
+
+#parameters for semantic matching
+sem_model_name = 'sentence-transformers/all-mpnet-base-v2'
+model_sem = SentenceTransformer(sem_model_name)
+#value to consider prediction true
+threshold = 0.35
 
 ##########################################################################################
-# MODEL
+#MODEL
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 
@@ -57,20 +65,20 @@ model_base = AutoModelForCausalLM.from_pretrained(
 print("Config LoRA", flush=True)
 
 ##########################################################################################
-# FUNCTIONS
+#FUNCTIONS
 
-# tokenize input
+#tokenize input
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=512)["input_ids"]
-    output_ids = tokenizer(output, truncation=True, max_length=128)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=2000)["input_ids"]
+    output_ids = tokenizer(output, truncation=True, max_length=200)["input_ids"]
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
 
-    max_length = 640
+    max_length = 2000
     padding_length = max_length - len(input_ids)
     input_ids += [tokenizer.pad_token_id] * padding_length
     attention_mask += [0] * padding_length
@@ -78,20 +86,7 @@ def tokenize_function(example):
 
     return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
-# extract output LLM answer
-def extract_clean_response(text):
-    split_output = text.split("Here is the output:")
-    after_output = split_output[1].strip() if len(split_output) > 1 else text
-    match = re.match(r'^(.*?)([\-\[\("\',]|$)', after_output)
-    return match.group(1).strip().lower() if match else after_output.strip().lower()
-
-# see if match between prediction and reference
-def semantic_match(pred, ref):
-    pred = extract_clean_response(pred)
-    ref = extract_clean_response(ref)
-    return ref in pred or pred in ref
-
-# deduplicate prediction categories
+#deduplicate prediction categories
 def deduplicate_categories(pred_text):
     seen = set()
     final_output = []
@@ -104,18 +99,123 @@ def deduplicate_categories(pred_text):
                 seen.add(cat)
     return '\n'.join(final_output)
 
-# clean output before tokenization
+#clean output before tokenization
 def clean_output_text(example):
     example["output"] = deduplicate_categories(example["output"])
     return example
 
-##########################################################################################
-# MAIN
+#parse raw generation into deduplicated block
+def parse_pred_block(raw_pred):
+    split_output = raw_pred.split("Here is the output:")
+    after = split_output[1].strip() if len(split_output) > 1 else raw_pred
+    return deduplicate_categories(after)
 
+#compute per-category metrics using semantic similarity
+def compute_categorical_metrics(pred_texts, ref_texts, categories):
+    metrics = {}
+    for cat in categories:
+        accs = []
+        for pred, ref in zip(pred_texts, ref_texts):
+            print("--------------------")
+            print("raw pred: ", pred, flush=True)
+            print("raw ref: ", ref, flush=True)
+
+            p_block = parse_pred_block(pred)
+            p_dict = {}
+            for line in p_block.splitlines():
+                if ":" not in line:
+                    continue
+                raw_cat, val = line.split(":", 1)
+                cat_clean = re.sub(r'^[^A-Za-z0-9]+', '', raw_cat.strip())
+                p_dict[cat_clean] = val.strip()
+            # p_dict = {l.split(":",1)[0].strip(): l.split(":",1)[1].strip() for l in p_block.splitlines() if ":" in l}
+            
+            r_dict = {l.split(":",1)[0].strip(): l.split(":",1)[1].strip() for l in ref.splitlines() if ":" in l}
+            print("--------------------")
+            print("p_dict: ", p_dict, flush=True)
+            print("r_dict: ", r_dict, flush=True)
+            # p_val = p_dict.get(cat, "").strip()
+            # r_val = r_dict.get(cat, "").strip()
+
+            p_val = ""
+            for key, val in p_dict.items():
+                if cat in key:
+                    p_val = val.strip()
+                    break
+            r_val = ""
+            for key, val in r_dict.items():
+                if cat in key:
+                    r_val = val.strip()
+                    break
+            
+            print("--------------------")
+            print("category: ", cat, flush=True)
+            print("pred val: ", p_val, flush=True)
+            print("ref val: ", r_val, flush=True)
+            print("--------------------")
+            #nan or empty references
+            if not r_val or r_val.lower() == 'nan':
+                acc = (not p_val) or p_val.lower() == 'nan'
+            elif not p_val:
+                acc = False
+            else:
+                emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
+                emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
+                cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
+                acc = cos > threshold
+            accs.append(acc)
+        metrics[f"accuracy_{cat.lower()}"] = sum(accs) / len(accs) if accs else 0.0
+    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
+    return metrics
+
+
+##########################################################################################
+#CUSTOMED TRAINER
+class MyTrainer(Trainer):
+    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval", **kwargs):
+        results = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix, **kwargs)
+        ds = eval_dataset if eval_dataset is not None else self.eval_dataset
+        preds, refs = [], []
+        for example in ds:
+            prompt = example["prompt"]
+            expected = example["output"]
+
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
+
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=200,
+                    do_sample=False,
+                    early_stopping=True
+                )
+
+            raw = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            preds.append(raw)
+            refs.append(expected)
+
+        cat_metrics = compute_categorical_metrics(preds, refs, self.model.config.categories)
+
+        for k, v in cat_metrics.items():
+            key = f"{metric_key_prefix}_{k}"
+            self.log({key: v})
+            results[key] = v
+        return results
+
+##########################################################################################
+#MAIN
 print("Load dataset with prompts", flush=True)
 df = pd.read_csv(prompt_file)
 
-# independant test
+all_cats = set()
+for out in df["output"].fillna("").tolist():
+    for line in out.splitlines():
+        if ":" in line:
+            all_cats.add(line.split(":",1)[0].strip())
+categories = sorted(all_cats)
+model_base.config.categories = categories
+
+#independant test
 df_trainval, df_test = train_test_split(df, test_size=0.1, random_state=SEED)
 df_trainval = df_trainval.reset_index(drop=True)
 df_test = df_test.reset_index(drop=True)
@@ -134,8 +234,9 @@ for i, row in df_test.iterrows():
 print(run_accessions_list, flush=True)
 
 ##########################################################################################
-# OPTUNA HYPERPARAM SEARCH
+#OPTUNA HYPERPARAM SEARCH
 
+#subsample to find hp quicker
 subsample_train_frac = 0.2  #20% train+val for optimisation
 subsample_val_frac = 0.1    #10% du train+val for eval
 
@@ -166,6 +267,7 @@ def objective(trial):
         ),
         peft_config_current
     )
+    model.config.categories = categories
 
     #sub sample
     df_sub = df_trainval.sample(frac=subsample_train_frac, random_state=SEED).reset_index(drop=True)
@@ -179,6 +281,8 @@ def objective(trial):
     train_tokenized = train_dataset_fold.map(clean_output_text).map(tokenize_function)
     val_tokenized = val_dataset_fold.map(clean_output_text).map(tokenize_function)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True)
+    
+    print("FOLD", trial.number, flush=True)
 
     training_args = TrainingArguments(
         output_dir=f"./tmp_model_trial_{trial.number}",
@@ -202,7 +306,7 @@ def objective(trial):
 
     callbacks = [EarlyStoppingCallback(early_stopping_patience=2)]
 
-    trainer = Trainer(
+    trainer = MyTrainer(
         model=model,
         args=training_args,
         train_dataset=train_tokenized,
@@ -221,6 +325,11 @@ def objective(trial):
     writer_folds.add_scalar("fold/val_size", len(df_sub_val), trial.number)
     writer_folds.add_scalar("fold/eval_loss", eval_loss, trial.number)
 
+    for cat in categories:
+        key = f"eval_accuracy_{cat.lower()}"
+        writer_folds.add_scalar(f"fold_{trial.number}/{cat}", eval_results[key], trial.number)
+    writer_folds.add_scalar(f"fold_{trial.number}/overall", eval_results["eval_accuracy_overall"], trial.number)
+
     trainer.save_model(training_args.output_dir)
     del model
     torch.cuda.empty_cache()
@@ -236,7 +345,7 @@ print(f"Best hyperparams after Optuna search: {best_params}", flush=True)
 print("-" * 80 + "\n", flush=True)
 
 ##########################################################################################
-# FINAL TRAINING ON ALL DATA (TRAIN+VAL)
+#FINAL TRAINING ON ALL DATA (TRAIN+VAL)
 
 #new cut
 df_train_final, df_val_final = train_test_split(df_trainval, test_size=0.1, random_state=SEED)
@@ -271,6 +380,7 @@ model_final = get_peft_model(
     ),
     final_peft_config
 )
+model_final.config.categories = categories
 
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
@@ -292,14 +402,14 @@ training_args_final = TrainingArguments(
     metric_for_best_model="eval_loss"
 )
 
-trainer_final = Trainer(
+trainer_final = MyTrainer(
     model=model_final,
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
-    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
 )
 
 trainer_final.train()
@@ -313,7 +423,7 @@ model_final.save_pretrained(merged_model_path)
 tokenizer.save_pretrained(merged_model_path)
 
 ##########################################################################################
-# EVAL ON TEST
+#EVAL ON VALIDATION SET
 
 print("\n" + "-" * 80, flush=True)
 print("Evaluating on validation set", flush=True)
@@ -333,7 +443,7 @@ for i, row in eval_df.iterrows():
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
 
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=200, do_sample=False, early_stopping=True)
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -353,34 +463,53 @@ for i, row in eval_df.iterrows():
 
 print("\n" + "-" * 80, flush=True)
 
-acc_val = sum(semantic_match(p, r) for p, r in zip(predictions, references)) / len(predictions)
-print(f"\nSemantic Match Accuracy on validation set: {acc_val:.4f}", flush=True)
+# acc_val = sum(semantic_match(p, r) for p, r in zip(predictions, references)) / len(predictions)
+# print(f"\nSemantic Match Accuracy on validation set: {acc_val:.4f}", flush=True)
+
+metrics_val = compute_categorical_metrics(predictions, references, categories)
+print("\nCategory SMA - validation set:", flush=True)
+for cat in categories:
+    print(f"{cat}: {metrics_val[f'accuracy_{cat.lower()}']:.4f}", flush=True)
+
 print("\n" + "-" * 80, flush=True)
 
-##########################################################################################
-# EVAL ON TEST
+final_val_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_validation"))
+for cat in categories:
+    final_val_writer.add_scalar(f"validation/{cat}", metrics_val[f"accuracy_{cat.lower()}"], 0)
+final_val_writer.close()
 
+##########################################################################################
+#EVAL ON TEST
 print("\nGenerating predictions on final test set", flush=True)
 test_df = df_test
-
 final_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_predictions"))
+#store preds and refs
+test_preds, test_refs = [], []
 
 for i, row in test_df.iterrows():
     prompt = row["prompt"].strip()
     print(prompt, flush=True)
     expected = row["output"].strip()
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
-    with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
-    prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
 
-    split_output = prediction.split("Here is the output:")
-    after_output = split_output[1].strip() if len(split_output) > 1 else prediction
+    with torch.no_grad():
+        output_ids = model_final.generate(
+            **input_encoded,
+            max_new_tokens=200,
+            do_sample=False,
+            early_stopping=True
+        )
+    raw = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
+    split_output = raw.split("Here is the output:")
+    after_output = split_output[1].strip() if len(split_output) > 1 else raw
     clean_prediction = deduplicate_categories(after_output)
 
     print(f"--- Predicted output {i+1}: {clean_prediction}", flush=True)
-    print(f"--- Expected output {i+1}: {expected}", flush=True)
+    print(f"--- Expected output  {i+1}: {expected}", flush=True)
     print("-" * 50, flush=True)
+
+    test_preds.append(clean_prediction)
+    test_refs.append(expected)
 
     final_writer.add_text(
         f"Prediction/Test_Example_{i+1}",
@@ -389,3 +518,13 @@ for i, row in test_df.iterrows():
     )
 
 final_writer.close()
+
+metrics_test = compute_categorical_metrics(test_preds, test_refs, categories)
+print("\nCategory SMA - test set:", flush=True)
+for cat in categories:
+    print(f"{cat}: {metrics_test[f'accuracy_{cat.lower()}']:.4f}", flush=True)
+
+final_test_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_test"))
+for cat in categories:
+    final_test_writer.add_scalar(f"test/{cat}", metrics_test[f"accuracy_{cat.lower()}"], 0)
+final_test_writer.close()

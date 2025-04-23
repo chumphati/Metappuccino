@@ -3,13 +3,13 @@
 #PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node50:ncpus=30:ngpus=2:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-LOG_DIR="$METAMAP/results_train/logs"
-RESULT_DIR="$METAMAP/results_train/FINE_TUNING_COMPLETE"
+LOG_DIR="$METAMAP/results/logs"
+RESULT_DIR="$METAMAP/results/FINE_TUNING"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 
 mkdir -p $SCRATCH_DIR
