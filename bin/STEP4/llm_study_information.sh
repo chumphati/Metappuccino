@@ -31,7 +31,7 @@ trap cleanup EXIT
 
 #necessary files
 cp -r $METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-f16.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
 cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/similar_study_accession_process.py $SCRATCH_DIR/

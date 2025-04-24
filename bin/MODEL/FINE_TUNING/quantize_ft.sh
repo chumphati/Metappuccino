@@ -7,7 +7,7 @@
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-LOG_DIR="$METAMAP/results_train/logs"
+LOG_DIR="$METAMAP/results/logs"
 
 SCRATCH_DIR="/scratchlocal/$USER/$PBS_JOBID"
 mkdir -p $SCRATCH_DIR
@@ -29,7 +29,7 @@ mkdir -p $SCRATCH_DIR
 source $ENV/bin/activate
 
 #necessary files
-cp $METAMAP/scripts/model_processing/fine_tuning/quantize_finetuned.py $SCRATCH_DIR
+cp $METAMAP/scripts/model_processing/fine_tuning/process_final_model/quantize_finetuned.py $SCRATCH_DIR
 
 cd $SCRATCH_DIR
 

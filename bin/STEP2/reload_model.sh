@@ -33,7 +33,7 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] && [ ! -f "$TMP_DIR/context_mod
     exit 0
 fi
 
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-f16.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf $SCRATCH_DIR/
 cp $TMP_DIR/reload_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/context_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/

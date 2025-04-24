@@ -237,8 +237,8 @@ print(run_accessions_list, flush=True)
 #OPTUNA HYPERPARAM SEARCH
 
 #subsample to find hp quicker
-subsample_train_frac = 0.2  #20% train+val for optimisation
-subsample_val_frac = 0.1    #10% du train+val for eval
+subsample_train_frac = 0.25  #25% train+val for optimisation
+subsample_val_frac = 0.2    #20% du train+val for eval
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -288,13 +288,14 @@ def objective(trial):
         output_dir=f"./tmp_model_trial_{trial.number}",
         logging_dir=os.path.join(tensorboard_log_dir, f"fold_{trial.number}"),
         run_name=f"fold_{trial.number}",
-        evaluation_strategy="epoch",
+        evaluation_strategy="steps",
+        eval_steps=10,
         learning_rate=learning_rate,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         num_train_epochs=num_train_epochs,
         weight_decay=0.01,
-        save_strategy="epoch",
+        save_strategy="steps",
         logging_strategy="steps",
         logging_steps=10,
         fp16=True,
@@ -348,7 +349,7 @@ print("-" * 80 + "\n", flush=True)
 #FINAL TRAINING ON ALL DATA (TRAIN+VAL)
 
 #new cut
-df_train_final, df_val_final = train_test_split(df_trainval, test_size=0.1, random_state=SEED)
+df_train_final, df_val_final = train_test_split(df_trainval, test_size=0.2, random_state=SEED)
 df_train_final = df_train_final.reset_index(drop=True)
 df_val_final = df_val_final.reset_index(drop=True)
 print(f"Final training set size: {len(df_train_final)}, Final validation set size: {len(df_val_final)}", flush=True)
@@ -385,12 +386,13 @@ model_final.config.categories = categories
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="epoch",
+    eval_steps=10,
     learning_rate=best_params["learning_rate"],
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
     num_train_epochs=best_params["num_train_epochs"],
     weight_decay=0.01,
-    save_strategy='epoch',
+    save_strategy='steps',
     logging_strategy='steps',
     logging_steps=10,
     fp16=True,
@@ -398,7 +400,6 @@ training_args_final = TrainingArguments(
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
-    eval_steps=None,
     metric_for_best_model="eval_loss"
 )
 
