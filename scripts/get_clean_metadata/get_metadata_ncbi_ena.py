@@ -16,7 +16,8 @@ parser.add_argument("--base_path", type=str, required=True, help="Base path to M
 args = parser.parse_args()
 
 base_path = args.base_path
-RAW_CSV = os.path.join(base_path, "annotated_totalRNA.csv")
+# RAW_CSV = os.path.join(base_path, "annotated_totalRNA.csv")
+RAW_CSV = os.path.join(base_path, "ena_results.tsv")
 RUNS_TSV = os.path.join(base_path, "runs.txt")
 METADATA_DIR = os.path.join(base_path, "metadata")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra.txt")
@@ -33,13 +34,13 @@ HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_acc
 
 #from annotated total rna extract runs
 #annotated_totalRNA.csv
-def extract_run_accessions_from_file():
-    with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
-        reader = csv.reader(infile, delimiter=';')
-        writer = csv.writer(outfile, delimiter=';')
-        for row in reader:
-            if len(row) > 4 and row[4].strip():
-                writer.writerow([row[4]])
+# def extract_run_accessions_from_file():
+#     with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
+#         reader = csv.reader(infile, delimiter=';')
+#         writer = csv.writer(outfile, delimiter=';')
+#         for row in reader:
+#             if len(row) > 4 and row[4].strip():
+#                 writer.writerow([row[4]])
 
 #mela-select.tsv
 # def extract_run_accessions_from_file():
@@ -49,6 +50,15 @@ def extract_run_accessions_from_file():
 #         for row in reader:
 #             if len(row) > 0 and row[0].strip():
 #                 writer.writerow([row[0]])
+
+#ena_results.tsv
+def extract_run_accessions_from_file():
+    with open(RAW_CSV, 'r', encoding='ISO-8859-1') as infile, open(RUNS_TSV, 'w', encoding='utf-8') as outfile:
+        reader = csv.reader(infile, delimiter='\t')
+        writer = csv.writer(outfile, delimiter='\t')
+        for row in reader:
+            if len(row) > 0 and row[0].strip():
+                writer.writerow([row[0]])
 
 
 #get header for out file

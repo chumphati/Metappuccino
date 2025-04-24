@@ -5,7 +5,7 @@ curl -G "https://www.ebi.ac.uk/ena/portal/api/search" \
   --data-urlencode "result=read_run" \
   --data-urlencode "query=${base_query}" \
   --data-urlencode "fields=run_accession,cell_type,host_body_site,tissue_type,cell_line,disease,host_phenotype,library_selection,library_source" \
-  --data-urlencode "limit=10" \
+  --data-urlencode "limit=10000" \
   --data-urlencode "format=tsv" \
   -o ena_results.tsv
 
@@ -29,7 +29,7 @@ for cat in "${!cats[@]}"; do
   field=${cats[$cat]}
   col=$(head -n 1 ena_results.tsv | awk -F"\t" -v f="$field" '{for(i=1;i<=NF;i++) if($i==f){print i; exit}}')
   [ -z "$col" ] && continue
-  awk -F"\t" -v c="$col" 'NR>1 { if($c != "" && $c !~ /^[[:space:]]*$/) print $1 }' ena_results.tsv | shuf -n 10 >> "$tmp_union"
+  awk -F"\t" -v c="$col" 'NR>1 { if($c != "" && $c !~ /^[[:space:]]*$/) print $1 }' ena_results.tsv | shuf -n 10000 >> "$tmp_union"
 done
 sort "$tmp_union" | uniq > union_runs.txt
 rm "$tmp_union"
@@ -62,4 +62,3 @@ while read -r run; do
 done < union_runs.txt
 
 rm union_runs.txt
-echo "Output saved to $output_file"

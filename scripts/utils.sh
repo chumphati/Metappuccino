@@ -1,0 +1,2 @@
+#get nb line per category ena_results
+awk -F'\t' 'BEGIN{cols["cell_type"]=0;cols["host_body_site"]=0;cols["tissue_type"]=0;cols["cell_line"]=0;cols["disease"]=0;cols["host_phenotype"]=0;cols["library_selection"]=0;cols["library_source"]=0} NR==1{for(i=1;i<=NF;i++){if($i in cols){col_idx[$i]=i}};next} {for(col in col_idx){val=$(col_idx[col]);if(val!=""&&val!="NA"&&val!="null"){cols[col]++}}} END{for(col in cols){printf "%s: %d\n",col,cols[col]}}' /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/ena_results.tsv
