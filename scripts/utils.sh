@@ -1,2 +1,15 @@
 #get nb line per category ena_results
 awk -F'\t' 'BEGIN{cols["cell_type"]=0;cols["host_body_site"]=0;cols["tissue_type"]=0;cols["cell_line"]=0;cols["disease"]=0;cols["host_phenotype"]=0;cols["library_selection"]=0;cols["library_source"]=0} NR==1{for(i=1;i<=NF;i++){if($i in cols){col_idx[$i]=i}};next} {for(col in col_idx){val=$(col_idx[col]);if(val!=""&&val!="NA"&&val!="null"){cols[col]++}}} END{for(col in cols){printf "%s: %d\n",col,cols[col]}}' /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/ena_results.tsv
+
+#count lines with some categories
+python3 - <<'PYCODE'
+import csv, sys
+cnt = 0
+path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/complete_finetune_data.csv'
+with open(path, newline='') as f:
+    for row in csv.DictReader(f):
+        lines = [L for L in row['output'].splitlines() if L.strip()]
+        if len(lines) == 2 and lines[0] == 'library_selection: other' and lines[1].startswith('library_source: '):
+            cnt += 1
+print(cnt)
+PYCODE

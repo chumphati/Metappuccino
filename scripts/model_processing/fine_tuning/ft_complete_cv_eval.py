@@ -237,8 +237,8 @@ print(run_accessions_list, flush=True)
 #OPTUNA HYPERPARAM SEARCH
 
 #subsample to find hp quicker
-subsample_train_frac = 0.25  #25% train+val for optimisation
-subsample_val_frac = 0.2    #20% du train+val for eval
+subsample_train_frac = 0.012
+subsample_val_frac = 0.006
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -289,7 +289,7 @@ def objective(trial):
         logging_dir=os.path.join(tensorboard_log_dir, f"fold_{trial.number}"),
         run_name=f"fold_{trial.number}",
         evaluation_strategy="steps",
-        eval_steps=10,
+        eval_steps=50,
         learning_rate=learning_rate,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
@@ -297,7 +297,7 @@ def objective(trial):
         weight_decay=0.01,
         save_strategy="steps",
         logging_strategy="steps",
-        logging_steps=10,
+        logging_steps=50,
         fp16=True,
         gradient_accumulation_steps=2,
         report_to=["tensorboard"],
@@ -386,7 +386,7 @@ model_final.config.categories = categories
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="epoch",
-    eval_steps=10,
+    eval_steps=50,
     learning_rate=best_params["learning_rate"],
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
@@ -394,7 +394,7 @@ training_args_final = TrainingArguments(
     weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=10,
+    logging_steps=50,
     fp16=True,
     gradient_accumulation_steps=2,
     report_to=["tensorboard"],

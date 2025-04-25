@@ -199,7 +199,7 @@ def generate_context(columns, donor_label, explicit_cell_line):
 # ---------------------------
 
 data = []
-for i in range(1000):
+for i in range(5000):
     disease = random.choice(Diseases_context)
     organ = Disease_to_organ.get(disease, random.choice(list(cell_lines_by_organ.keys())))
     default_cell_line = cell_lines_by_organ[organ]
@@ -262,5 +262,5 @@ for i in range(1000):
 # Save
 
 df = pd.DataFrame(data)
-output_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results_train/simulated_metadata.csv'
+output_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/simulated_metadata.csv'
 df.to_csv(output_path, index=False)

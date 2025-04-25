@@ -1,8 +1,8 @@
 import csv
 
-metadata_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results_train/METADATA/cleaned_metadata_sra.txt'
+metadata_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/metadata_sra.txt'
 input_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/ena_results.tsv'
-output_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/complete_finetune_data.csv'
+output_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/real_finetune_data.csv'
 
 category_order = [
     'cell_type', 'tissue_type', 'cell_line', 'organ', 'disease',
@@ -56,12 +56,15 @@ with open(metadata_file, 'r', encoding='utf-8') as metafile:
         if run_id:
             metadata_dict[run_id] = mrow
 
+
 def create_prompt(run_accession, row):
     cats = [
         c for c in category_order
         if row.get(c) and row[c].strip() and row[c].strip().upper() != 'NA'
     ]
-    context = ", ".join(f"{c}={row[c].strip()}" for c in cats)
+    metadata_row = metadata_dict.get(run_accession, {})
+    context_values = [v.strip() for k, v in metadata_row.items() if k != 'run_accession' and v.strip()]
+    context = ", ".join(context_values)
     lines = [
         f"""Run accession: {run_accession}
             Metadata to analyze: {context}
@@ -93,7 +96,7 @@ with open(input_file, 'r', encoding='utf-8') as infile, \
 
     for row in reader:
         run = row.get('run_accession', '').strip()
-        if not run:
+        if not run or run not in metadata_dict:
             continue
 
         clean_row = metadata_dict.get(run, {})
