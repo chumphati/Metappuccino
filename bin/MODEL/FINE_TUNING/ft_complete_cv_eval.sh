@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=ft_complete_cv_eval
 #SBATCH --partition=alphafold
-#SBATCH --time=100:00:00
+#SBATCH --time=10000:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
 #SBATCH --gres=gpu:2
-#SBATCH --mem=80G
+#SBATCH --mem=150G
 
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
@@ -26,9 +26,9 @@ exec > "$LOG_DIR/ft_complete_cv_eval.out" 2> "$LOG_DIR/ft_complete_cv_eval.err"
 echo "Begin job : $(date)"
 
 cleanup() {
-    cp -r $SCRATCH_DIR/mistral7B_fine_tuned $RESULT_DIR 2>/dev/null || echo "Model saved."
-    cp -r $SCRATCH_DIR/mistral7B_full_finetuned $RESULT_DIR 2>/dev/null || echo "Model saved."
-    cp -r $SCRATCH_DIR/mistral7B_train $RESULT_DIR 2>/dev/null || echo "Model saved."
+    cp -r $SCRATCH_DIR/mistral7B_fine_tuned $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
+    cp -r $SCRATCH_DIR/mistral7B_full_finetuned $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
+    cp -r $SCRATCH_DIR/mistral7B_train $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
     rm -rf "$SCRATCH_DIR"
     echo "End job : $(date)"
 }
