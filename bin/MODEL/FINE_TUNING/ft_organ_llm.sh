@@ -1,16 +1,21 @@
 #!/bin/bash
-#PBS -N ft_organ_llm
-#PBS -l walltime=100:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#SBATCH --job-name=ft_organ_llm
+#SBATCH --partition=alphafold
+#SBATCH --time=100:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=30
+#SBATCH --gres=gpu:1
+#SBATCH --mem=80G
 
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 LOG_DIR="$METAMAP/results/logs"
 RESULT_DIR="$METAMAP/results/FINE_TUNING"
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 
 mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR

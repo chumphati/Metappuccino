@@ -1,9 +1,13 @@
 #!/bin/bash
-#PBS -N install_requirements
-#PBS -l walltime=12:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#SBATCH --job-name=install_requirements
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=30
+#SBATCH --mem=80G
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -12,7 +16,7 @@ PATH_CUDA=${3:-$PATH_CUDA}
 #METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 
 LOG_DIR=$METAMAP/results/logs
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 

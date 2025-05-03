@@ -1,20 +1,22 @@
 ##########################################################################################
 # IMPORT
 import random
-import numpy as np
+import math
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding
+import re
+import os
+import optuna
+import numpy as np
+import pandas as pd
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding,  TrainerCallback, TrainerControl, TrainerState
 from peft import LoraConfig, get_peft_model
 from datasets import Dataset
 import argparse
-import os
-import pandas as pd
 from peft import PeftModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import EarlyStoppingCallback, TrainerCallback
-import re
+import torch.nn.functional as F
 from sklearn.model_selection import KFold, train_test_split
-import optuna
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -143,14 +145,12 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 raw_cat, val = line.split(":", 1)
                 cat_clean = re.sub(r'^[^A-Za-z0-9]+', '', raw_cat.strip())
                 p_dict[cat_clean] = val.strip()
-            # p_dict = {l.split(":",1)[0].strip(): l.split(":",1)[1].strip() for l in p_block.splitlines() if ":" in l}
 
-            r_dict = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip() for l in ref.splitlines() if ":" in l}
+            r_dict = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip()
+                      for l in ref.splitlines() if ":" in l}
             print("--------------------")
             print("p_dict: ", p_dict, flush=True)
             print("r_dict: ", r_dict, flush=True)
-            # p_val = p_dict.get(cat, "").strip()
-            # r_val = r_dict.get(cat, "").strip()
 
             p_val = ""
             for key, val in p_dict.items():
@@ -169,9 +169,18 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("ref val: ", r_val, flush=True)
             print("--------------------")
             # nan or empty references
-            if not r_val or r_val.lower() == 'nan':
-                acc = (not p_val) or p_val.lower() == 'nan'
-            elif not p_val:
+            #if ref is nan
+            if r_val.lower() == 'nan':
+                #acc=T if only pred is nan to != empty
+                acc = (p_val.lower() == 'nan')
+                accs.append(acc)
+                continue
+            #if ref empty
+            if not r_val:
+                continue
+
+            #if ref is not empty sur pred empty = false
+            if not p_val or p_val.lower() == 'nan':
                 acc = False
             else:
                 emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
@@ -180,43 +189,161 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 acc = cos > threshold
             accs.append(acc)
         metrics[f"accuracy_{cat.lower()}"] = sum(accs) / len(accs) if accs else 0.0
-    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(
-        categories) if categories else 0.0
+    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
     return metrics
+
+##########################################################################################
+#CUSTOMED EARLY STOP IF NO CATEGORY IMPROVE
+class MultiMetricEarlyStoppingCallback(TrainerCallback):
+    def __init__(self, metrics: list, patience: int = 3, verbose: bool = True):
+        self.metrics = metrics
+        self.patience = patience
+        self.verbose = verbose
+        self.best = {m: -math.inf for m in metrics}
+        self.num_bad_epochs = 0
+
+    def on_evaluate(self, args, state: TrainerState, control: TrainerControl, logs=None, **kwargs):
+        logs = logs or {}
+        improved = False
+        for m in self.metrics:
+            current = logs.get(m)
+            if current is not None and current > self.best[m]:
+                if self.verbose:
+                    print(f"Improvement {m}: {self.best[m]:.4f} → {current:.4f}")
+                self.best[m] = current
+                improved = True
+
+        if improved:
+            self.num_bad_epochs = 0
+            control.should_save = True
+        else:
+            self.num_bad_epochs += 1
+            if self.verbose:
+                print(f"Epoch without improvement = {self.num_bad_epochs}")
+
+        if self.num_bad_epochs >= self.patience:
+            if self.verbose:
+                print(f"Patience off ({self.patience}), stop")
+            control.should_early_stop = True
+            control.should_save = True
+
+        return control
 
 
 ##########################################################################################
-# CUSTOMED TRAINER
+#LOG TRAIN
+class LossLoggerCallback(TrainerCallback):
+    def __init__(self, log_dir):
+        self.writer = SummaryWriter(os.path.join(log_dir, "train_losses"))
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs is None:
+            return
+        step = state.global_step
+        if "loss" in logs:
+            self.writer.add_scalar("train/loss_total", logs["loss"], step)
+        if "train_loss_ce" in logs:
+            self.writer.add_scalar("train/loss_ce", logs["train_loss_ce"], step)
+        if "train_loss_sem" in logs:
+            self.writer.add_scalar("train/loss_sem", logs["train_loss_sem"], step)
+
+##########################################################################################
+#CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
+    def __init__(self, *args, sem_model=None, sem_loss_weight: float = 1.0, tokenizer=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        #freeze semantic model
+        self.sem_model = sem_model.eval()
+        for p in self.sem_model.parameters():
+            p.requires_grad = False
+        self.sem_loss_weight = sem_loss_weight
+        self.tokenizer = tokenizer
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        #cross-entropy
+        outputs = model(**inputs)
+        loss_ce = outputs.loss
+        #prepare text
+        logits = outputs.logits.detach()
+        pred_ids = torch.argmax(logits, dim=-1)
+        pred_texts, ref_texts = [], []
+        for ids, lab in zip(pred_ids, inputs['labels']):
+            mask = lab != -100
+            p = self.tokenizer.decode(ids[mask], skip_special_tokens=True).strip()
+            r = self.tokenizer.decode(lab[mask], skip_special_tokens=True).strip()
+            if r and r.lower() != 'nan':
+                pred_texts.append(p)
+                ref_texts.append(r)
+
+        #semantic loss
+        if pred_texts:
+            emb_p = self.sem_model.encode(pred_texts, convert_to_tensor=True).to(loss_ce.device)
+            emb_r = self.sem_model.encode(ref_texts, convert_to_tensor=True).to(loss_ce.device)
+            cos = F.cosine_similarity(emb_p, emb_r, dim=-1)
+            loss_sem = (1.0 - cos).mean()
+        else:
+            loss_sem = torch.tensor(0.0, device=loss_ce.device)
+
+        loss = loss_ce + self.sem_loss_weight * loss_sem
+
+        if self.state.is_world_process_zero and self.model.training:
+            self.log({
+                "train_loss_ce": loss_ce.detach().item(),
+                "train_loss_sem": loss_sem.detach().item()
+            })
+
+        #return for loss eval
+        if return_outputs:
+            outputs.loss_ce = loss_ce
+            outputs.loss_sem = loss_sem
+            outputs.loss_total = loss
+            return loss, outputs
+        else:
+            return loss
+
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval", **kwargs):
-        results = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys,
-                                   metric_key_prefix=metric_key_prefix, **kwargs)
+        eval_dataloader = self.get_eval_dataloader(eval_dataset)
+        total_ce, total_sem, total_loss, count = 0.0, 0.0, 0.0, 0
+
+        for inputs in eval_dataloader:
+            inputs = self._prepare_inputs(inputs)
+            with torch.no_grad():
+                loss, outputs = self.compute_loss(self.model, inputs, return_outputs=True)
+            total_ce += outputs.loss_ce.item()
+            total_sem += outputs.loss_sem.item()
+            total_loss += outputs.loss_total.item()
+            count += 1
+
+        avg_ce = total_ce / count if count else 0.0
+        avg_sem = total_sem / count if count else 0.0
+        avg_total = total_loss / count if count else 0.0
+
+        results = {
+            f"{metric_key_prefix}_loss_ce": avg_ce,
+            f"{metric_key_prefix}_loss_sem": avg_sem,
+            f"{metric_key_prefix}_loss": avg_total
+        }
+        self.log(results)
+
+        #calculate metrics per category
         ds = eval_dataset if eval_dataset is not None else self.eval_dataset
         preds, refs = [], []
         for example in ds:
-            prompt = example["prompt"]
-            expected = example["output"]
-
-            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
-
+            prompt = example['prompt']
+            expected = example['output']
+            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
             with torch.no_grad():
-                output_ids = self.model.generate(
-                    **inputs,
-                    max_new_tokens=200,
-                    do_sample=False,
-                    early_stopping=True
-                )
-
-            raw = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+                out_ids = self.model.generate(**inputs, max_new_tokens=100, do_sample=False, early_stopping=True)
+            raw = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
             preds.append(raw)
             refs.append(expected)
 
         cat_metrics = compute_categorical_metrics(preds, refs, self.model.config.categories)
-
         for k, v in cat_metrics.items():
             key = f"{metric_key_prefix}_{k}"
             self.log({key: v})
             results[key] = v
+
         return results
 
 
@@ -232,6 +359,8 @@ for out in df["output"].fillna("").tolist():
             all_cats.add(line.split(":", 1)[0].strip())
 categories = sorted(all_cats)
 model_base.config.categories = categories
+
+metric_names = [f"eval_accuracy_{c.lower()}" for c in categories]
 
 # independant test
 df_trainval, df_test = train_test_split(df, test_size=0.1, random_state=SEED)
@@ -255,8 +384,9 @@ print(run_accessions_list, flush=True)
 # OPTUNA HYPERPARAM SEARCH
 
 # subsample to find hp quicker
-subsample_train_frac = 0.035 #~500 samples
-subsample_val_frac = 0.15 #15% of subsample_train_frac for valid
+# subsample_train_frac = 0.025 #~400 sample train
+subsample_train_frac = 1
+subsample_val_frac = 0.2 #~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -316,18 +446,23 @@ def objective(trial):
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         num_train_epochs=num_train_epochs,
-        weight_decay=0.1,
+        weight_decay=0.01,
         save_strategy="epoch",
         logging_strategy="steps",
         logging_steps=10,
         fp16=True,
         gradient_accumulation_steps=2,
         report_to=["tensorboard"],
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_loss"
+        load_best_model_at_end=False,
+        metric_for_best_model="eval_accuracy_overall",
+        greater_is_better=True
     )
 
-    callbacks = [EarlyStoppingCallback(early_stopping_patience=2)]
+    multi_es = MultiMetricEarlyStoppingCallback(
+        metrics=[f"eval_accuracy_{c.lower()}" for c in categories],
+        patience=2,
+        verbose=True
+    )
 
     trainer = MyTrainer(
         model=model,
@@ -336,7 +471,12 @@ def objective(trial):
         eval_dataset=val_tokenized,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        callbacks=callbacks
+        callbacks=[
+            multi_es,
+            LossLoggerCallback(tensorboard_log_dir)
+        ],
+        sem_model=model_sem,
+        sem_loss_weight=0.45
     )
 
     trainer.train()
@@ -381,7 +521,6 @@ print(f"Final training set size: {len(df_train_final)}, Final validation set siz
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 final_writer_training.add_scalar("final/train_size", len(df_train_final), 0)
 final_writer_training.add_scalar("final/val_size", len(df_val_final), 0)
-final_writer_training.close()
 
 train_dataset_final = Dataset.from_pandas(df_train_final)
 val_dataset_final = Dataset.from_pandas(df_val_final)
@@ -414,17 +553,24 @@ training_args_final = TrainingArguments(
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
     num_train_epochs=best_params["num_train_epochs"],
-    weight_decay=0.1,
+    weight_decay=0.05,
     save_strategy='epoch',
     logging_strategy='steps',
-    logging_steps=10,
+    logging_steps=100,
     fp16=True,
     gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
-    load_best_model_at_end=True,
+    load_best_model_at_end=False,
     eval_steps=None,
-    metric_for_best_model="eval_loss"
+    metric_for_best_model="eval_accuracy_overall",
+    greater_is_better=True
+)
+
+multi_es = MultiMetricEarlyStoppingCallback(
+    metrics=[f"eval_accuracy_{c.lower()}" for c in categories],
+    patience=3,
+    verbose=True
 )
 
 trainer_final = MyTrainer(
@@ -434,7 +580,12 @@ trainer_final = MyTrainer(
     eval_dataset=tokenized_val_final,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
-    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
+    callbacks=[
+        multi_es,
+        LossLoggerCallback(tensorboard_log_dir)
+    ],
+    sem_model=model_sem,
+    sem_loss_weight=0.45
 )
 
 init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_prefix="eval")
@@ -445,6 +596,7 @@ for cat in categories:
     final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"], 0)
 
 trainer_final.train()
+final_writer_training.close()
 
 print("Save new model", flush=True)
 trainer_final.save_model(output_model)
@@ -475,7 +627,7 @@ for i, row in eval_df.iterrows():
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
 
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=200, do_sample=False, early_stopping=True)
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -527,7 +679,7 @@ for i, row in test_df.iterrows():
     with torch.no_grad():
         output_ids = model_final.generate(
             **input_encoded,
-            max_new_tokens=200,
+            max_new_tokens=100,
             do_sample=False,
             early_stopping=True
         )

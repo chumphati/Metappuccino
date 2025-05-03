@@ -1,15 +1,19 @@
 #!/bin/bash
-#PBS -N quantize_ft
-#PBS -l walltime=100:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:ncpus=18:mem=600gb
+#SBATCH --job-name=quantize_ft
+#SBATCH --partition=alphafold
+#SBATCH --time=10:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=18
+#SBATCH --mem=150G
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 LOG_DIR="$METAMAP/results/logs"
 
-SCRATCH_DIR="/scratchlocal/$USER/$PBS_JOBID"
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR
 

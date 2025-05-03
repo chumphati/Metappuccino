@@ -1,14 +1,17 @@
 #!/bin/bash
-#PBS -N ref
-#PBS -l walltime=12:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:ncpus=30:mem=46gb
+#SBATCH --job-name=ref_process
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=30
+#SBATCH --mem=46G
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 

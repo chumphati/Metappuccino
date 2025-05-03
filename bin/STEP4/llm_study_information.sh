@@ -1,9 +1,14 @@
 #!/bin/bash
-#PBS -N llm_study_information
-#PBS -l walltime=1000:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=100gb
+#SBATCH --job-name=llm_study_information
+#SBATCH --partition=alphafold
+#SBATCH --time=1000:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=30
+#SBATCH --gres=gpu:1
+#SBATCH --mem=100G
 
 METAMAP=${1:-$METAMAP}
 #METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
@@ -14,7 +19,7 @@ LOG_DIR=$RESULTS_DIR/logs
 
 exec > "$LOG_DIR/llm_study_information.out" 2> "$LOG_DIR/llm_study_information.err"
 
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -31,7 +36,7 @@ trap cleanup EXIT
 
 #necessary files
 cp -r $METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
 cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/similar_study_accession_process.py $SCRATCH_DIR/

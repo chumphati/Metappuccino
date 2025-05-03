@@ -1,9 +1,12 @@
 #!/bin/bash
-#PBS -N get_stable_metadata
-#PBS -l walltime=12:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:ncpus=10:mem=16gb
+#SBATCH --job-name=get_stable_metadata
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=16G
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -11,7 +14,7 @@ ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 

@@ -1,9 +1,14 @@
 #!/bin/bash
-#PBS -N reload_context_llm
-#PBS -l walltime=500:00:00
-#PBS -o /path/to/log/output.log
-#PBS -e /path/to/log/error.log
-#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
+#SBATCH --job-name=reload_context_llm
+#SBATCH --partition=alphafold
+#SBATCH --time=500:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=30
+#SBATCH --gres=gpu:2
+#SBATCH --mem=80G
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -13,7 +18,7 @@ TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 exec > "$LOG_DIR/reload_context_llm.out" 2> "$LOG_DIR/reload_context_llm.err"
 
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -33,7 +38,7 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] && [ ! -f "$TMP_DIR/context_mod
     exit 0
 fi
 
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf $SCRATCH_DIR/
 cp $TMP_DIR/reload_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/context_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/

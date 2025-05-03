@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 
-#METAMAP=${1:-$METAMAP}
-METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+METAMAP=${1:-$METAMAP}
+#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp

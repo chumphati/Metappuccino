@@ -28,15 +28,17 @@ cell_types_by_organ = {
 }
 
 cell_types_context = {
-    'neuron': ['neuron', 'neuronal', 'nerve cell', 'brain‑derived'],
-    'fibroblast': ['fibroblast', 'skin‑associated cell', 'connective tissue', 'muscle‑related cell'],
-    'CD8 T cell': ['CD8 T cell', 'cytotoxic lymphocyte', 'immune‑related cell'],
-    'monocyte': ['monocyte', 'blood‑derived cell'],
-    'NK cell': ['NK cell', 'natural killer cell', 'immune effector'],
-    'Colonocyte': ['Colonocyte', 'intestinal epithelial cell', 'colon‑related cell'],
-    'B cell': ['B cell', 'antibody‑producing cell', 'humoral lymphocyte'],
-    'astrocyte': ['astrocyte', 'glial cell'],
-    'epithelial': ['epithelial cell', 'ductal epithelial'],
+    'neuron':       ['neuron', 'neuronal', 'nerve cell', 'brain-derived'],
+    'fibroblast':   ['fibroblast', 'skin-associated cell', 'connective tissue', 'muscle-related cell'],
+    'CD8 T cell':   ['CD8 T cell', 'cytotoxic lymphocyte', 'immune-related cell'],
+    'monocyte':     ['monocyte', 'blood-derived cell'],
+    'NK cell':      ['NK cell', 'natural killer cell', 'immune effector'],
+    'Colonocyte':   ['Colonocyte', 'intestinal epithelial cell', 'colon-related cell'],
+    'B cell':       ['B cell', 'antibody-producing cell', 'humoral lymphocyte'],
+    'astrocyte':    ['astrocyte', 'glial cell'],
+    'epithelial':   ['epithelial cell', 'ductal epithelial'],
+    # Added mapping for primary tissue samples:
+    'Primary tissue': ['primary tissue', 'fresh tissue sample', 'uncultured primary cells'],
 }
 
 tissue_types_by_organ = {
@@ -205,7 +207,13 @@ for i in range(5000):
     default_cell_line = cell_lines_by_organ[organ]
     explicit_cell_line = default_cell_line if default_cell_line != 'Primary tissue' and random.random() < 0.5 else None
     cell_line = default_cell_line if explicit_cell_line else 'Primary tissue'
-    cell_type = cell_types_by_organ_disease.get((organ, disease), cell_types_by_organ[organ])
+
+    # Ensure cell_type matches cell_line when Primary tissue
+    if cell_line == 'Primary tissue':
+        cell_type = 'Primary tissue'
+    else:
+        cell_type = cell_types_by_organ_disease.get((organ, disease), cell_types_by_organ[organ])
+
     tissue_type = tissue_types_by_organ[organ]
 
     # Randomized nan introduction
@@ -259,8 +267,7 @@ for i in range(5000):
         'donor_information': donor_info
     })
 
-# Save
-
+# save
 df = pd.DataFrame(data)
 output_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/simulated_metadata.csv'
 df.to_csv(output_path, index=False)

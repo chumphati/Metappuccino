@@ -10,10 +10,10 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
-#METAMAP=${1:-$METAMAP}
-#ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
-METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
-ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+#ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 
 RESULTS_DIR=$METAMAP/results
 TMP_DIR=$RESULTS_DIR/tmp
@@ -39,7 +39,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf $SCRATCH_DIR/
+cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/

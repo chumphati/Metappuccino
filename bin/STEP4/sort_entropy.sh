@@ -1,9 +1,12 @@
 #!/bin/bash
-#PBS -N process_study_llm
-#PBS -l walltime=12:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:ncpus=10:mem=16gb
+#SBATCH --job-name=process_study_llm
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=16G
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -11,7 +14,7 @@ LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
 FINAL_DIR=$METAMAP/results/SPECIFIC_RUN_ANALYSIS
 
-SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 

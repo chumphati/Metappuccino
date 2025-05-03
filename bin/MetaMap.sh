@@ -1,9 +1,12 @@
 #!/bin/bash
-#PBS -N MetaMap
-#PBS -l walltime=1000:00:00
-#PBS -o /dev/null
-#PBS -e /dev/null
-#PBS -l select=1:ncpus=1:mem=8gb
+#SBATCH --job-name=MetaMap
+#SBATCH --partition=common
+#SBATCH --time=10000:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
 
 METAMAP_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"

@@ -3,8 +3,8 @@ import os
 
 #QUANTIFY MODEL IN 4 BITS GGUF FOR LLAMA.CPP
 
-pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/1000_SIMDATA_FINE_TUNING/mistral7B_full_finetuned'
-quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Mistral-7B-Instruct-v0.3-FT-simdata.gguf'
+pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/COMPLETE_FT_15K_FIRST/mistral7B_full_finetuned'
+quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf'
 # quantize4bits_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/models/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf'
 
 llama_cpp_conversion_script = ('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/llama.cpp/convert_hf_to_gguf.py')

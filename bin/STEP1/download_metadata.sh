@@ -8,11 +8,11 @@
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=16G
 
-#METAMAP=${1:-$METAMAP}
-#ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+METAMAP=${1:-$METAMAP}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 
-METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
-ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
 LOG_DIR=$METAMAP/results/logs
 TMP_DIR=$METAMAP/results/tmp
@@ -38,10 +38,10 @@ trap cleanup EXIT
 #necessary files
 #cp "$METAMAP/data/raw/mela-select.tsv" $SCRATCH_DIR/
 #cp "$METAMAP/data/raw/annotated_totalRNA.csv" $SCRATCH_DIR/
-cp "$METAMAP/results/ena_results.tsv" $SCRATCH_DIR/
+#cp "$METAMAP/results/ena_results.tsv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
-#cp "$METAMAP/results_train/METADATA/runs.txt" $SCRATCH_DIR/
+cp "$METAMAP/results/METADATA/runs.txt" $SCRATCH_DIR/
 #cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
 
 #activate requirements venv

@@ -33,7 +33,7 @@ initial_n_ctx = args.initial_n_ctx
 
 raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
-model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-FT-simdata.gguf")
+model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf")
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
 
 ##########################################################################################
