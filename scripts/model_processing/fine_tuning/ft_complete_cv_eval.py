@@ -234,18 +234,24 @@ class MultiMetricEarlyStoppingCallback(TrainerCallback):
 #LOG TRAIN
 class LossLoggerCallback(TrainerCallback):
     def __init__(self, log_dir):
-        self.writer = SummaryWriter(os.path.join(log_dir, "train_losses"))
-
+        self.writer = SummaryWriter(os.path.join(log_dir, "final_training"))
     def on_log(self, args, state, control, logs=None, **kwargs):
-        if logs is None:
-            return
         step = state.global_step
-        if "loss" in logs:
-            self.writer.add_scalar("train/loss_total", logs["loss"], step)
+        if "train_loss_total" in logs:
+            self.writer.add_scalar("train/loss_total", logs["train_loss_total"], step)
         if "train_loss_ce" in logs:
             self.writer.add_scalar("train/loss_ce", logs["train_loss_ce"], step)
         if "train_loss_sem" in logs:
             self.writer.add_scalar("train/loss_sem", logs["train_loss_sem"], step)
+    def on_evaluate(self, args, state, control, logs=None, **kwargs):
+        step = state.global_step
+        if "eval_loss" in logs:
+            self.writer.add_scalar("eval/loss_total", logs["eval_loss"], step)
+        if "eval_loss_ce" in logs:
+            self.writer.add_scalar("eval/loss_ce", logs["eval_loss_ce"], step)
+        if "eval_loss_sem" in logs:
+            self.writer.add_scalar("eval/loss_sem", logs["eval_loss_sem"], step)
+
 
 ##########################################################################################
 #CUSTOMED TRAINER WITH SEMANTIC LOSS
@@ -289,7 +295,8 @@ class MyTrainer(Trainer):
         if self.state.is_world_process_zero and self.model.training:
             self.log({
                 "train_loss_ce": loss_ce.detach().item(),
-                "train_loss_sem": loss_sem.detach().item()
+                "train_loss_sem": loss_sem.detach().item(),
+                "train_loss_total": float((loss_ce + self.sem_loss_weight * loss_sem).item())
             })
 
         #return for loss eval
@@ -384,8 +391,8 @@ print(run_accessions_list, flush=True)
 # OPTUNA HYPERPARAM SEARCH
 
 # subsample to find hp quicker
-# subsample_train_frac = 0.025 #~400 sample train
-subsample_train_frac = 1
+subsample_train_frac = 0.025 #~400 sample train
+# subsample_train_frac = 1
 subsample_val_frac = 0.2 #~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
@@ -471,10 +478,7 @@ def objective(trial):
         eval_dataset=val_tokenized,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        callbacks=[
-            multi_es,
-            LossLoggerCallback(tensorboard_log_dir)
-        ],
+        callbacks=[multi_es],
         sem_model=model_sem,
         sem_loss_weight=0.45
     )
@@ -518,9 +522,9 @@ df_train_final = df_train_final.reset_index(drop=True)
 df_val_final = df_val_final.reset_index(drop=True)
 print(f"Final training set size: {len(df_train_final)}, Final validation set size: {len(df_val_final)}", flush=True)
 
-final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
-final_writer_training.add_scalar("final/train_size", len(df_train_final), 0)
-final_writer_training.add_scalar("final/val_size", len(df_val_final), 0)
+# final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
+# final_writer_training.add_scalar("final/train_size", len(df_train_final), 0)
+# final_writer_training.add_scalar("final/val_size", len(df_val_final), 0)
 
 train_dataset_final = Dataset.from_pandas(df_train_final)
 val_dataset_final = Dataset.from_pandas(df_val_final)
@@ -580,18 +584,18 @@ trainer_final = MyTrainer(
     eval_dataset=tokenized_val_final,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
-    callbacks=[
-        multi_es,
-        LossLoggerCallback(tensorboard_log_dir)
-    ],
+    callbacks=[multi_es],
     sem_model=model_sem,
     sem_loss_weight=0.45
 )
 
+final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
+final_writer_training.add_scalar("train/size", len(df_train_final), 0)
+final_writer_training.add_scalar("val/size",   len(df_val_final),   0)
+
 init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_prefix="eval")
 print("Initial val metrics - original model (step=0) →", init_val)
 
-final_writer_training.add_scalar("eval_loss", init_val["eval_loss"], 0)
 for cat in categories:
     final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"], 0)
 
