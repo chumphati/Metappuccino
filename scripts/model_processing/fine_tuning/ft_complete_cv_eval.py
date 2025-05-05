@@ -8,7 +8,7 @@ import os
 import optuna
 import numpy as np
 import pandas as pd
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding,  TrainerCallback, TrainerControl, TrainerState
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding, TrainerCallback, TrainerControl, TrainerState, EvalPrediction
 from peft import LoraConfig, get_peft_model
 from datasets import Dataset
 import argparse
@@ -65,7 +65,6 @@ model_base = AutoModelForCausalLM.from_pretrained(
 )
 
 print("Config LoRA", flush=True)
-
 
 ##########################################################################################
 # FUNCTIONS
@@ -192,88 +191,69 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
     return metrics
 
+
+def compute_metrics(eval_preds: EvalPrediction):
+    gen_ids, label_ids = eval_preds.predictions, eval_preds.label_ids
+    decoded_preds = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
+    decoded_labels = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
+    cat_metrics = compute_categorical_metrics(decoded_preds, decoded_labels, model_base.config.categories)
+    return {f"eval_{k}": v for k,v in cat_metrics.items()}
+
+
 ##########################################################################################
 #CUSTOMED EARLY STOP IF NO CATEGORY IMPROVE
-class MultiMetricEarlyStoppingCallback(TrainerCallback):
-    def __init__(self, metrics: list, patience: int = 3, verbose: bool = True):
-        self.metrics = metrics
+class GenerationEarlyStoppingCallback(TrainerCallback):
+    def __init__(self, metric_name: str, patience: int=3, verbose: bool=True):
+        self.metric_name = metric_name
         self.patience = patience
         self.verbose = verbose
-        self.best = {m: -math.inf for m in metrics}
-        self.num_bad_epochs = 0
-
-    def on_evaluate(self, args, state: TrainerState, control: TrainerControl, logs=None, **kwargs):
-        logs = logs or {}
-        improved = False
-        for m in self.metrics:
-            current = logs.get(m)
-            if current is not None and current > self.best[m]:
-                if self.verbose:
-                    print(f"Improvement {m}: {self.best[m]:.4f} → {current:.4f}")
-                self.best[m] = current
-                improved = True
-
-        if improved:
-            self.num_bad_epochs = 0
-            control.should_save = True
-        else:
-            self.num_bad_epochs += 1
-            if self.verbose:
-                print(f"Epoch without improvement = {self.num_bad_epochs}")
-
-        if self.num_bad_epochs >= self.patience:
-            if self.verbose:
-                print(f"Patience off ({self.patience}), stop")
-            control.should_early_stop = True
-            control.should_save = True
-
-        return control
-
-
-##########################################################################################
-#LOG TRAIN
-class LossLoggerCallback(TrainerCallback):
-    def __init__(self, log_dir):
-        self.writer = SummaryWriter(os.path.join(log_dir, "final_training"))
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        step = state.global_step
-        if "train_loss_total" in logs:
-            self.writer.add_scalar("train/loss_total", logs["train_loss_total"], step)
-        if "train_loss_ce" in logs:
-            self.writer.add_scalar("train/loss_ce", logs["train_loss_ce"], step)
-        if "train_loss_sem" in logs:
-            self.writer.add_scalar("train/loss_sem", logs["train_loss_sem"], step)
+        self.best = -math.inf
+        self.num_bad=0
     def on_evaluate(self, args, state, control, logs=None, **kwargs):
-        step = state.global_step
-        if "eval_loss" in logs:
-            self.writer.add_scalar("eval/loss_total", logs["eval_loss"], step)
-        if "eval_loss_ce" in logs:
-            self.writer.add_scalar("eval/loss_ce", logs["eval_loss_ce"], step)
-        if "eval_loss_sem" in logs:
-            self.writer.add_scalar("eval/loss_sem", logs["eval_loss_sem"], step)
+        current = logs.get(self.metric_name)
+        if current and current>self.best:
+            self.best=current; self.num_bad=0
+            control.should_save=True
+        else:
+            self.num_bad+=1
+            if self.num_bad>=self.patience:
+                control.should_early_stop=True; control.should_save=True
+        return control
 
 
 ##########################################################################################
 #CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight: float = 1.0, tokenizer=None, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=1.0, label_smoothing=0.2, scheduled_sampling_prob=0.5, **kwargs):
         super().__init__(*args, **kwargs)
         #freeze semantic model
         self.sem_model = sem_model.eval()
         for p in self.sem_model.parameters():
             p.requires_grad = False
         self.sem_loss_weight = sem_loss_weight
-        self.tokenizer = tokenizer
+        self.label_smoothing = label_smoothing
+        self.scheduled_sampling_prob = scheduled_sampling_prob
+        self.loss_fct = CrossEntropyLoss(label_smoothing=label_smoothing, ignore_index=-100)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        inputs_ss = inputs.copy()
+        if self.training and random.random() < self.scheduled_sampling_prob:
+            out1 = model(**inputs)
+            preds1 = torch.argmax(out1.logits.detach(), dim=-1)
+            mask = (inputs['labels'] != -100)
+            inputs_ss['input_ids'] = inputs['input_ids'].clone()
+            inputs_ss['input_ids'][mask] = preds1[mask]
         #cross-entropy
-        outputs = model(**inputs)
-        loss_ce = outputs.loss
-        #prepare text
+        outputs = model(**inputs_ss)
+        logits = outputs.logits
+        labels = inputs['labels']
+        #CE with label smoothing
+        loss_ce = self.loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+        #semantic loss
         logits = outputs.logits.detach()
         pred_ids = torch.argmax(logits, dim=-1)
         pred_texts, ref_texts = [], []
-        for ids, lab in zip(pred_ids, inputs['labels']):
+        for ids, lab in zip(pred_ids, inputs_ss['labels']):
             mask = lab != -100
             p = self.tokenizer.decode(ids[mask], skip_special_tokens=True).strip()
             r = self.tokenizer.decode(lab[mask], skip_special_tokens=True).strip()
@@ -281,23 +261,22 @@ class MyTrainer(Trainer):
                 pred_texts.append(p)
                 ref_texts.append(r)
 
-        #semantic loss
         if pred_texts:
             emb_p = self.sem_model.encode(pred_texts, convert_to_tensor=True).to(loss_ce.device)
             emb_r = self.sem_model.encode(ref_texts, convert_to_tensor=True).to(loss_ce.device)
             cos = F.cosine_similarity(emb_p, emb_r, dim=-1)
             loss_sem = (1.0 - cos).mean()
+            print("pred_texts", pred_texts, flush=True)
+            print("ref_texts:", ref_texts, flush=True)
+            print("Semantic cosine similarities (train):", cos[:5].detach().cpu().numpy(), flush=True)
+            print("**************************************", flush=True)
         else:
             loss_sem = torch.tensor(0.0, device=loss_ce.device)
 
         loss = loss_ce + self.sem_loss_weight * loss_sem
 
-        if self.state.is_world_process_zero and self.model.training:
-            self.log({
-                "train_loss_ce": loss_ce.detach().item(),
-                "train_loss_sem": loss_sem.detach().item(),
-                "train_loss_total": float((loss_ce + self.sem_loss_weight * loss_sem).item())
-            })
+        self.log("train_loss_ce", loss_ce, on_step=True, on_epoch=False, logger=True)
+        self.log("train_loss_sem", loss_sem, on_step=True, on_epoch=False, logger=True)
 
         #return for loss eval
         if return_outputs:
@@ -391,9 +370,9 @@ print(run_accessions_list, flush=True)
 # OPTUNA HYPERPARAM SEARCH
 
 # subsample to find hp quicker
-subsample_train_frac = 0.025 #~400 sample train
+subsample_train_frac = 0.05 #~400 sample train
 # subsample_train_frac = 1
-subsample_val_frac = 0.2 #~75 sample val
+subsample_val_frac = 0.1 #~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -449,6 +428,7 @@ def objective(trial):
         logging_dir=os.path.join(tensorboard_log_dir, f"fold_{trial.number}"),
         run_name=f"fold_{trial.number}",
         evaluation_strategy="epoch",
+        predict_with_generate=True,
         learning_rate=learning_rate,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
@@ -460,15 +440,9 @@ def objective(trial):
         fp16=True,
         gradient_accumulation_steps=2,
         report_to=["tensorboard"],
-        load_best_model_at_end=False,
+        load_best_model_at_end=True,
         metric_for_best_model="eval_accuracy_overall",
         greater_is_better=True
-    )
-
-    multi_es = MultiMetricEarlyStoppingCallback(
-        metrics=[f"eval_accuracy_{c.lower()}" for c in categories],
-        patience=2,
-        verbose=True
     )
 
     trainer = MyTrainer(
@@ -476,11 +450,16 @@ def objective(trial):
         args=training_args,
         train_dataset=train_tokenized,
         eval_dataset=val_tokenized,
-        tokenizer=tokenizer,
+        label_smoothing=0.2,
+        scheduled_sampling_prob=0.5,
         data_collator=data_collator,
-        callbacks=[multi_es],
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=2),
+            GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2)
+        ],
         sem_model=model_sem,
-        sem_loss_weight=0.45
+        sem_loss_weight=0.5,
+        compute_metrics=compute_metrics
     )
 
     trainer.train()
@@ -557,7 +536,7 @@ training_args_final = TrainingArguments(
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
     num_train_epochs=best_params["num_train_epochs"],
-    weight_decay=0.05,
+    weight_decay=0.01,
     save_strategy='epoch',
     logging_strategy='steps',
     logging_steps=100,
@@ -565,16 +544,10 @@ training_args_final = TrainingArguments(
     gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
-    load_best_model_at_end=False,
+    load_best_model_at_end=True,
     eval_steps=None,
     metric_for_best_model="eval_accuracy_overall",
     greater_is_better=True
-)
-
-multi_es = MultiMetricEarlyStoppingCallback(
-    metrics=[f"eval_accuracy_{c.lower()}" for c in categories],
-    patience=3,
-    verbose=True
 )
 
 trainer_final = MyTrainer(
@@ -582,11 +555,16 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    tokenizer=tokenizer,
+    label_smoothing=0.2,
+    scheduled_sampling_prob=0.5,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
-    callbacks=[multi_es],
+    callbacks=[
+        EarlyStoppingCallback(early_stopping_patience=3),
+        GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=3)
+    ],
     sem_model=model_sem,
-    sem_loss_weight=0.45
+    sem_loss_weight=0.45,
+    compute_metrics=compute_metrics
 )
 
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
