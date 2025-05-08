@@ -1,7 +1,7 @@
 import csv
 
-metadata_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/simulated_metadata.csv'
-output_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/simulated_finetune_data.csv'
+metadata_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/synthetic_balanced.csv'
+output_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/balanced_simulated_finetune_data.csv'
 
 
 def create_prompt(run_accession, context):

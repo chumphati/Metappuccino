@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from sklearn.model_selection import KFold, train_test_split
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from torch.nn import CrossEntropyLoss
 
 ##########################################################################################
 # SEEDS
@@ -50,7 +51,7 @@ tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FIN
 sem_model_name = 'sentence-transformers/all-mpnet-base-v2'
 model_sem = SentenceTransformer(sem_model_name)
 # value to consider prediction true
-threshold = 0.45
+threshold = 0.6
 
 ##########################################################################################
 # MODEL
@@ -201,7 +202,7 @@ def compute_metrics(eval_preds: EvalPrediction):
 
 
 ##########################################################################################
-#CUSTOMED EARLY STOP IF NO CATEGORY IMPROVE
+#CUSTOMED CALLBACKS
 class GenerationEarlyStoppingCallback(TrainerCallback):
     def __init__(self, metric_name: str, patience: int=3, verbose: bool=True):
         self.metric_name = metric_name
@@ -221,10 +222,49 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
         return control
 
 
+class SemanticLossWeightScheduler(TrainerCallback):
+    def __init__(self, trainer, switch_epoch_ratio=0.5, start_weight=0.05, end_weight=0.3):
+        self.trainer = trainer
+        self.switch_epoch_ratio = switch_epoch_ratio
+        self.start_weight = start_weight
+        self.end_weight = end_weight
+        self.updated = False
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self.trainer.sem_loss_weight = self.start_weight
+        print(f"Initial semantic loss weight set to {self.start_weight}", flush=True)
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        current_epoch = state.epoch
+        total_epochs = args.num_train_epochs
+        if not self.updated and current_epoch >= total_epochs * self.switch_epoch_ratio:
+            self.trainer.sem_loss_weight = self.end_weight
+            self.updated = True
+            print(f"Semantic loss weight updated to {self.end_weight} at epoch {current_epoch:.2f}", flush=True)
+
+
+class ScheduledSamplingScheduler(TrainerCallback):
+    def __init__(self, trainer, start_prob=0.1, end_prob=0.5):
+        self.trainer = trainer
+        self.start_prob = start_prob
+        self.end_prob = end_prob
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        current_epoch = state.epoch
+        total_epochs = args.num_train_epochs
+        new_prob = min(
+            self.end_prob,
+            self.start_prob + (self.end_prob - self.start_prob) * (current_epoch / total_epochs)
+        )
+        self.trainer.scheduled_sampling_prob = new_prob
+        self.trainer.log({"scheduled_sampling_prob": new_prob})
+        print(f"Scheduled sampling prob set to {new_prob:.3f} at epoch {current_epoch:.2f}", flush=True)
+
+
 ##########################################################################################
 #CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight=1.0, label_smoothing=0.2, scheduled_sampling_prob=0.5, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, scheduled_sampling_prob=0.1, **kwargs):
         super().__init__(*args, **kwargs)
         #freeze semantic model
         self.sem_model = sem_model.eval()
@@ -234,10 +274,18 @@ class MyTrainer(Trainer):
         self.label_smoothing = label_smoothing
         self.scheduled_sampling_prob = scheduled_sampling_prob
         self.loss_fct = CrossEntropyLoss(label_smoothing=label_smoothing, ignore_index=-100)
+        self._ce_sum = 0.0
+        self._sem_sum = 0.0
+        self._tot_sum = 0.0
+        self._count = 0
+
+    def log(self, logs):
+        logs = {k: v for k, v in logs.items() if k != "loss"}
+        return super().log(logs)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         inputs_ss = inputs.copy()
-        if self.training and random.random() < self.scheduled_sampling_prob:
+        if model.training and random.random() < self.scheduled_sampling_prob:
             out1 = model(**inputs)
             preds1 = torch.argmax(out1.logits.detach(), dim=-1)
             mask = (inputs['labels'] != -100)
@@ -255,7 +303,8 @@ class MyTrainer(Trainer):
         pred_texts, ref_texts = [], []
         for ids, lab in zip(pred_ids, inputs_ss['labels']):
             mask = lab != -100
-            p = self.tokenizer.decode(ids[mask], skip_special_tokens=True).strip()
+            raw_p = self.tokenizer.decode(ids[mask], skip_special_tokens=True).strip()
+            p = deduplicate_categories(raw_p)
             r = self.tokenizer.decode(lab[mask], skip_special_tokens=True).strip()
             if r and r.lower() != 'nan':
                 pred_texts.append(p)
@@ -266,6 +315,7 @@ class MyTrainer(Trainer):
             emb_r = self.sem_model.encode(ref_texts, convert_to_tensor=True).to(loss_ce.device)
             cos = F.cosine_similarity(emb_p, emb_r, dim=-1)
             loss_sem = (1.0 - cos).mean()
+            print("**************************************", flush=True)
             print("pred_texts", pred_texts, flush=True)
             print("ref_texts:", ref_texts, flush=True)
             print("Semantic cosine similarities (train):", cos[:5].detach().cpu().numpy(), flush=True)
@@ -275,8 +325,26 @@ class MyTrainer(Trainer):
 
         loss = loss_ce + self.sem_loss_weight * loss_sem
 
-        self.log("train_loss_ce", loss_ce, on_step=True, on_epoch=False, logger=True)
-        self.log("train_loss_sem", loss_sem, on_step=True, on_epoch=False, logger=True)
+        self._ce_sum += loss_ce.detach().cpu().item()
+        self._sem_sum += loss_sem.detach().cpu().item()
+        self._tot_sum += loss.detach().cpu().item()
+        self._count += 1
+
+        if self.state.global_step % self.args.logging_steps == 0 and self.state.global_step > 0:
+            ce = self._ce_sum / self._count
+            sem = self._sem_sum / self._count
+            total = self._tot_sum / self._count
+
+            self.log({
+                "train/train_loss_ce": ce,
+                "train/train_loss_sem": sem,
+                "train/loss": total
+            })
+
+            self._ce_sum = 0.0
+            self._sem_sum = 0.0
+            self._tot_sum = 0.0
+            self._count = 0
 
         #return for loss eval
         if return_outputs:
@@ -319,7 +387,7 @@ class MyTrainer(Trainer):
             expected = example['output']
             inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
             with torch.no_grad():
-                out_ids = self.model.generate(**inputs, max_new_tokens=100, do_sample=False, early_stopping=True)
+                out_ids = self.model.generate(**inputs, max_new_tokens=100, min_new_tokens=1, num_beams=2, do_sample=False, early_stopping=True)
             raw = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
             preds.append(raw)
             refs.append(expected)
@@ -372,7 +440,7 @@ print(run_accessions_list, flush=True)
 # subsample to find hp quicker
 subsample_train_frac = 0.05 #~400 sample train
 # subsample_train_frac = 1
-subsample_val_frac = 0.1 #~75 sample val
+subsample_val_frac = 0.15 #~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -428,7 +496,6 @@ def objective(trial):
         logging_dir=os.path.join(tensorboard_log_dir, f"fold_{trial.number}"),
         run_name=f"fold_{trial.number}",
         evaluation_strategy="epoch",
-        predict_with_generate=True,
         learning_rate=learning_rate,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
@@ -450,17 +517,21 @@ def objective(trial):
         args=training_args,
         train_dataset=train_tokenized,
         eval_dataset=val_tokenized,
+        tokenizer=tokenizer,
         label_smoothing=0.2,
-        scheduled_sampling_prob=0.5,
+        scheduled_sampling_prob=0.1,
         data_collator=data_collator,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=2),
             GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2)
         ],
         sem_model=model_sem,
-        sem_loss_weight=0.5,
+        sem_loss_weight=0.05,
         compute_metrics=compute_metrics
     )
+
+    trainer.add_callback(SemanticLossWeightScheduler(trainer, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+    trainer.add_callback(ScheduledSamplingScheduler(trainer, start_prob=0.1, end_prob=0.5))
 
     trainer.train()
 
@@ -539,9 +610,9 @@ training_args_final = TrainingArguments(
     weight_decay=0.01,
     save_strategy='epoch',
     logging_strategy='steps',
-    logging_steps=100,
+    logging_steps=200,
     fp16=True,
-    gradient_accumulation_steps=2,
+    gradient_accumulation_steps=1,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
@@ -556,16 +627,20 @@ trainer_final = MyTrainer(
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
     label_smoothing=0.2,
-    scheduled_sampling_prob=0.5,
+    tokenizer=tokenizer,
+    scheduled_sampling_prob=0.1,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
-        EarlyStoppingCallback(early_stopping_patience=3),
-        GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=3)
-    ],
+            EarlyStoppingCallback(early_stopping_patience=3),
+            GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=3),
+        ],
     sem_model=model_sem,
-    sem_loss_weight=0.45,
+    sem_loss_weight=0.05,
     compute_metrics=compute_metrics
 )
+
+trainer_final.add_callback(SemanticLossWeightScheduler(trainer_final, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+trainer_final.add_callback(ScheduledSamplingScheduler(trainer_final, start_prob=0.1, end_prob=0.5))
 
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 final_writer_training.add_scalar("train/size", len(df_train_final), 0)
@@ -609,7 +684,7 @@ for i, row in eval_df.iterrows():
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
 
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, do_sample=False, early_stopping=True)
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=100, min_new_tokens=1, num_beams=2, do_sample=False, early_stopping=True)
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -662,6 +737,8 @@ for i, row in test_df.iterrows():
         output_ids = model_final.generate(
             **input_encoded,
             max_new_tokens=100,
+            min_new_tokens=1,
+            num_beams=2,
             do_sample=False,
             early_stopping=True
         )

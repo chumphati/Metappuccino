@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=ft_complete_cv_eval
 #SBATCH --partition=alphafold
-#SBATCH --time=10000:00:00
+#SBATCH --time=1000:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
