@@ -41,11 +41,11 @@ base_path = args.base_path
 n_splits = args.n_splits
 
 prompt_file = os.path.join(base_path, "finetune_data.csv")
-train_model = os.path.join(base_path, "mistral7B_train")
-output_model = os.path.join(base_path, "mistral7B_fine_tuned")
-merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
-model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/tensorboard"
+train_model = os.path.join(base_path, "llama8B_train")
+output_model = os.path.join(base_path, "llama8B_fine_tuned")
+merged_model_path = os.path.join(base_path, "llama8B_full_finetuned")
+model_name = os.path.join(base_path, "Llama-3.1-8B-Instruct")
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING_LLAMA/tensorboard"
 
 # parameters for semantic matching
 sem_model_name = 'sentence-transformers/all-mpnet-base-v2'
@@ -387,7 +387,7 @@ class MyTrainer(Trainer):
             expected = example['output']
             inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
             with torch.no_grad():
-                out_ids = self.model.generate(**inputs, max_new_tokens=100, do_sample=False, early_stopping=True)
+                out_ids = self.model.generate(**inputs, max_new_tokens=180, min_new_tokens=3, do_sample=False, early_stopping=True, no_repeat_ngram_size=3, repetition_penalty=1.3, eos_token_id=tokenizer.eos_token_id)
             raw = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
             preds.append(raw)
             refs.append(expected)
@@ -684,7 +684,7 @@ for i, row in eval_df.iterrows():
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
 
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=100,do_sample=False, early_stopping=True)
+        output_ids = model_final.generate(**input_encoded, max_new_tokens=180, min_new_tokens=3, do_sample=False, early_stopping=True, no_repeat_ngram_size=3, repetition_penalty=1.3, eos_token_id=tokenizer.eos_token_id)
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -737,8 +737,11 @@ for i, row in test_df.iterrows():
         output_ids = model_final.generate(
             **input_encoded,
             max_new_tokens=100,
+            min_new_tokens=3,
             do_sample=False,
-            early_stopping=True
+            early_stopping=True, no_repeat_ngram_size=3,
+            repetition_penalty=1.3,
+            eos_token_id=tokenizer.eos_token_id
         )
     raw = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw.split("Here is the output:")
