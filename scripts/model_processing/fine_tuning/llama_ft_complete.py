@@ -47,6 +47,7 @@ merged_model_path = os.path.join(base_path, "llama8B_full_finetuned")
 model_name = os.path.join(base_path, "Llama-3.1-8B-Instruct")
 tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING_LLAMA/tensorboard"
 
+
 # parameters for semantic matching
 sem_model_name = 'sentence-transformers/all-mpnet-base-v2'
 model_sem = SentenceTransformer(sem_model_name)
@@ -56,14 +57,16 @@ threshold = 0.6
 ##########################################################################################
 # MODEL
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-tokenizer.pad_token = tokenizer.eos_token
+tokenizer.add_special_tokens({'pad_token': '<pad>'})
+tokenizer.pad_token = '<pad>'
 
-print("Load model in FP16", flush=True)
 model_base = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
     device_map='auto'
 )
+model_base.resize_token_embeddings(len(tokenizer))
+
 
 print("Config LoRA", flush=True)
 
@@ -387,7 +390,17 @@ class MyTrainer(Trainer):
             expected = example['output']
             inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2000).to(self.model.device)
             with torch.no_grad():
-                out_ids = self.model.generate(**inputs, max_new_tokens=180, min_new_tokens=3, do_sample=False, early_stopping=True, no_repeat_ngram_size=3, repetition_penalty=1.3, eos_token_id=tokenizer.eos_token_id)
+                out_ids = self.model.generate(
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
+                    max_length=inputs["input_ids"].shape[-1] + 200,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    do_sample=True,
+                    top_p=0.9,
+                    temperature=0.7,
+                    repetition_penalty=1.2,
+                )
             raw = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
             preds.append(raw)
             refs.append(expected)
@@ -438,8 +451,8 @@ print(run_accessions_list, flush=True)
 # OPTUNA HYPERPARAM SEARCH
 
 # subsample to find hp quicker
-subsample_train_frac = 0.05 #~400 sample train
-# subsample_train_frac = 1
+# subsample_train_frac = 0.05 #~400 sample train
+subsample_train_frac = 1
 subsample_val_frac = 0.15 #~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
@@ -470,6 +483,7 @@ def objective(trial):
         ),
         peft_config_current
     )
+    model.resize_token_embeddings(len(tokenizer))
     model.config.categories = categories
 
     # sub sample
@@ -598,6 +612,7 @@ model_final = get_peft_model(
     ),
     final_peft_config
 )
+model_final.resize_token_embeddings(len(tokenizer))
 model_final.config.categories = categories
 
 training_args_final = TrainingArguments(
@@ -684,7 +699,16 @@ for i, row in eval_df.iterrows():
     input_encoded = tokenizer(prompt, return_tensors="pt").to(model_final.device)
 
     with torch.no_grad():
-        output_ids = model_final.generate(**input_encoded, max_new_tokens=180, min_new_tokens=3, do_sample=False, early_stopping=True, no_repeat_ngram_size=3, repetition_penalty=1.3, eos_token_id=tokenizer.eos_token_id)
+        output_ids = model_final.generate(
+            input_ids=input_encoded["input_ids"],
+            attention_mask=input_encoded["attention_mask"],
+            max_length=input_encoded["input_ids"].shape[-1] + 200,
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            do_sample=True,
+            top_p=0.9,
+            temperature=0.7,
+            repetition_penalty=1.2,)
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -735,13 +759,15 @@ for i, row in test_df.iterrows():
 
     with torch.no_grad():
         output_ids = model_final.generate(
-            **input_encoded,
-            max_new_tokens=100,
-            min_new_tokens=3,
-            do_sample=False,
-            early_stopping=True, no_repeat_ngram_size=3,
-            repetition_penalty=1.3,
-            eos_token_id=tokenizer.eos_token_id
+            input_ids=input_encoded["input_ids"],
+            attention_mask=input_encoded["attention_mask"],
+            max_length=input_encoded["input_ids"].shape[-1] + 200,
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+            do_sample=True,
+            top_p=0.9,
+            temperature=0.7,
+            repetition_penalty=1.2,
         )
     raw = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw.split("Here is the output:")

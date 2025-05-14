@@ -61,7 +61,6 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.add_special_tokens({'pad_token': '<pad>'})
 tokenizer.pad_token = '<pad>'
 
-print("Load model in FP16", flush=True)
 model_base = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16,
@@ -70,6 +69,7 @@ model_base = AutoModelForCausalLM.from_pretrained(
 model_base.resize_token_embeddings(len(tokenizer))
 
 print("Config LoRA", flush=True)
+
 
 ##########################################################################################
 # FUNCTIONS
@@ -173,17 +173,17 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("ref val: ", r_val, flush=True)
             print("--------------------")
             # nan or empty references
-            #if ref is nan
+            # if ref is nan
             if r_val.lower() == 'nan':
-                #acc=T if only pred is nan to != empty
+                # acc=T if only pred is nan to != empty
                 acc = (p_val.lower() == 'nan')
                 accs.append(acc)
                 continue
-            #if ref empty
+            # if ref empty
             if not r_val:
                 continue
 
-            #if ref is not empty sur pred empty = false
+            # if ref is not empty sur pred empty = false
             if not p_val or p_val.lower() == 'nan':
                 acc = False
             else:
@@ -193,7 +193,8 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 acc = cos > threshold
             accs.append(acc)
         metrics[f"accuracy_{cat.lower()}"] = sum(accs) / len(accs) if accs else 0.0
-    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
+    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(
+        categories) if categories else 0.0
     return metrics
 
 
@@ -202,27 +203,30 @@ def compute_metrics(eval_preds: EvalPrediction):
     decoded_preds = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
     decoded_labels = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
     cat_metrics = compute_categorical_metrics(decoded_preds, decoded_labels, model_base.config.categories)
-    return {f"eval_{k}": v for k,v in cat_metrics.items()}
+    return {f"eval_{k}": v for k, v in cat_metrics.items()}
 
 
 ##########################################################################################
-#CUSTOMED CALLBACKS
+# CUSTOMED CALLBACKS
 class GenerationEarlyStoppingCallback(TrainerCallback):
-    def __init__(self, metric_name: str, patience: int=3, verbose: bool=True):
+    def __init__(self, metric_name: str, patience: int = 3, verbose: bool = True):
         self.metric_name = metric_name
         self.patience = patience
         self.verbose = verbose
         self.best = -math.inf
-        self.num_bad=0
+        self.num_bad = 0
+
     def on_evaluate(self, args, state, control, logs=None, **kwargs):
         current = logs.get(self.metric_name)
-        if current and current>self.best:
-            self.best=current; self.num_bad=0
-            control.should_save=True
+        if current and current > self.best:
+            self.best = current;
+            self.num_bad = 0
+            control.should_save = True
         else:
-            self.num_bad+=1
-            if self.num_bad>=self.patience:
-                control.should_early_stop=True; control.should_save=True
+            self.num_bad += 1
+            if self.num_bad >= self.patience:
+                control.should_early_stop = True;
+                control.should_save = True
         return control
 
 
@@ -247,17 +251,37 @@ class SemanticLossWeightScheduler(TrainerCallback):
             print(f"Semantic loss weight updated to {self.end_weight} at epoch {current_epoch:.2f}", flush=True)
 
 
+class ScheduledSamplingScheduler(TrainerCallback):
+    def __init__(self, trainer, start_prob=0, end_prob=0.5):
+        self.trainer = trainer
+        self.start_prob = start_prob
+        self.end_prob = end_prob
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        current_epoch = state.epoch
+        total_epochs = args.num_train_epochs
+        new_prob = min(
+            self.end_prob,
+            self.start_prob + (self.end_prob - self.start_prob) * (current_epoch / total_epochs)
+        )
+        self.trainer.scheduled_sampling_prob = new_prob
+        self.trainer.log({"scheduled_sampling_prob": new_prob})
+        print(f"Scheduled sampling prob set to {new_prob:.3f} at epoch {current_epoch:.2f}", flush=True)
+
+
 ##########################################################################################
-#CUSTOMED TRAINER WITH SEMANTIC LOSS
+# CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, scheduled_sampling_prob=0,
+                 **kwargs):
         super().__init__(*args, **kwargs)
-        #freeze semantic model
+        # freeze semantic model
         self.sem_model = sem_model.eval()
         for p in self.sem_model.parameters():
             p.requires_grad = False
         self.sem_loss_weight = sem_loss_weight
         self.label_smoothing = label_smoothing
+        # self.scheduled_sampling_prob = scheduled_sampling_prob
         self.loss_fct = CrossEntropyLoss(label_smoothing=label_smoothing, ignore_index=-100)
         self._ce_sum = 0.0
         self._sem_sum = 0.0
@@ -273,24 +297,33 @@ class MyTrainer(Trainer):
         return super().log(logs)
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        print("starting loss computation", flush=True)
         inputs_ss = inputs.copy()
-        #cross-entropy
+        # if model.training and random.random() < self.scheduled_sampling_prob:
+        #     out1 = model(**inputs)
+        #     preds1 = torch.argmax(out1.logits.detach(), dim=-1)
+        #     mask = (inputs['labels'] != -100)
+        #     inputs_ss['input_ids'] = inputs['input_ids'].clone()
+        #     inputs_ss['input_ids'][mask] = preds1[mask]
+        # cross-entropy
         outputs = model(**inputs_ss, output_hidden_states=True)
         logits = outputs.logits
         labels = inputs['labels']
+        # logits_shift = logits[:-1]
+        # labels_shift = labels[1:]
         logits_shift = logits[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
-        #CE with label smoothing
+        # Cross-entropy with label smoothing
         loss_ce = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        #semantic loss
+        # loss_ce = self.loss_fct(logits.view(-1, logits.size(-1)), labels.view(-1))
+
+        # semantic loss
         # introduce mlp which maps final hidden state to embedding
         # reference embedding is encoder(ground truth) (same)
         # predicted embeddings is mlp(final hidden state)
         # do cosine similarity loss
         last_hidden_state = outputs.hidden_states[-1]  # batch, seq_len, hidden_dim
         final_hidden = last_hidden_state[:, -1, :]  # last token representation
-        # print("hidden dtype", final_hidden.dtype, flush=True)
-        # print("hidden_to_sem dtype", self.hidden_to_sem.weight.dtype, flush=True)
         pred_sem = self.hidden_to_sem(final_hidden)  # batch, sem_dim
         ref_texts = []
         for lab in inputs['labels']:
@@ -308,7 +341,6 @@ class MyTrainer(Trainer):
 
             relative_weight = (loss_ce.detach() / loss_sem.detach()).clamp(min=0.1, max=10.0)
             loss_sem_scaled = loss_sem * relative_weight
-            loss_sem = loss_sem_scaled
 
             # print("**************************************", flush=True)
             # print("pred_texts", pred_texts, flush=True)
@@ -323,15 +355,17 @@ class MyTrainer(Trainer):
                     print(f"[{i}] REF : '{r}'")
 
         else:
+            # no valid reference
             loss_sem = torch.tensor(1.0, device=loss_ce.device)
+            loss_sem_scaled = loss_sem
 
-        loss = loss_ce + self.sem_loss_weight * loss_sem
+        loss = loss_ce + self.sem_loss_weight * loss_sem_scaled
 
         self._ce_sum += loss_ce.detach().cpu().item()
-        self._sem_sum += loss_sem.detach().cpu().item()
+        self._sem_sum += loss_sem_scaled.detach().cpu().item()
         self._tot_sum += loss.detach().cpu().item()
         self._count += 1
-
+        print("computed loss", flush=True)
         if self.state.global_step % self.args.logging_steps == 0 and self.state.global_step > 0:
             ce = self._ce_sum / self._count
             sem = self._sem_sum / self._count
@@ -348,7 +382,7 @@ class MyTrainer(Trainer):
             self._tot_sum = 0.0
             self._count = 0
 
-        #return for loss eval
+        # return for loss eval
         if return_outputs:
             outputs.loss_ce = loss_ce
             outputs.loss_sem = loss_sem
@@ -381,7 +415,7 @@ class MyTrainer(Trainer):
         }
         self.log(results)
 
-        #calculate metrics per category
+        # calculate metrics per category
         ds = eval_dataset if eval_dataset is not None else self.eval_dataset
         preds, refs = [], []
         for example in ds:
@@ -393,6 +427,7 @@ class MyTrainer(Trainer):
                 out_ids = self.model.generate(
                     input_ids=inputs["input_ids"],
                     attention_mask=inputs["attention_mask"],
+                    # max_length=inputs["input_ids"].shape[-1] + 200,
                     max_new_tokens=200,
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=tokenizer.eos_token_id,
@@ -402,7 +437,6 @@ class MyTrainer(Trainer):
                     temperature=0.7,
                     repetition_penalty=1.2,
                 )
-
             raw = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
             preds.append(raw)
             refs.append(expected)
@@ -453,9 +487,9 @@ print(run_accessions_list, flush=True)
 # OPTUNA HYPERPARAM SEARCH
 
 # subsample to find hp quicker
-subsample_train_frac = 0.05 #~400 sample train
-# subsample_train_frac = 1
-subsample_val_frac = 0.15 #~75 sample val
+# subsample_train_frac = 0.05 #~400 sample train
+subsample_train_frac = 1
+subsample_val_frac = 0.15  # ~75 sample val
 
 writer_folds = SummaryWriter(os.path.join(tensorboard_log_dir, "folds"))
 
@@ -480,7 +514,7 @@ def objective(trial):
     model = get_peft_model(
         model_base.from_pretrained(
             model_name,
-            torch_dtype=torch.float32,
+            torch_dtype=torch.float16,
             device_map='auto'
         ),
         peft_config_current
@@ -521,7 +555,7 @@ def objective(trial):
         logging_strategy="steps",
         logging_steps=10,
         fp16=True,
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=2,
         report_to=["tensorboard"],
         load_best_model_at_end=True,
         metric_for_best_model="eval_accuracy_overall",
@@ -535,6 +569,7 @@ def objective(trial):
         eval_dataset=val_tokenized,
         tokenizer=tokenizer,
         label_smoothing=0.2,
+        # scheduled_sampling_prob=0,
         data_collator=data_collator,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=2),
@@ -545,7 +580,9 @@ def objective(trial):
         compute_metrics=compute_metrics
     )
 
-    trainer.add_callback(SemanticLossWeightScheduler(trainer, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+    trainer.add_callback(
+        SemanticLossWeightScheduler(trainer, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+    # trainer.add_callback(ScheduledSamplingScheduler(trainer, start_prob=0, end_prob=0.5))
 
     trainer.train()
 
@@ -569,7 +606,7 @@ def objective(trial):
 
 
 study = optuna.create_study(direction="minimize")
-study.optimize(objective, n_trials=4)
+study.optimize(objective, n_trials=5)
 
 best_params = study.best_trial.params
 print("\n" + "-" * 80, flush=True)
@@ -607,7 +644,7 @@ final_peft_config = LoraConfig(
 model_final = get_peft_model(
     model_base.from_pretrained(
         model_name,
-        torch_dtype=torch.float32,
+        torch_dtype=torch.float16,
         device_map='auto'
     ),
     final_peft_config
@@ -625,9 +662,9 @@ training_args_final = TrainingArguments(
     weight_decay=0.01,
     save_strategy='epoch',
     logging_strategy='steps',
-    logging_steps=500,
+    logging_steps=1000,
     fp16=True,
-    gradient_accumulation_steps=1,
+    gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
@@ -643,21 +680,24 @@ trainer_final = MyTrainer(
     eval_dataset=tokenized_val_final,
     label_smoothing=0.2,
     tokenizer=tokenizer,
+    # scheduled_sampling_prob=0,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
-            EarlyStoppingCallback(early_stopping_patience=3),
-            GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=3),
-        ],
+        EarlyStoppingCallback(early_stopping_patience=3),
+        GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=3),
+    ],
     sem_model=model_sem,
     sem_loss_weight=0.05,
     compute_metrics=compute_metrics
 )
 
-trainer_final.add_callback(SemanticLossWeightScheduler(trainer_final, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+trainer_final.add_callback(
+    SemanticLossWeightScheduler(trainer_final, switch_epoch_ratio=0.7, start_weight=0.05, end_weight=0.3))
+# trainer_final.add_callback(ScheduledSamplingScheduler(trainer_final, start_prob=0, end_prob=0.5))
 
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 final_writer_training.add_scalar("train/size", len(df_train_final), 0)
-final_writer_training.add_scalar("val/size",   len(df_val_final),   0)
+final_writer_training.add_scalar("val/size", len(df_val_final), 0)
 
 init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_prefix="eval")
 print("Initial val metrics - original model (step=0) →", init_val)
@@ -700,6 +740,7 @@ for i, row in eval_df.iterrows():
         output_ids = model_final.generate(
             input_ids=input_encoded["input_ids"],
             attention_mask=input_encoded["attention_mask"],
+            # max_length=input_encoded["input_ids"].shape[-1] + 200,
             max_new_tokens=200,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
@@ -707,7 +748,7 @@ for i, row in eval_df.iterrows():
             do_sample=True,
             top_p=0.9,
             temperature=0.7,
-            repetition_penalty=1.2)
+            repetition_penalty=1.2, )
 
     raw_pred = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw_pred.split("Here is the output:")
@@ -760,6 +801,7 @@ for i, row in test_df.iterrows():
         output_ids = model_final.generate(
             input_ids=input_encoded["input_ids"],
             attention_mask=input_encoded["attention_mask"],
+            # max_length=input_encoded["input_ids"].shape[-1] + 200,
             max_new_tokens=200,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
