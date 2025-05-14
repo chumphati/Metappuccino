@@ -173,3 +173,5 @@ models/
 store/
 data/raw/cellosaurus.txt
 results_train/
+results*/
+results_mistral7B_original/
