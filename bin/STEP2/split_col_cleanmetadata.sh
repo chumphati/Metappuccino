@@ -1,19 +1,17 @@
 #!/bin/bash
-#SBATCH --job-name=split_col_cleanmetadata
-#SBATCH --partition=common
-#SBATCH --time=12:00:00
-#SBATCH --output=/dev/null
-#SBATCH --error=/dev/null
-#SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=16G
+#PBS -N split_col_cleanmetadata
+#PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:ncpus=10:mem=16gb
 
 OUTPUT_DIR=${1:-$OUTPUT_DIR}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 
-LOG_DIR=$OUTPUT_DIR/results/logs
-SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
-TMP_DIR=$OUTPUT_DIR/results/tmp
+LOG_DIR=$OUTPUT_DIR/results_mistral7B_original/logs
+#SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+TMP_DIR=$OUTPUT_DIR/results_mistral7B_original/tmp
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -29,7 +27,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp "$OUTPUT_DIR/results/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$OUTPUT_DIR/results_mistral7B_original/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$OUTPUT_DIR/scripts/fill_missing_metadata/split_col_cleanmetadata.py" $SCRATCH_DIR/
 
 #activate requirements venv

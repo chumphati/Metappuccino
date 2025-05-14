@@ -20,13 +20,13 @@ base_path = args.base_path
 input_metadata_path = os.path.join(base_path, "study_info.txt")
 raw_final_info_path = os.path.join(base_path, "final_llm_sample_analysis.csv")
 output_dir = os.path.join(base_path, "INFO_STUDY_LLM")
-model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf")
+model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-original.gguf")
 log_file_path = os.path.join(base_path, "llm_log_study.txt")
 error_file_path = os.path.join(base_path, "reload_model_study_info.txt")
 error_file_header = "study_accession\trun_accession_list\tlibrary_construction_protocol\tstudy_metadata_ncbi"
 FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
 
-NA_COLUMNS = ["Tissue type", "Cell line", "Cell type", "UBERON code", "UBERON term", "DOT code", "DOT term"]
+NA_COLUMNS = ["Tissue type", "Cell line", "Cell type", "UBERON code", "UBERON term", "DOT code", "DOT term", "Treatment", "Treatment Time", "Response", "Phenotype", "Library strategy", "Library selection fixed", "Library source", "Donor information"]
 
 ##########################################################################################
 # FUNCTIONS
@@ -213,24 +213,24 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                                  col not in ["Donor information", "UBERON code", "DOT code"]]
 
             instructions = []
-            if "Tissue type" in fields_for_prompt:
+            if "Tissue type" in na_columns:
                 instructions.append(
                     "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
-            if "Cell line" in fields_for_prompt:
+            if "Cell line" in na_columns:
                 instructions.append(
                     "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
-            if "Cell type" in fields_for_prompt:
+            if "Cell type" in na_columns:
                 instructions.append(
-                    "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and state the inference. Use thee Cell Ontology terms terminology.")
-            if "UBERON term" in fields_for_prompt:
+                    "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and the rest of the context and state the inference. Use thee Cell Ontology terms terminology.")
+            if "UBERON organ and code" in na_columns:
                 instructions.append(
-                    "UBERON term – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
-            if "DOT term" in fields_for_prompt:
+                    "UBERON organ and code – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+            if "Disease Ontology Term" in na_columns:
                 instructions.append(
-                    "DOT term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
+                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
             if "Treatment" in na_columns:
                 instructions.append(
-                    "Treatment - Determine from the context and the desease estimated with treatment could be possible for the pathology (eg: Nivolumab, Ipilimumab, vemurafenib, etc...). If no treatment avaible, try to find with your knowledge a path to create a new treatment or a gene to target for example."
+                    "Treatment - Determine from the context the treatment that could be used for the pathology identified. It can be the name of a medicamentation (eg: Doliprane, Nivolumab, Ipilimumab, vemurafenib, etc...) or a biological treatment technique (eg: gene therapy, siRNA, etc...). If no pathology identified, return 'no treatment'. If you don't find the treatment from context, don't try to inferrate ot and return 'no treatment'. If there is PBS or Phosphate Buffered Saline written, it means 'no treatment'."
                 )
             if "Treatment Time" in na_columns:
                 instructions.append(
@@ -242,7 +242,7 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 )
             if "Phenotype" in na_columns:
                 instructions.append(
-                    "Phenotype - Based on the given context, determine if the phenotype classification is 'parental' (Refers to the original, untreated cell line or population, which has not been exposed to selective pressure (such as drug treatment). Typically represents the baseline phenotype.) or 'persistant' (Refers to cells or populations that have survived treatment and exhibit drug persistence or resistance, often through adaptive mechanisms rather than genetic mutations.)."
+                    "Phenotype - Based on the given context, determine if the phenotype classification is 'parental' (Refers to the original, untreated cell line or population, which has not been exposed to selective pressure (such as drug treatment). Typically represents the baseline phenotype.) or 'persistant' (Refers to cells or populations that have survived treatment and exhibit drug persistence or resistance, often through adaptive mechanisms rather than genetic mutations.). Choose between those two possibilities, use your knowledge if the answer is not clear."
                 )
             if "Library strategy" in na_columns:
                 instructions.append(
@@ -250,26 +250,31 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                 )
             if "Library selection fixed" in na_columns:
                 instructions.append(
-                    "Library selection fixed - Based on the given context, determine the library selection fixed category by searching for specific keywords or synonyms that match one of the five strict categories: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other'. Assign 'polyA' if the context contains any of the following terms or similar meaning: 'PolyA', 'poly.A', 'oligo.dT', 'oligodT', 'truseq.mrna', 'truseq.stranded.mrna', 'truseq.standard.mrna', 'smarter.mRNA', 'stranded.mRNA'. Assign 'inverse rRNA' if the context mentions depletion of ribosomal RNA with any of these terms or similar meaning: 'ribominus', 'ribodep', 'ribozero', 'ribo.zero', 'riboerase', 'ribogone', 'ribocop', 'ribo-dep', 'ribo-mi', 'ribo minus', 'depleted ribosom', 'remove ribosom', 'TruSeq.Stranded.Total', 'TruSeq.Total', 'SMARTer.Stranded.Total', 'SMARTer.Total'. Assign 'hybrid selection' if the context refers to hybrid capture or exon selection using any of these terms or similar meaning: 'Hybrid.Selection', 'Exon.capture', 'Exome.capture', 'RNA.Exome', 'geoMX'. Assign 'small RNA' if the context refers to small RNA isolation with keywords such as 'TruSeq.Small', 'size.fraction' or similar meaning. Assign 'other' if none of the above terms are found. Return only the exact category name: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other', with no additional text."
+                    "Library selection fixed - Based on the given context, determine the library selection fixed category by searching for specific keywords or synonyms that match one of the five strict categories: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other'. Assign 'polyA' if the context contains any of the following terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'PolyA', 'poly.A', 'oligo.dT', 'oligodT', 'truseq.mrna', 'truseq.stranded.mrna', 'truseq.standard.mrna', 'smarter.mRNA', 'stran ded.mRNA'. Assign 'inverse rRNA' if the context mentions depletion of ribosomal RNA with any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'ribominus', 'ribodep', 'ribozero', 'ribo.zero', 'riboerase', 'ribogone', 'ribocop', 'ribo-dep', 'ribo-mi', 'ribo minus', 'depleted ribosom', 'remove ribosom', 'TruSeq.Stranded.Total', 'TruSeq.Total', 'SMARTer.Stranded.Total', 'SMARTer.Total'. Assign 'hybrid selection' if the context refers to hybrid capture or exon selection using any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'Hybrid.Selection', 'Exon.capture', 'Exome.capture', 'RNA.Exome', 'geoMX'. Assign 'small RNA' if the context refers to small RNA isolation with keywords such as 'TruSeq.Small', 'size.fraction' OR SIMIILAR MEANING THAT CAN BE INFERRED. Assign 'other' if none of the above terms are found. Return only the exact category name: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other', with no additional text."
                 )
             if "Library source" in na_columns:
                 instructions.append(
-                    "Library source - Based on the given context, determine the library source category by searching for specific keywords that match one of the two strict categories: 'single-cell' or 'bulk'. Assign 'single-cell' if the context contains any of the following terms: 'TRANSCRIPTOMIC SINGLE CELL', 'chromium', '10x', 'single.cell' or similar meaning. Assign 'bulk' if none of the above terms are found. Return only the exact category name: 'single-cell' or 'bulk', with no additional text."
+                    "Library source - Based on the given context, determine the library source category by searching for specific keywords that match one of the two strict categories: 'single-cell' or 'bulk'. Assign 'single-cell' if the context contains any of the following terms: 'TRANSCRIPTOMIC SINGLE CELL', 'chromium', '10x', 'single.cell' OR SIMIILAR MEANING THAT CAN BE INFERRED. Assign 'bulk' if none of the above terms are found. Return only the exact category name: 'single-cell' or 'bulk', with no additional text."
                 )
+            if "Donor information" in na_columns:
+                instructions.append(
+                    "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can also be protocol summary information,methods or information about how the sample has been obtained (eg. Patient-Derived Xenograf, control cells, etc...). If no information founded, just specify 'nan', no other sentence.")
 
             prompt = f"""
-            Study accession: {study_accession}
-            Metadata to analyze: {study_metadata[study_accession]}
+                        Run accession: {run_accession}
+                        Metadata to analyze: {clean_metadata}
 
-            For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
-            {chr(10).join(instructions)}
+                        For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
+                        {chr(10).join(instructions)}
 
-            If any information is missing in the metadat can't be inferred for previous instruction, specify 'nan'. Don't double the answer. I want only one answer per category.
-            Strict output format (no additional text or special characters, no duplicated answers), ONLY print the answer. Do not elaborate.:
-            Output in this form: Organ: [single unique answer]
+                        If any information is missing in the metadat can't be inferred for previous instruction, specify 'nan'. Don't double the answer. I want only one answer per category.
+                        Strict output format (no additional text or special characters, no duplicated answers), ONLY print the answer. Do not elaborate.:
+                        Output in this form: Organ: [single unique answer]
 
-            Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after the "Category:".
-            """ + chr(10).join([f"{col}: [single unique answer]" for col in fields_for_prompt]) + " RETURN ALL CATEGORIES. Here is the strict output: "
+                        Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after the "Category:".
+                        """ + chr(10).join(
+            [f"{col}: [single unique answer]" for col in
+             na_columns]) + " RETURN ALL CATEGORIES. Here is the strict output: "
 
             print("PROMPT:", flush=True)
             print(prompt, flush=True)

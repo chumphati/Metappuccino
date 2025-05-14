@@ -1,12 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=download_metadata
-#SBATCH --partition=common
-#SBATCH --time=12:00:00
-#SBATCH --output=/dev/null
-#SBATCH --error=/dev/null
-#SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=16G
+#PBS -N download_metadata
+#PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
@@ -14,11 +11,11 @@ ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 #METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 #ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
-LOG_DIR=$METAMAP/results/logs
-TMP_DIR=$METAMAP/results/tmp
+LOG_DIR=$METAMAP/results_mistral7B_original/logs
+TMP_DIR=$METAMAP/results_mistral7B_original/tmp
 
-#SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
-SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+#SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -41,7 +38,7 @@ trap cleanup EXIT
 #cp "$METAMAP/results/ena_results.tsv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
-cp "$METAMAP/results/METADATA/runs.txt" $SCRATCH_DIR/
+cp "$METAMAP/results_mistral7B_original/METADATA/runs.txt" $SCRATCH_DIR/
 #cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
 
 #activate requirements venv

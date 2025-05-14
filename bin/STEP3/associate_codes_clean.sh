@@ -1,22 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=associate_codes_clean
-#SBATCH --partition=common
-#SBATCH --time=12:00:00
-#SBATCH --output=/dev/null
-#SBATCH --error=/dev/null
-#SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=16G
+#PBS -N associate_codes_clean
+#PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 #METAMAP=${1:-$METAMAP}
 #ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
-LOG_DIR=$METAMAP/results/logs
-TMP_DIR=$METAMAP/results/tmp
-FINAL_DIR=$METAMAP/results/SPECIFIC_RUN_ANALYSIS
+LOG_DIR=$METAMAP/results_mistral7B_original/logs
+TMP_DIR=$METAMAP/results_mistral7B_original/tmp
+FINAL_DIR=$METAMAP/results_mistral7B_original/SPECIFIC_RUN_ANALYSIS
 
-SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+#SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -34,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp -r "$METAMAP/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM/" $SCRATCH_DIR/
+cp -r "$METAMAP/results_mistral7B_original/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM/" $SCRATCH_DIR/
 cp "$METAMAP/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAMAP/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAMAP/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/

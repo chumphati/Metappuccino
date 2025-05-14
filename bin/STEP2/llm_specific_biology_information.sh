@@ -1,28 +1,23 @@
 #!/bin/bash
-#SBATCH --job-name=llm_specific_biology_information
-#SBATCH --partition=alphafold
-#SBATCH --time=100:00:00
-#SBATCH --output=/dev/null
-#SBATCH --error=/dev/null
-#SBATCH --nodes=1
-#SBATCH --nodelist=node49
-#SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:1
-#SBATCH --mem=80G
+#PBS -N llm_specific_biology_information
+#PBS -l walltime=500:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 METAMAP=${1:-$METAMAP}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 #METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 #ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 
-RESULTS_DIR=$METAMAP/results
+RESULTS_DIR=$METAMAP/results_mistral7B_original
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
 exec > "$LOG_DIR/llm_specific_biology_information.out" 2> "$LOG_DIR/llm_specific_biology_information.err"
 
-#SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
-SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
+#SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -39,7 +34,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp $METAMAP/models/Mistral-7B-Instruct-v0.3-FT-15k-alldata.gguf $SCRATCH_DIR/
+cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral-7B-Instruct-v0.3-original.gguf $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
