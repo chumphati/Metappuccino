@@ -22,8 +22,12 @@ def main():
     parser = argparse.ArgumentParser(description="Automates metadata extraction and completion based on LLMs.")
     parser.add_argument("--metamap_dir", type=str, required=True,
                         help="Path to the MetaMap directory")
+    parser.add_argument("--res_dir", type=str, required=True,
+                        help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
                         help="Path to the venv build with requirement.txt")
+    parser.add_argument("--model", type=str, required=True,
+                        help="LLM model used for inference. Default = mistral 7B ft.")
     parser.add_argument("--requirements", action="store_true",
                         help="Install requirements.txt and CUDA configuration for GPU. Warning: It is assumed that a venv was created and the path correctly given in --env_requirement. In the case a CUDA configuration is needed, please specify cuda path in --cuda_path if it is different from /usr/local/cuda.")
     parser.add_argument("--cuda", type=str, default="/usr/local/cuda",
@@ -40,9 +44,11 @@ def main():
 
     #scripts to execute and flags
     metamap_dir = args.metamap_dir
+    res_dir = args.res_dir
     env_dir = args.env_requirement
     cuda_path = args.cuda
-    tmp_dir = os.path.join(metamap_dir, "results", "tmp")
+    model_path = args.model
+    tmp_dir = os.path.join(metamap_dir+"/"+res_dir, "tmp")
 
     step1_flag = os.path.join(tmp_dir, "STEP1_1.flag")
     step2_flag = os.path.join(tmp_dir, "STEP1_2.flag")
@@ -72,7 +78,7 @@ def main():
             sys.exit(1)
 
         if args.requirements:
-            subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
+            subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
             # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
             print("✔ Installation requirements completed!")
 
@@ -80,14 +86,14 @@ def main():
         if args.getmetadata:
             #get metadata from sra ncbi if asked from a sra list
             if not os.path.isfile(step1_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP=" + metamap_dir, clean_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+"RES="+res_dir, clean_script], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir, clean_script], check=True)
             wait_for_flag_file(step2_flag)
             print("✔ Metadata cleaned!")
@@ -96,14 +102,14 @@ def main():
         if args.fillmetadata:
             #get basic information for each run in output final table
             if not os.path.isfile(step3_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
             wait_for_flag_file(step3_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #split specific, study and donor analysis
             if not os.path.isfile(step4_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
                 # subprocess.run(["sbatch", "--export=OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
             wait_for_flag_file(step4_flag)
             print("✔ Initial data retrieval directly from databases completed!")
@@ -111,14 +117,14 @@ def main():
             #fill the missing information in the output final table with LLM
             #biology info
             if not os.path.isfile(step5_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, llm_specific_biology_information], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 
             #reload context
             if not os.path.isfile(step5_2_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, reload_context_llm], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_context_llm], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, reload_context_llm], check=True)
             wait_for_flag_file(step5_2_flag)
             print("✔ Context reloaded successfully!")
@@ -127,7 +133,7 @@ def main():
         if args.associateinformation:
             #association uberon/dot with ref table and clean
             if not os.path.isfile(step6_flag):
-                subprocess.run(["qsub", "-q", "common", "-v", "METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
@@ -137,7 +143,7 @@ def main():
             # fill the missing information in the output final table with study info
             if not os.path.isfile(step7_flag):
                 subprocess.run(
-                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir+","+"MODEL="+model_path,
                      llm_study_information], check=True)
                 # subprocess.run(["sbatch", "--export=METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir, llm_study_information], check=True)
             wait_for_flag_file(step7_flag)
@@ -146,7 +152,7 @@ def main():
             # process study info via entropy
             if not os.path.isfile(step8_flag):
                 subprocess.run(
-                    ["qsub", "-q", "common", "-v", "METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir,
                      process_study_llm], check=True)
                 # subprocess.run(
                 #     ["sbatch", "--export=METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,

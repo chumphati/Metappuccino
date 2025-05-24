@@ -14,13 +14,15 @@ import re
 # PATHS
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--model", type=str, required=True, help="Path to LLM model")
 args = parser.parse_args()
 
 base_path = args.base_path
+model = args.model
 input_metadata_path = os.path.join(base_path, "study_info.txt")
 raw_final_info_path = os.path.join(base_path, "final_llm_sample_analysis.csv")
 output_dir = os.path.join(base_path, "INFO_STUDY_LLM")
-model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-original.gguf")
+model_path = os.path.join(base_path, model)
 log_file_path = os.path.join(base_path, "llm_log_study.txt")
 error_file_path = os.path.join(base_path, "reload_model_study_info.txt")
 error_file_header = "study_accession\trun_accession_list\tlibrary_construction_protocol\tstudy_metadata_ncbi"
@@ -131,9 +133,6 @@ def get_llama_model(model_path, n_ctx):
         use_mmap=True,
         n_threads=4,
         logits_all=True,
-        n_batch=2000,
-        n_ubatch=2000,
-        offload_kqv=True,
         flash_attn=True,
     )
 
@@ -261,8 +260,8 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                     "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can also be protocol summary information,methods or information about how the sample has been obtained (eg. Patient-Derived Xenograf, control cells, etc...). If no information founded, just specify 'nan', no other sentence.")
 
             prompt = f"""
-                        Run accession: {run_accession}
-                        Metadata to analyze: {clean_metadata}
+                        Run accession: {study_accession}
+                        Metadata to analyze: {study_metadata[study_accession]}
 
                         For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For each missing category, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
                         {chr(10).join(instructions)}

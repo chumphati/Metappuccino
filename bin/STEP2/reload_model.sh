@@ -6,9 +6,11 @@
 #PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+MODEL=${4:-$ENV_REQUIREMENT}
 
-RESULTS_DIR=$METAMAP/results_mistral7B_original
+RESULTS_DIR=$METAMAP/$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 exec > "$LOG_DIR/reload_context_llm.out" 2> "$LOG_DIR/reload_context_llm.err"
@@ -34,7 +36,7 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] && [ ! -f "$TMP_DIR/context_mod
     exit 0
 fi
 
-cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral-7B-Instruct-v0.3-original.gguf $SCRATCH_DIR/
+cp $MODEL $SCRATCH_DIR/
 cp $TMP_DIR/reload_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/context_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
@@ -43,7 +45,7 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-iteration_limit=3
+iteration_limit=2
 for (( i=0; i<$iteration_limit; i++ )); do
 
     if [ -f "$TMP_DIR/reload_model_bio_info.txt" ]; then
@@ -53,7 +55,8 @@ for (( i=0; i<$iteration_limit; i++ )); do
           --error_file_path $SCRATCH_DIR/reload_model_bio_info_bis.txt \
           --log_file_path $SCRATCH_DIR/llm_log_reload.txt \
           --flag_file $SCRATCH_DIR/STEP2_4.flag \
-          --initial_n_ctx 2500
+          --initial_n_ctx 2500 \
+          --model "$SCRATCH_DIR/$(basename "$MODEL")"
     fi
 
     if [ -f "$TMP_DIR/context_model_bio_info.txt" ]; then
@@ -63,7 +66,8 @@ for (( i=0; i<$iteration_limit; i++ )); do
           --context_file_path $SCRATCH_DIR/context_model_bio_info.txt \
           --log_file_path $SCRATCH_DIR/llm_log_reload.txt \
           --flag_file $SCRATCH_DIR/STEP2_4.flag \
-          --initial_n_ctx $(( 10000 + 10000 * i ))
+          --initial_n_ctx $(( 2500 + 10000 * i )) \
+          --model "$SCRATCH_DIR/$(basename "$MODEL")"
     fi
 
     if [ ! -f "$SCRATCH_DIR/reload_model_bio_info.txt" ] && [ ! -f "$SCRATCH_DIR/context_model_bio_info.txt" ]; then

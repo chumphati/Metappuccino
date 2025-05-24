@@ -6,10 +6,11 @@
 #PBS -l select=1:ncpus=8:mem=16gb
 
 METAMAP=${1:-$METAMAP}
+RES=${2:-$RES}
 #METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 
-LOG_DIR=$METAMAP/results_mistral7B_original/logs
-TMP_DIR=$METAMAP/results_mistral7B_original/tmp
+LOG_DIR=$METAMAP/$RES/logs
+TMP_DIR=$METAMAP/$RES/tmp
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
@@ -20,7 +21,7 @@ exec > "$LOG_DIR/clean_metadata.out" 2> "$LOG_DIR/clean_metadata.err"
 
 #clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/cleaned_metadata_sra.txt $METAMAP/results_mistral7B_original/METADATA 2>/dev/null || echo "Cleaned metadata file not found, skipping."
+    cp $SCRATCH_DIR/cleaned_metadata_sra.txt $METAMAP/$RES/METADATA 2>/dev/null || echo "Cleaned metadata file not found, skipping."
     cp $SCRATCH_DIR/STEP1_2.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
@@ -30,7 +31,7 @@ trap cleanup EXIT
 echo "Begin date: $(date)"
 
 #necessary files
-cp "$METAMAP/results_mistral7B_original/tmp/metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAMAP/$RES/tmp/metadata_sra.txt" $SCRATCH_DIR/
 
 awk -F'\t' '{
   for (i=NF-1; i<=NF; i++) {

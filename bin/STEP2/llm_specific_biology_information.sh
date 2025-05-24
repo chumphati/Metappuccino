@@ -6,11 +6,13 @@
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+MODEL=${4:-$ENV_REQUIREMENT}
 #METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 #ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 
-RESULTS_DIR=$METAMAP/results_mistral7B_original
+RESULTS_DIR=$METAMAP/$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
@@ -34,7 +36,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral-7B-Instruct-v0.3-original.gguf $SCRATCH_DIR/
+cp $MODEL $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
@@ -44,5 +46,5 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --context_file_path $SCRATCH_DIR/context_model_bio_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 2500
+python3 -u $SCRATCH_DIR/get_biology_information_LLM.py --base_path $SCRATCH_DIR --input_metadata_path $TMP_DIR/sample_info.txt --context_file_path $SCRATCH_DIR/context_model_bio_info.txt --error_file_path $SCRATCH_DIR/reload_model_bio_info.txt --log_file_path $SCRATCH_DIR/llm_log_SB.txt --flag_file $SCRATCH_DIR/STEP2_3.flag --initial_n_ctx 2500 --model "$SCRATCH_DIR/$(basename "$MODEL")"
 

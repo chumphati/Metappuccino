@@ -20,6 +20,7 @@ parser.add_argument("--context_file_path", type=str, required=True, help="Path t
 parser.add_argument("--log_file_path", type=str, required=True, help="Path to log file")
 parser.add_argument("--flag_file", type=str, required=True, help="Path to flag file for process completion")
 parser.add_argument("--initial_n_ctx", type=int, default=1200, help="Initial context size for Llama model")
+parser.add_argument("--model", type=str, required=True, help="Path to LLM model")
 
 args = parser.parse_args()
 
@@ -30,10 +31,11 @@ context_file_path = args.context_file_path
 log_file_path = args.log_file_path
 FLAG_FILE = args.flag_file
 initial_n_ctx = args.initial_n_ctx
+model = args.model
 
 raw_final_info_path = os.path.join(base_path, "initial_raw_metadata.txt")
 output_dir = os.path.join(base_path, "INFO_BIO_LLM")
-model_path = os.path.join(base_path, "Mistral-7B-Instruct-v0.3-original.gguf")
+model_path = os.path.join(base_path, model)
 error_file_header = "run_accession\tsample_title\tsample_description\tdescription\tstudy_title"
 
 ##########################################################################################

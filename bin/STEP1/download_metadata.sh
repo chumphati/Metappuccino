@@ -6,13 +6,14 @@
 #PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 
 #METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 #ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
-LOG_DIR=$METAMAP/results_mistral7B_original/logs
-TMP_DIR=$METAMAP/results_mistral7B_original/tmp
+LOG_DIR=$METAMAP/$RES/logs
+TMP_DIR=$METAMAP/$RES/tmp
 
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
@@ -38,8 +39,8 @@ trap cleanup EXIT
 #cp "$METAMAP/results/ena_results.tsv" $SCRATCH_DIR/
 cp "$METAMAP/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 
-cp "$METAMAP/results_mistral7B_original/METADATA/runs.txt" $SCRATCH_DIR/
-#cp -r "$METAMAP/results/tmp/metadata" $SCRATCH_DIR/
+cp "$METAMAP/$RES/METADATA/runs.txt" $SCRATCH_DIR/
+#cp -r "$METAMAP/$RES/tmp/metadata" $SCRATCH_DIR/
 
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate

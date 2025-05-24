@@ -46,6 +46,7 @@ if not os.path.exists(OUTPUT_FILE):
 #FUNCTIONS
 
 def clean_info(info):
+    info = re.split(r'[;\n]', info)[0]
     info = re.sub(r"\(.*?(Inferred|based on).*?\)", "", info)
     info = re.sub(r"\b(Inferred|based on)\b.*", "", info, flags=re.IGNORECASE)
     info = re.sub(r"\b(Not specified|estimated|Inferred|based on)\b", "", info, flags=re.IGNORECASE)
@@ -292,6 +293,32 @@ with open(OUTPUT_FILE, 'w', newline='') as outfile:
     writer = csv.writer(outfile, delimiter='|')
     writer.writerow(header)
     writer.writerows(updated_data)
+
+
+#get all run treated
+all_runs = {row[0] for row in updated_data}
+
+def complete_high_entropy(rows_list, category_name):
+    seen = {run for run, _, _ in rows_list}
+    missing = all_runs - seen
+    for run in missing:
+        rows_list.append([
+            run,
+            float("inf"),
+            f"{category_name}: no run-level prediction"
+        ])
+
+
+complete_high_entropy(tt_high_entropy_rows,"Tissue type")
+complete_high_entropy(cl_high_entropy_rows,"Cell line")
+complete_high_entropy(ct_high_entropy_rows,"Cell type")
+complete_high_entropy(treatment_high_entropy_rows,"Treatment")
+complete_high_entropy(treatmenttime_high_entropy_rows,"Treatment Time")
+complete_high_entropy(res_high_entropy_rows,"Response")
+complete_high_entropy(phe_high_entropy_rows,"Phenotype")
+complete_high_entropy(libselec_high_entropy_rows,"Library selection fixed")
+complete_high_entropy(libsource_high_entropy_rows,"Library source")
+
 
 #store high entropy results
 #tissue type

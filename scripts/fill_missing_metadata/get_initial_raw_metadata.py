@@ -24,9 +24,9 @@ output_file = os.path.join(base_path, "initial_raw_metadata.txt")
 columns_mapping = {
     "run_accession": "Run accession number",
     "base_count": "Number of base pairs",
-    "tissue_type": "Tissue type",
-    "cell_line": "Cell line",
-    "cell_type": "Cell type",
+    # "tissue_type": "Tissue type",
+    # "cell_line": "Cell line",
+    # "cell_type": "Cell type",
     "library_strategy": "Library strategy",
     "instrument_platform": "Instrument platform",
     "host_phenotype": "Phenotype",

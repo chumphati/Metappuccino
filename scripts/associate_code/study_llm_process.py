@@ -47,6 +47,8 @@ with open(study_info_path, "r") as f:
         run_accessions = parts[1].split(",")
         study_to_runs[study_accession] = run_accessions
 
+print(study_accession)
+print(study_to_runs)
 #store each category for each run
 high_entropy_data = {cat: {} for cat in categories}
 for cat in categories:
@@ -113,7 +115,9 @@ for filename in os.listdir(llm_results_dir):
 
 
 final_results = []
-for study_accession, category_data in llm_results.items():
+# for study_accession, category_data in llm_results.items():
+for study_accession, run_list in study_to_runs.items():
+    category_data = llm_results.get(study_accession, {})
     #get list run for a study from study_info
     print("\nStudy accession from study.txt:", study_accession, flush=True)
     run_list = study_to_runs.get(study_accession, [])
@@ -150,13 +154,20 @@ for study_accession, category_data in llm_results.items():
                 best = llm_value
                 best_entropy = llm_entropy
             else:
-                if llm_entropy <= hr_entropy:
+                if llm_entropy == float("inf") and hr_entropy == float("inf"):
+                    if str(llm_value).lower() != "nan":
+                        best, best_entropy = llm_value, llm_entropy
+                    elif str(hr_value).lower() != "nan":
+                        best, best_entropy = hr_value, hr_entropy
+                    else:
+                        best, best_entropy = "nan", "nan"
+                elif llm_entropy <= hr_entropy:
                     best = llm_value
                     best_entropy = llm_entropy
                 else:
                     best = hr_value
                     best_entropy = hr_entropy
-            # Remove the category prefix and any existing entropy marker from the best value
+            #remove the category prefix and any existing entropy marker from the best value
             if best != "nan":
                 pattern_cat = re.compile(rf"^{re.escape(cat)}\s*[:\-]?\s*", re.IGNORECASE)
                 best = pattern_cat.sub("", best)
@@ -164,6 +175,7 @@ for study_accession, category_data in llm_results.items():
             best_values[cat] = f"{best} (e={best_entropy})" if best != "nan" else "nan"
 
         #if at least one categorie as value != than nan, add line for this run
+        print("DEBUG", study_accession, run_accession, best_values)
         if any(best_values[cat] != "nan" for cat in categories):
             final_results.append([run_accession] + [best_values.get(cat, "nan") for cat in categories])
 

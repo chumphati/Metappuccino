@@ -6,10 +6,11 @@
 #PBS -l select=1:ncpus=10:mem=16gb
 
 METAMAP=${1:-$METAMAP}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 
-LOG_DIR=$METAMAP/results_mistral7B_original/logs
-TMP_DIR=$METAMAP/results_mistral7B_original/tmp
+LOG_DIR=$METAMAP/$RES/logs
+TMP_DIR=$METAMAP/$RES/tmp
 
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
@@ -29,7 +30,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp "$METAMAP/results_mistral7B_original/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAMAP/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAMAP/scripts/fill_missing_metadata/get_initial_raw_metadata.py" $SCRATCH_DIR/
 cp "$METAMAP/scripts/fill_missing_metadata/get_stable_metadata.py" $SCRATCH_DIR/
 

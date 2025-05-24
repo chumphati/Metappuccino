@@ -28,7 +28,7 @@ echo "Begin job : $(date)"
 cleanup() {
     cp -r $SCRATCH_DIR/mistral7B_fine_tuned $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
     cp -r $SCRATCH_DIR/mistral7B_full_finetuned $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
-    cp -r $SCRATCH_DIR/mistral7B_train $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
+    cp -r $SCRATCH_DIR/mistral7B_train_final $RESULT_DIR 2>/dev/null || echo "Model could not be saved."
     rm -rf "$SCRATCH_DIR"
     echo "End job : $(date)"
 }

@@ -190,6 +190,23 @@ with open(output_file, 'w') as output_file:
     for row in rows:
         output_file.write('|'.join(row) + '\n')
 
+
+rows = list(rows_dict.values())
+all_runs = set(rows_dict.keys())
+
+def complete_high_entropy(rows_list, category_name):
+    seen = {run for run, _, _ in rows_list}
+    missing = all_runs - seen
+    for run in missing:
+        rows_list.append([
+            run,
+            float("inf"),
+            f"{category_name}: no run-level prediction"
+        ])
+
+
+complete_high_entropy(high_entropy_rows,"DOT term")
+
 #store high entropy results
 with open(high_entropy_output, 'w') as high_entropy_file:
     high_entropy_file.write("Run accession number|Entropy|DOT term\n")

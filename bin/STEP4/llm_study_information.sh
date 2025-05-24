@@ -6,9 +6,13 @@
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=100gb
 
 METAMAP=${1:-$METAMAP}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+MODEL=${4:-$ENV_REQUIREMENT}
+
 #METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 
-RESULTS_DIR=$METAMAP/results_mistral7B_original
+RESULTS_DIR=$METAMAP/$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
@@ -31,12 +35,12 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp -r $METAMAP/results_mistral7B_original/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
-cp /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral-7B-Instruct-v0.3-original.gguf $SCRATCH_DIR/
+cp -r $METAMAP/$RES/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM $SCRATCH_DIR/
+cp $MODEL $SCRATCH_DIR/
 cp $TMP_DIR/study_info.txt $SCRATCH_DIR/
 cp $RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv $SCRATCH_DIR/
 cp $METAMAP/scripts/fill_missing_metadata/similar_study_accession_process.py $SCRATCH_DIR/
 
 echo "Begin date: $(date)"
 
-python3 -u $SCRATCH_DIR/similar_study_accession_process.py --base_path $SCRATCH_DIR
+python3 -u $SCRATCH_DIR/similar_study_accession_process.py --base_path $SCRATCH_DIR --model "$SCRATCH_DIR/$(basename "$MODEL")"

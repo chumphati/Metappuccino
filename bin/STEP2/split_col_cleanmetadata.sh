@@ -6,12 +6,13 @@
 #PBS -l select=1:ncpus=10:mem=16gb
 
 OUTPUT_DIR=${1:-$OUTPUT_DIR}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 
-LOG_DIR=$OUTPUT_DIR/results_mistral7B_original/logs
+LOG_DIR=$OUTPUT_DIR/$RES/logs
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
-TMP_DIR=$OUTPUT_DIR/results_mistral7B_original/tmp
+TMP_DIR=$OUTPUT_DIR/$RES/tmp
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
@@ -27,7 +28,7 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp "$OUTPUT_DIR/results_mistral7B_original/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$OUTPUT_DIR/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$OUTPUT_DIR/scripts/fill_missing_metadata/split_col_cleanmetadata.py" $SCRATCH_DIR/
 
 #activate requirements venv
