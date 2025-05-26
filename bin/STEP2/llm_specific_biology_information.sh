@@ -3,12 +3,12 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 METAMAP=${1:-$METAMAP}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
-MODEL=${4:-$ENV_REQUIREMENT}
+MODEL=${4:-$MODEL}
 #METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
 #ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 

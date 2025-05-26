@@ -3,8 +3,8 @@ import os
 
 #GET GGUF FILE
 
-pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/DeepSeek-Coder-V2-Lite-Instruct'
-quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/DeepSeek-Coder-V2-Lite-Instruct-original.gguf'
+pruned_model_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/mistral7B_FINE_TUNING_v1/mistral7B_full_finetuned'
+quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral7B-Instruct-ft.gguf'
 
 llama_cpp_conversion_script = ('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/llama.cpp/convert_hf_to_gguf.py')
 

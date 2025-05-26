@@ -212,52 +212,49 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                                  col not in ["Donor information", "UBERON code", "DOT code"]]
 
             instructions = []
-            if "Tissue type" in na_columns:
+            if "Tissue type" in fields_for_prompt:
                 instructions.append(
                     "Tissue type – The tissue type from which the sample originates (e.g., liver, lung, brain). If not specified, deduce from context in the two last columns.")
-            if "Cell line" in na_columns:
+            if "Cell line" in fields_for_prompt:
                 instructions.append(
                     "Cell line – Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")
-            if "Cell type" in na_columns:
+            if "Cell type" in fields_for_prompt:
                 instructions.append(
                     "Cell type – The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on the tissue type and the rest of the context and state the inference. Use thee Cell Ontology terms terminology.")
-            if "UBERON organ and code" in na_columns:
+            if "UBERON term" in fields_for_prompt:
                 instructions.append(
-                    "UBERON organ and code – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
-            if "Disease Ontology Term" in na_columns:
+                    "UBERON term – Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., UBERON:000XXXX + name of the organ). If not specified, deduce from context, or search one related to the tissue.")
+            if "DOT term" in fields_for_prompt:
                 instructions.append(
-                    "Disease Ontology Term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
-            if "Treatment" in na_columns:
+                    "DOT term – Return the Disease Ontology term corresponding to the disease associated with the sample in the format DOID:XXXXX + Disease Name. If the sample is explicitly described as 'normal' or 'healthy', or something similar do not infer any disease. In this case, do not search for disease-related information in the context. If the sample is not explicitly labeled as 'normal' or 'healthy' or 'no disease' etc, infer the disease from the context only if it is directly related to the sample (e.g., sample title, description, or metadata fields directly describing the sample). In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field. DO NOT JUST STATE 'DISEASE' without inferring the type of disease. If nothing says there is a disease or any problem, state 'normal'.")
+            if "Treatment" in fields_for_prompt:
                 instructions.append(
                     "Treatment - Determine from the context the treatment that could be used for the pathology identified. It can be the name of a medicamentation (eg: Doliprane, Nivolumab, Ipilimumab, vemurafenib, etc...) or a biological treatment technique (eg: gene therapy, siRNA, etc...). If no pathology identified, return 'no treatment'. If you don't find the treatment from context, don't try to inferrate ot and return 'no treatment'. If there is PBS or Phosphate Buffered Saline written, it means 'no treatment'."
                 )
-            if "Treatment Time" in na_columns:
+            if "Treatment Time" in fields_for_prompt:
                 instructions.append(
                     "Treatment Time - Based on the given context, determine the treatment time category by searching in which state the treatment is on the given sample. Only two answer are possible: Assign 'Pre-treatment' if the context indicates that the sample or data was collected before the start of treatment. Or assign 'On-treatment' if the context suggests that the sample or data was collected while the patient was undergoing treatment. If no pathology identified, return 'no treatment'. If no clear indication is found or if the treatment is unknown, return 'nan'."
                 )
-            if "Response" in na_columns:
+            if "Response" in fields_for_prompt:
                 instructions.append(
                     "Response - Search on the context, on protocols if any kind of resistance to the disease or the reverse is notified. Answer within those categories: 'Progressive Disease', 'Stable Disease', 'Recist criteria'. If no such information founded or can't be deducted from context, answer nan."
                 )
-            if "Phenotype" in na_columns:
+            if "Phenotype" in fields_for_prompt:
                 instructions.append(
                     "Phenotype - Based on the given context, determine if the phenotype classification is 'parental' (Refers to the original, untreated cell line or population, which has not been exposed to selective pressure (such as drug treatment). Typically represents the baseline phenotype.) or 'persistant' (Refers to cells or populations that have survived treatment and exhibit drug persistence or resistance, often through adaptive mechanisms rather than genetic mutations.). Choose between those two possibilities, use your knowledge if the answer is not clear."
                 )
-            if "Library strategy" in na_columns:
+            if "Library strategy" in fields_for_prompt:
                 instructions.append(
                     "Library strategy - Get the sequencing strategy."
                 )
-            if "Library selection fixed" in na_columns:
+            if "Library selection fixed" in fields_for_prompt:
                 instructions.append(
                     "Library selection fixed - Based on the given context, determine the library selection fixed category by searching for specific keywords or synonyms that match one of the five strict categories: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other'. Assign 'polyA' if the context contains any of the following terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'PolyA', 'poly.A', 'oligo.dT', 'oligodT', 'truseq.mrna', 'truseq.stranded.mrna', 'truseq.standard.mrna', 'smarter.mRNA', 'stran ded.mRNA'. Assign 'inverse rRNA' if the context mentions depletion of ribosomal RNA with any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'ribominus', 'ribodep', 'ribozero', 'ribo.zero', 'riboerase', 'ribogone', 'ribocop', 'ribo-dep', 'ribo-mi', 'ribo minus', 'depleted ribosom', 'remove ribosom', 'TruSeq.Stranded.Total', 'TruSeq.Total', 'SMARTer.Stranded.Total', 'SMARTer.Total'. Assign 'hybrid selection' if the context refers to hybrid capture or exon selection using any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'Hybrid.Selection', 'Exon.capture', 'Exome.capture', 'RNA.Exome', 'geoMX'. Assign 'small RNA' if the context refers to small RNA isolation with keywords such as 'TruSeq.Small', 'size.fraction' OR SIMIILAR MEANING THAT CAN BE INFERRED. Assign 'other' if none of the above terms are found. Return only the exact category name: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other', with no additional text."
                 )
-            if "Library source" in na_columns:
+            if "Library source" in fields_for_prompt:
                 instructions.append(
                     "Library source - Based on the given context, determine the library source category by searching for specific keywords that match one of the two strict categories: 'single-cell' or 'bulk'. Assign 'single-cell' if the context contains any of the following terms: 'TRANSCRIPTOMIC SINGLE CELL', 'chromium', '10x', 'single.cell' OR SIMIILAR MEANING THAT CAN BE INFERRED. Assign 'bulk' if none of the above terms are found. Return only the exact category name: 'single-cell' or 'bulk', with no additional text."
                 )
-            if "Donor information" in na_columns:
-                instructions.append(
-                    "Donor information - All information on the host that can be deduce of the context (eg., age, sex, blood analysis, any personnal information). It can also be protocol summary information,methods or information about how the sample has been obtained (eg. Patient-Derived Xenograf, control cells, etc...). If no information founded, just specify 'nan', no other sentence.")
 
             prompt = f"""
                         Run accession: {study_accession}
@@ -271,9 +268,8 @@ def process_metadata_llm(filtered_studies, raw_data, study_metadata):
                         Output in this form: Organ: [single unique answer]
 
                         Respond with exactly one line. Do not elaborate. Only one word (or 3 max) is allowed after the "Category:".
-                        """ + chr(10).join(
-            [f"{col}: [single unique answer]" for col in
-             na_columns]) + " RETURN ALL CATEGORIES. Here is the strict output: "
+            """ + chr(10).join([f"{col}: [single unique answer]" for col in fields_for_prompt]) + " RETURN ALL CATEGORIES. Here is the strict output: "
+
 
             print("PROMPT:", flush=True)
             print(prompt, flush=True)
@@ -348,7 +344,7 @@ process = psutil.Process(os.getpid())
 gpu_to_use = min(gpu_count, 2)
 
 # model
-initial_n_ctx = 15000
+initial_n_ctx = 8000
 
 if use_gpu and gpu_count > 0:
     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
