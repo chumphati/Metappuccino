@@ -6,9 +6,9 @@
 #PBS -l select=1:ncpus=1:mem=8gb
 
 METAMAP_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
-RES="results_mistral7B_original"
+RES="results_llama8b_original_Q4_M"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral-7B-Instruct-v0.3-original.gguf"
+MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Llama-3.1-8B-Instruct-Q4_K_M.gguf"
 
 exec > "$METAMAP_DIR/$RES/logs/MetaMap.out" 2> "$METAMAP_DIR/$RES/logs/MetaMap.err"
 

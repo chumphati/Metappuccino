@@ -13,3 +13,6 @@ with open(path, newline='') as f:
             cnt += 1
 print(cnt)
 PYCODE
+
+#shuffle ft data
+python3 -c "import pandas as pd; df=pd.read_csv('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/mistral7B_FINE_TUNING_v1/finetune_data.csv'); df.sample(n=min(2000, len(df)), random_state=42).to_csv('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/mistral7B_FINE_TUNING_v1/finetune_data_short.csv', index=False)"

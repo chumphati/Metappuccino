@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 
-csv_input = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_clean_cl_tt_ct_final_data.csv"
+csv_input = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_val_corrected.csv"
 output_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING"
 summary_csv_path = os.path.join(output_dir, "summary_cats_final.csv")
 os.makedirs(output_dir, exist_ok=True)
@@ -33,7 +33,7 @@ df_cats = pd.DataFrame(parsed_outputs.tolist())
 
 summary = []
 
-pdf_path = os.path.join(output_dir, "all_categories_final.pdf")
+pdf_path = os.path.join(output_dir, "val_categories_final.pdf")
 with PdfPages(pdf_path) as pdf:
     for cat in CATEGORIES:
         if cat not in df_cats.columns:
