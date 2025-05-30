@@ -51,10 +51,10 @@ model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/tensorboard"
 
 # parameters for semantic matching
-sem_model_name = 'sentence-transformers/all-mpnet-base-v2'
+sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 # value to consider prediction true
-threshold = 0.4
+threshold = 0.45
 
 ##########################################################################################
 # MODEL
@@ -132,6 +132,15 @@ def parse_pred_block(raw_pred):
     return deduplicate_categories(after)
 
 
+normal_accuracy_categories = {
+    'cell_line', 'phenotype', 'library_selection', 'library_source', 'treatment_time'
+}
+
+
+def normalize(x):
+    return re.sub(r'[-_]', ' ', str(x)).strip().lower()
+
+
 # compute per-category metrics using semantic similarity
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
@@ -187,6 +196,8 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             #if ref is not empty sur pred empty = false
             if not p_val or p_val.lower() == 'nan':
                 acc = False
+            elif cat in normal_accuracy_categories:
+                acc = normalize(p_val) == normalize(r_val)
             else:
                 emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
                 emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
@@ -401,7 +412,7 @@ training_args_final = TrainingArguments(
     learning_rate=5e-6,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
-    num_train_epochs=2,
+    num_train_epochs=3,
     weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='steps',
