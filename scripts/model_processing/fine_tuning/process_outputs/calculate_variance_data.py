@@ -6,8 +6,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 import os
 
 csv_input = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_val_corrected.csv"
-output_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/new"
-summary_csv_path = os.path.join(output_dir, "summary_cats_final.csv")
+output_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/var_data"
+summary_csv_path = os.path.join(output_dir, "val_summary_cats_final.csv")
 os.makedirs(output_dir, exist_ok=True)
 
 CATEGORIES = [
@@ -32,7 +32,6 @@ parsed_outputs = df["output"].fillna("").apply(extract_categories)
 df_cats = pd.DataFrame(parsed_outputs.tolist())
 
 summary = []
-
 pdf_path = os.path.join(output_dir, "val_categories_final.pdf")
 with PdfPages(pdf_path) as pdf:
     for cat in CATEGORIES:

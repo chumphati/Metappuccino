@@ -278,11 +278,9 @@ class MyTrainer(Trainer):
 
         if self.state.global_step % self.args.logging_steps == 0 and self.state.global_step > 0:
             total = self._tot_sum / self._count
-
             self.log({
                 "train/loss": total
             })
-
             self._tot_sum = 0.0
             self._count = 0
 
@@ -412,10 +410,10 @@ training_args_final = TrainingArguments(
     learning_rate=5e-6,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
-    num_train_epochs=3,
+    num_train_epochs=4,
     weight_decay=0.01,
     save_strategy='steps',
-    logging_strategy='steps',
+    logging_strategy='no',
     logging_steps=250,
     fp16=True,
     gradient_accumulation_steps=1,

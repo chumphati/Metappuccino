@@ -16,10 +16,10 @@ import seaborn as sns
 
 input_dir = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/all_compare'
 reference_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/mela_sample.tsv'
-pred_and_acc = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis/predictions_and_accuracy.csv'
-metrics_summary_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis/metrics_summary.csv'
-accuracy_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis/plots/accuracy_plots.png'
-prf_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis/plots/precision_recall_f1.png'
+pred_and_acc = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/predictions_and_accuracy.csv'
+metrics_summary_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/metrics_summary.csv'
+accuracy_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/plots/accuracy_plots.png'
+prf_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/plots/precision_recall_f1.png'
 
 reference_df = pd.read_csv(reference_path, sep='\t')
 reference_runs = set(reference_df['run_accession_number'])

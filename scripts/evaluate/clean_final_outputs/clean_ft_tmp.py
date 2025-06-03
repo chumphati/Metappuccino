@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-csv_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/results_mistral7B_FT_Q4_M/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
-txt_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/results_mistral7B_FT_Q4_M/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
+csv_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/results_mistral7B_FT_Mistral7B-Instruct-ft-1500-v3-original/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+txt_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/results_mistral7B_FT_Mistral7B-Instruct-ft-1500-v3-original/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM"
 
 df = pd.read_csv(csv_path, sep='\t')
 

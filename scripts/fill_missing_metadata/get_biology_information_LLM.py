@@ -164,7 +164,7 @@ def process_metadata_llm(metadata_lines, llm):
                 instructions = []
                 if "Tissue type" in na_columns:
                     instructions.append(
-                        "tissue_type – The tissue type from which the sample originates (e.g., epithelial tissue, connective tissue, muscle tissue, nervous tissue,). If not specified, deduce from context, from the organ or the type of cell it comes from.")
+                        "tissue_type – The tissue type from which the sample originates (e.g., epithelial tissue, connective tissue, muscle tissue, nervous tissue,). If not specified, deduce from context, from the organ or the type of cell it comes from. IMPORTANT TO DEDUCE. IF SKIN FOR EXAMPLE, RETURN EPITHELIAL ; IF BRAIN RETURN NERVOUS, ETC")
                 if "Cell line" in na_columns:
                     instructions.append(
                         "cell_line – Specify the cell line which is a strict code, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.")

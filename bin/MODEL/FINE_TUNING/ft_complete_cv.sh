@@ -10,6 +10,12 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
+#PBS -N ft_complete_cv_eval
+#PBS -l walltime=1000:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=150gb
+
 
 METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"

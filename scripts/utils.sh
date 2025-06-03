@@ -16,3 +16,11 @@ PYCODE
 
 #shuffle ft data
 python3 -c "import pandas as pd; df=pd.read_csv('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/mistral7B_FINE_TUNING_v1/finetune_data.csv'); df.sample(n=min(2000, len(df)), random_state=42).to_csv('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/mistral7B_FINE_TUNING_v1/finetune_data_short.csv', index=False)"
+
+#get all run accession list from ft data
+cut -d, -f1 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_val_corrected.csv | grep -oP 'Run accession:\s*\K\S+' | sort | uniq | awk '{print "\"" $0 "\""}' | pas^C -sd,
+
+#merge files
+head -n 1 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_train_corrected.csv > /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_all.csv
+tail -n +2 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_train_corrected.csv >> /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_all.csv
+tail -n +2 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_val_corrected.csv >> /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/finetune_data_all.csv
