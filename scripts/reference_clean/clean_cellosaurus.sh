@@ -2,8 +2,8 @@
 
 # CREATE CLEAN CELLOSAURUS
 
-input_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/raw/cellosaurus.txt"
-output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/CELLOSAURUS_CLEAN.csv"
+input_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/raw/cellosaurus.txt"
+output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/CELLOSAURUS_CLEAN.csv"
 
 echo "id_cell,name,synonym,disease" > "$output_file"
 

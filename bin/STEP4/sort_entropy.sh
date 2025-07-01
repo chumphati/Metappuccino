@@ -5,15 +5,15 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-#METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
 #ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
-LOG_DIR=$METAMAP/$RES/logs
-TMP_DIR=$METAMAP/$RES/tmp
-FINAL_DIR=$METAMAP/$RES/SPECIFIC_RUN_ANALYSIS
+LOG_DIR=$METAPPUCCINO/$RES/logs
+TMP_DIR=$METAPPUCCINO/$RES/tmp
+FINAL_DIR=$METAPPUCCINO/$RES/SPECIFIC_RUN_ANALYSIS
 
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
@@ -33,18 +33,18 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp -r "$METAMAP/$RES/SPECIFIC_RUN_ANALYSIS/INFO_STUDY_LLM/" $SCRATCH_DIR/
+cp -r "$METAPPUCCINO/$RES/SPECIFIC_RUN_ANALYSIS/INFO_STUDY_LLM/" $SCRATCH_DIR/
 cp -r "$TMP_DIR/high_entropy/" $SCRATCH_DIR/
-cp "$METAMAP/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAMAP/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAMAP/$RES/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv" $SCRATCH_DIR/
+cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
+cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
+cp "$METAPPUCCINO/$RES/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv" $SCRATCH_DIR/
 cp "$TMP_DIR/raw_final_info.txt" $SCRATCH_DIR/
 cp "$TMP_DIR/study_info.txt" $SCRATCH_DIR/
-cp "$METAMAP/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAPPUCCINO/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 
-cp "$METAMAP/scripts/associate_code/study_llm_process.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/fill_study_blanks.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/reference_clean/clean_final_tab.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/study_llm_process.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/fill_study_blanks.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/reference_clean/clean_final_tab.py" $SCRATCH_DIR/
 
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate

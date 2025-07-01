@@ -8,7 +8,7 @@ import argparse
 ##########################################################################################
 #PATHS
 parser = argparse.ArgumentParser(description="Associate DOT codes to terms")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -17,10 +17,10 @@ llm_out = os.path.join(base_path, "INFO_BIO_LLM")
 output_file = os.path.join(base_path, "raw_final_info.txt")
 high_entropy_output = os.path.join(base_path, "dot_high_entropy.txt")
 
-# dot_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv")
-# llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
-# output_file = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt")
-# FLAG_FILE = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/STEP3_1.flag")
+# dot_ref = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/DOT_TABLE_CLEAN.csv")
+# llm_out = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM")
+# output_file = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/raw_final_info.txt")
+# FLAG_FILE = os.path.join("/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/STEP3_1.flag")
 
 #check files
 if not os.path.exists(dot_ref):

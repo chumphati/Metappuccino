@@ -8,14 +8,14 @@
 #SBATCH --cpus-per-task=30
 #SBATCH --mem=46G
 
-METAMAP="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
+METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 
 SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
-exec > "$METAMAP/results/logs/ref.out" 2> "$METAMAP/results/logs/ref.err"
+exec > "$METAPPUCCINO/results/logs/ref.out" 2> "$METAPPUCCINO/results/logs/ref.err"
 
 #clean and copy in case of fail
 cleanup() {
@@ -29,4 +29,4 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-bash /store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/scripts/reference_clean/clean_cellosaurus.sh
+bash /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/scripts/reference_clean/clean_cellosaurus.sh

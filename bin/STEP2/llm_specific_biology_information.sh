@@ -5,14 +5,14 @@
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
-#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+#METAPPUCCINO='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino'
 #ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
 
-RESULTS_DIR=$METAMAP/$RES
+RESULTS_DIR=$METAPPUCCINO/$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
@@ -39,7 +39,7 @@ trap cleanup EXIT
 cp $MODEL $SCRATCH_DIR/
 cp $TMP_DIR/sample_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
-cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
+cp $METAPPUCCINO/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
 
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate

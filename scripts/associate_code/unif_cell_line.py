@@ -5,7 +5,7 @@ import argparse
 import csv
 
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 base_path = args.base_path
 

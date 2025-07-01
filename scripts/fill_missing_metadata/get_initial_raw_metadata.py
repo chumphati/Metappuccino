@@ -7,16 +7,16 @@ import argparse
 ########################################################################################################################
 #PATHS
 parser = argparse.ArgumentParser(description="Process raw matadata information directly from database")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 
 base_path = args.base_path
 input_file = os.path.join(base_path, "cleaned_metadata_sra.txt")
 output_file = os.path.join(base_path, "initial_raw_metadata.txt")
 
-# input_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/METADATA/cleaned_metadata_sra.txt"
-# output_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/initial_raw_metadata.txt"
-# BASE_PATH = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results"
+# input_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/METADATA/cleaned_metadata_sra.txt"
+# output_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/initial_raw_metadata.txt"
+# BASE_PATH = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results"
 
 ########################################################################################################################
 #DECLARE COLUMNS

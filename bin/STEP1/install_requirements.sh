@@ -9,13 +9,13 @@
 #SBATCH --cpus-per-task=30
 #SBATCH --mem=80G
 
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
 PATH_CUDA=${3:-$PATH_CUDA}
 
-#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+#METAPPUCCINO='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino'
 
-LOG_DIR=$METAMAP/results/logs
+LOG_DIR=$METAPPUCCINO/results/logs
 SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
@@ -35,7 +35,7 @@ source $ENV_REQUIREMENT/bin/activate
 echo "Begin date: $(date)"
 
 #install in venv
-python3 -m pip install -r "$METAMAP/requirements.txt"
+python3 -m pip install -r "$METAPPUCCINO/requirements.txt"
 
 #install de llama-cpp-python with CUDA support
 echo "Installing llama-cpp-python with CUDA support." >> "/scratchlocal/$USER/$PBS_JOBID/llm_log_SB.txt"

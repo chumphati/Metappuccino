@@ -5,12 +5,12 @@
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
 
-RESULTS_DIR=$METAMAP/$RES
+RESULTS_DIR=$METAPPUCCINO/$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 exec > "$LOG_DIR/reload_context_llm.out" 2> "$LOG_DIR/reload_context_llm.err"
@@ -40,7 +40,7 @@ cp $MODEL $SCRATCH_DIR/
 cp $TMP_DIR/reload_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/context_model_bio_info.txt $SCRATCH_DIR/
 cp $TMP_DIR/initial_raw_metadata.txt $SCRATCH_DIR/
-cp $METAMAP/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
+cp $METAPPUCCINO/scripts/fill_missing_metadata/get_biology_information_LLM.py $SCRATCH_DIR/
 source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"

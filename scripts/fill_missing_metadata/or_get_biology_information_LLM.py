@@ -13,7 +13,7 @@ import re
 ##########################################################################################
 # PATHS
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--input_metadata_path", type=str, required=True, help="Path to input metadata file")
 parser.add_argument("--error_file_path", type=str, required=True, help="Path to error log file")
 parser.add_argument("--context_file_path", type=str, required=True, help="Path to context log file")

@@ -35,7 +35,7 @@ if torch.cuda.is_available():
 ##########################################################################################
 # PATHS
 parser = argparse.ArgumentParser(description="Fine-tune model")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--n_splits", type=int, default=5, help="Number of CV folds")
 args = parser.parse_args()
 
@@ -48,7 +48,7 @@ train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/FINE_TUNING/tensorboard"
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/tensorboard"
 
 # parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'

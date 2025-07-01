@@ -3,8 +3,8 @@ import os
 
 #QUANTIFY MODEL IN 4 BITS GGUF FOR LLAMA.CPP
 
-quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Mistral7B-Instruct-ft-1500-v2.gguf'
-quantize4bits_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral7B-Instruct-ft-1500-v2-Q4_K_M.gguf'
+quantized_model_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral7B-Instruct-ft-v1500tt.gguf'
+quantize4bits_file = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral7B-Instruct-ft-v1500tt-Q4_K_M.gguf'
 
 llama_cpp_conversion_script = ('/store/EQUIPES/SSFA/MEMBERS/fiona.hak/llama.cpp/convert_hf_to_gguf.py')
 

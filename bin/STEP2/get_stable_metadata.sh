@@ -5,12 +5,12 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 
-LOG_DIR=$METAMAP/$RES/logs
-TMP_DIR=$METAMAP/$RES/tmp
+LOG_DIR=$METAPPUCCINO/$RES/logs
+TMP_DIR=$METAPPUCCINO/$RES/tmp
 
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
@@ -30,9 +30,9 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp "$METAMAP/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
-cp "$METAMAP/scripts/fill_missing_metadata/get_initial_raw_metadata.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/fill_missing_metadata/get_stable_metadata.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/$RES/METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/fill_missing_metadata/get_initial_raw_metadata.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/fill_missing_metadata/get_stable_metadata.py" $SCRATCH_DIR/
 
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate

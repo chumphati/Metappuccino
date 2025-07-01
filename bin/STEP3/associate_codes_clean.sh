@@ -5,14 +5,14 @@
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-#METAMAP='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap'
+#METAPPUCCINO='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino'
 #ENV_REQUIREMENT='/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv'
-METAMAP=${1:-$METAMAP}
+METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
-LOG_DIR=$METAMAP/$RES/logs
-TMP_DIR=$METAMAP/$RES/tmp
-FINAL_DIR=$METAMAP/$RES/SPECIFIC_RUN_ANALYSIS
+LOG_DIR=$METAPPUCCINO/$RES/logs
+TMP_DIR=$METAPPUCCINO/$RES/tmp
+FINAL_DIR=$METAPPUCCINO/$RES/SPECIFIC_RUN_ANALYSIS
 
 #SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
@@ -33,17 +33,17 @@ cleanup() {
 trap cleanup EXIT
 
 #necessary files
-cp -r "$METAMAP/$RES/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM/" $SCRATCH_DIR/
-cp "$METAMAP/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAMAP/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAMAP/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
+cp -r "$METAPPUCCINO/$RES/SPECIFIC_RUN_ANALYSIS/INFO_BIO_LLM/" $SCRATCH_DIR/
+cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
+cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
+cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
 cp "$TMP_DIR/raw_final_info.txt" $SCRATCH_DIR/
 cp "$TMP_DIR/initial_raw_metadata.txt" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/associate_uberon_reftable.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/associate_dot_reftable.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/associate_stable_info.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/clean_raw_info.py" $SCRATCH_DIR/
-cp "$METAMAP/scripts/associate_code/unif_cell_line.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/associate_uberon_reftable.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/associate_dot_reftable.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/associate_stable_info.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/clean_raw_info.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/associate_code/unif_cell_line.py" $SCRATCH_DIR/
 
 #activate requirements venv
 source $ENV_REQUIREMENT/bin/activate

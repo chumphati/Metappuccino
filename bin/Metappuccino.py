@@ -20,8 +20,8 @@ def wait_for_flag_file(flag_path):
 def main():
     #arg parse and help description
     parser = argparse.ArgumentParser(description="Automates metadata extraction and completion based on LLMs.")
-    parser.add_argument("--metamap_dir", type=str, required=True,
-                        help="Path to the MetaMap directory")
+    parser.add_argument("--metappuccino_dir", type=str, required=True,
+                        help="Path to the Metappuccino directory")
     parser.add_argument("--res_dir", type=str, required=True,
                         help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
@@ -43,12 +43,12 @@ def main():
     args = parser.parse_args()
 
     #scripts to execute and flags
-    metamap_dir = args.metamap_dir
+    metappuccino_dir = args.metappuccino_dir
     res_dir = args.res_dir
     env_dir = args.env_requirement
     cuda_path = args.cuda
     model_path = args.model
-    tmp_dir = os.path.join(metamap_dir+"/"+res_dir, "tmp")
+    tmp_dir = os.path.join(metappuccino_dir+"/"+res_dir, "tmp")
 
     step1_flag = os.path.join(tmp_dir, "STEP1_1.flag")
     step2_flag = os.path.join(tmp_dir, "STEP1_2.flag")
@@ -60,16 +60,16 @@ def main():
     step7_flag = os.path.join(tmp_dir, "STEP4_1.flag")
     step8_flag = os.path.join(tmp_dir, "STEP4_2.flag")
 
-    install_requirements = os.path.join(metamap_dir, "bin", "STEP1", "install_requirements.sh")
-    download_script = os.path.join(metamap_dir, "bin", "STEP1", "download_metadata.sh")
-    clean_script = os.path.join(metamap_dir, "bin", "STEP1", "clean_metadata.sh")
-    get_stable_metadata = os.path.join(metamap_dir, "bin", "STEP2", "get_stable_metadata.sh")
-    llm_specific_biology_information = os.path.join(metamap_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
-    reload_context_llm = os.path.join(metamap_dir, "bin", "STEP2", "reload_model.sh")
-    split_col_cleanmetadata = os.path.join(metamap_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
-    associate_information = os.path.join(metamap_dir, "bin", "STEP3", "associate_codes_clean.sh")
-    llm_study_information = os.path.join(metamap_dir, "bin", "STEP4", "llm_study_information.sh")
-    process_study_llm = os.path.join(metamap_dir, "bin", "STEP4", "sort_entropy.sh")
+    install_requirements = os.path.join(metappuccino_dir, "bin", "STEP1", "install_requirements.sh")
+    download_script = os.path.join(metappuccino_dir, "bin", "STEP1", "download_metadata.sh")
+    clean_script = os.path.join(metappuccino_dir, "bin", "STEP1", "clean_metadata.sh")
+    get_stable_metadata = os.path.join(metappuccino_dir, "bin", "STEP2", "get_stable_metadata.sh")
+    llm_specific_biology_information = os.path.join(metappuccino_dir, "bin", "STEP2", "llm_specific_biology_information.sh")
+    reload_context_llm = os.path.join(metappuccino_dir, "bin", "STEP2", "reload_model.sh")
+    split_col_cleanmetadata = os.path.join(metappuccino_dir, "bin", "STEP2", "split_col_cleanmetadata.sh")
+    associate_information = os.path.join(metappuccino_dir, "bin", "STEP3", "associate_codes_clean.sh")
+    llm_study_information = os.path.join(metappuccino_dir, "bin", "STEP4", "llm_study_information.sh")
+    process_study_llm = os.path.join(metappuccino_dir, "bin", "STEP4", "sort_entropy.sh")
 
     ##INSTALL REQUIREMENTS
     try:
@@ -78,23 +78,23 @@ def main():
             sys.exit(1)
 
         if args.requirements:
-            subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
-            # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
+            subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
+            # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir+","+"PATH_CUDA="+cuda_path, install_requirements], check=True)
             print("✔ Installation requirements completed!")
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:
             #get metadata from sra ncbi if asked from a sra list
             if not os.path.isfile(step1_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir,  download_script], check=True)
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+"RES="+res_dir, clean_script], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir, clean_script], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+"RES="+res_dir, clean_script], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir, clean_script], check=True)
             wait_for_flag_file(step2_flag)
             print("✔ Metadata cleaned!")
 
@@ -102,30 +102,30 @@ def main():
         if args.fillmetadata:
             #get basic information for each run in output final table
             if not os.path.isfile(step3_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir, get_stable_metadata], check=True)
             wait_for_flag_file(step3_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #split specific, study and donor analysis
             if not os.path.isfile(step4_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
-                # subprocess.run(["sbatch", "--export=OUTPUT_DIR="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "OUTPUT_DIR="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
+                # subprocess.run(["sbatch", "--export=OUTPUT_DIR="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir, split_col_cleanmetadata], check=True)
             wait_for_flag_file(step4_flag)
             print("✔ Initial data retrieval directly from databases completed!")
 
             #fill the missing information in the output final table with LLM
             #biology info
             if not os.path.isfile(step5_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, llm_specific_biology_information], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, llm_specific_biology_information], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir, llm_specific_biology_information], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Specific run information filled by LLM model successfully!")
 
             #reload context
             if not os.path.isfile(step5_2_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_context_llm], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, reload_context_llm], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_context_llm], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir, reload_context_llm], check=True)
             wait_for_flag_file(step5_2_flag)
             print("✔ Context reloaded successfully!")
 
@@ -133,8 +133,8 @@ def main():
         if args.associateinformation:
             #association uberon/dot with ref table and clean
             if not os.path.isfile(step6_flag):
-                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAMAP="+metamap_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP="+metamap_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
+                subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
 
@@ -143,19 +143,19 @@ def main():
             # fill the missing information in the output final table with study info
             if not os.path.isfile(step7_flag):
                 subprocess.run(
-                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir+","+"MODEL="+model_path,
+                    ["qsub", "-q", "alphafold", "-v", "METAPPUCCINO=" + metappuccino_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir+","+"MODEL="+model_path,
                      llm_study_information], check=True)
-                # subprocess.run(["sbatch", "--export=METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir, llm_study_information], check=True)
+                # subprocess.run(["sbatch", "--export=METAPPUCCINO=" + metappuccino_dir + "," + "ENV_REQUIREMENT=" + env_dir, llm_study_information], check=True)
             wait_for_flag_file(step7_flag)
             print("✔ Study information for projects filled by LLM model successfully!")
 
             # process study info via entropy
             if not os.path.isfile(step8_flag):
                 subprocess.run(
-                    ["qsub", "-q", "alphafold", "-v", "METAMAP=" + metamap_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir,
+                    ["qsub", "-q", "alphafold", "-v", "METAPPUCCINO=" + metappuccino_dir + "," + "RES="+res_dir+","+ "ENV_REQUIREMENT=" + env_dir,
                      process_study_llm], check=True)
                 # subprocess.run(
-                #     ["sbatch", "--export=METAMAP=" + metamap_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                #     ["sbatch", "--export=METAPPUCCINO=" + metappuccino_dir + "," + "ENV_REQUIREMENT=" + env_dir,
                 #      process_study_llm], check=True)
             wait_for_flag_file(step8_flag)
             print("✔ Study information information processed successfully!")

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-input_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/good_cleaned_metadata_sra.txt"
-output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/store/mela-select_extraction.tsv"
+input_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/store/good_cleaned_metadata_sra.txt"
+output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/store/mela-select_extraction.tsv"
 
 header="run_accession\tlibrary_selection_fixed\tlibrary_source_fixed\tcell_type_fix\tcell_line_fix\ttissue_type_fix\tdisease\ttreatment\ttreatment_time\tresponse\tphenotype\tage\tsex"
 echo -e "$header" > "$output_file"

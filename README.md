@@ -1,6 +1,6 @@
-# MetaMap
+# Metappuccino
 
-MetaMap automates the extraction, reconstruction, and enrichment of metadata from public RNA-seq datasets using instruction-tuned large language models (LLMs). It combines sample-level and study-level inference, entropy-based filtering, and ontology mapping to produce high-quality structured metadata.
+Metappuccino automates the extraction, reconstruction, and enrichment of metadata from public RNA-seq datasets using instruction-tuned large language models (LLMs). It combines sample-level and study-level inference, entropy-based filtering, and ontology mapping to produce high-quality structured metadata.
 <br>
 It is compatible with the HPC schedulers SLURM and PBS.
 
@@ -27,24 +27,24 @@ It is compatible with the HPC schedulers SLURM and PBS.
 1. Clone the repository:
 
 
-    git clone git@github.com:chumphati/MetaMap.git
+    git clone git@github.com:chumphati/Metappuccino.git
 
-2. Download the MetaMap fine-tuned LLM from HuggingFace:
+2. Download the Metappuccino fine-tuned LLM from HuggingFace:
 
 
-    huggingface-cli download your-username/metamap-mistral7B-ft --local-dir ./models/MetaMap_Mistral7B_FT
+    huggingface-cli download your-username/metappuccino-mistral7B-ft --local-dir ./models/Metappuccino_Mistral7B_FT
 
 ## Quick Start
 ### Local Execution
 
-    nohup python3 bin/MetaMap.py \
-      --metamap_dir ./MetaMap \
+    nohup python3 bin/Metappuccino.py \
+      --metappuccino_dir ./Metappuccino \
       --res_dir results_dir \
       --env_requirement ./venv \
       --mode local
-      --model ./models/MetaMap_LLM/llama-model.gguf \
+      --model ./models/Metappuccino_LLM/llama-model.gguf \
       --getmetadata --fillmetadata --associateinformation --completestudy \
-      > results/logsMetaMap.log 2>&1 &
+      > results/logsMetappuccino.log 2>&1 &
 
 
 Warning: At least one GPU with enough RAM must be available.
@@ -53,32 +53,32 @@ Warning: At least one GPU with enough RAM must be available.
 1. PBS
 
 
-    qsub PATH_TO_CLONED_REPO/MetaMap/bin/MetaMap.sh
+    qsub PATH_TO_CLONED_REPO/Metappuccino/bin/Metappuccino.sh
 
 
 2. SLURM
 
 
-    sbatch PATH_TO_CLONED_REPO/MetaMap/bin/MetaMap.sh
+    sbatch PATH_TO_CLONED_REPO/Metappuccino/bin/Metappuccino.sh
 
 
 ## Arguments
 Run:
 
-    python3 PATH_TO_CLONED_REPO/MetaMap/bin/MetaMap.py --help
+    python3 PATH_TO_CLONED_REPO/Metappuccino/bin/Metappuccino.py --help
 
-| Argument               | Description                                                        |
-|------------------------|--------------------------------------------------------------------|
-| `--metamap_dir`        | Path to the MetaMap base directory                                 |
-| `--res_dir`            | Directory for storing output results                               |
-| `--env_requirement`    | Path to the Python virtual environment with installed requirements |
-| `--model`              | Path to the LLM model file or directory                            |
-| `--requirements`       | Install Python requirements and CUDA support                      |
-| `--cuda`               | Path to CUDA installation (default: `/usr/local/cuda`)             |
-| `--getmetadata`        | Download and clean metadata from SRA                               |
-| `--fillmetadata`       | Predict missing metadata fields with LLMs                          |
+| Argument                 | Description                                                        |
+|--------------------------|--------------------------------------------------------------------|
+| `--metappuccino_dir`     | Path to the Metappuccino base directory                                 |
+| `--res_dir`              | Directory for storing output results                               |
+| `--env_requirement`      | Path to the Python virtual environment with installed requirements |
+| `--model`                | Path to the LLM model file or directory                            |
+| `--requirements`         | Install Python requirements and CUDA support                      |
+| `--cuda`                 | Path to CUDA installation (default: `/usr/local/cuda`)             |
+| `--getmetadata`          | Download and clean metadata from SRA                               |
+| `--fillmetadata`         | Predict missing metadata fields with LLMs                          |
 | `--associateinformation` | Match LLM predictions to ontology terms                         |
-| `--completestudy`      | Complete metadata using study-level context                        |
+| `--completestudy`        | Complete metadata using study-level context                        |
 
 
 ## Output Structure

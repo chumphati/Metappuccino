@@ -12,7 +12,7 @@ import time
 ########################################################################################################################
 #PATHS
 parser = argparse.ArgumentParser(description="Download metadata from NCBI Ensembl")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 
 base_path = args.base_path

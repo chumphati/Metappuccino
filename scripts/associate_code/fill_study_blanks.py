@@ -8,7 +8,7 @@ import argparse
 ##########################################################################################
 # PATHS
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -18,10 +18,10 @@ final_file = os.path.join(base_path, "final_llm_sample_analysis.csv")
 best_inf_study = os.path.join(base_path, "best_inferences_per_run.csv")
 FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
 
-# uberon_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/UBERON_TABLE_CLEAN.csv"
-# doid_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/DOT_TABLE_CLEAN.csv"
-# final_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
-# best_inf_study = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/best_inferences_per_run.csv"
+# uberon_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/UBERON_TABLE_CLEAN.csv"
+# doid_ref_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/DOT_TABLE_CLEAN.csv"
+# final_file = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+# best_inf_study = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/SPECIFIC_RUN_ANALYSIS/best_inferences_per_run.csv"
 
 ##########################################################################################
 # FUNCTIONS

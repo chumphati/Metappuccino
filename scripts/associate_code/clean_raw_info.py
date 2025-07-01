@@ -9,7 +9,7 @@ import numpy as np
 ##########################################################################################
 # PATHS
 parser = argparse.ArgumentParser(description="Clean raw final info and override with initial metadata")
-parser.add_argument("--base_path", type=str, required=True, help="Base path to MetaMap")
+parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 args = parser.parse_args()
 
 base_dir = args.base_path
@@ -20,10 +20,10 @@ output_file_path = os.path.join(base_dir, "final_llm_sample_analysis.csv")
 output_file_path_tmp = os.path.join(base_dir, "final_llm_sample_analysis_tmp.csv")
 FLAG_PATH = os.path.join(base_dir, "STEP3.flag")
 
-# base_dir="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap"
-# raw_final_info_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/raw_final_info.txt"
-# initial_raw_metadata_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/tmp/initial_raw_metadata.txt"
-# output_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
+# base_dir="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+# raw_final_info_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/raw_final_info.txt"
+# initial_raw_metadata_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/initial_raw_metadata.txt"
+# output_file_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/SPECIFIC_RUN_ANALYSIS/final_llm_sample_analysis.csv"
 
 ##########################################################################################
 # FUNCTIONS

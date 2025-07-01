@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 ####################################################################################
-#PATHS AND SETTINGS
+# PATHS AND SETTINGS
 
-input_dir = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/all_compare'
-reference_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/data/mela_sample.tsv'
-pred_and_acc = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/predictions_and_accuracy.csv'
-metrics_summary_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/metrics_summary.csv'
-accuracy_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/plots/accuracy_plots.png'
-prf_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_MetaMap_LLM_results/output_analysis-v2-1500/plots/precision_recall_f1.png'
+input_dir = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_Metappuccino_LLM_results/all_compare'
+reference_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/mela_sample.tsv'
+pred_and_acc = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_Metappuccino_LLM_results/output_analysis-v3-1500/predictions_and_accuracy.csv'
+metrics_summary_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_Metappuccino_LLM_results/output_analysis-v3-1500/metrics_summary.csv'
+accuracy_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_Metappuccino_LLM_results/output_analysis-v3-1500/plots/accuracy_plots.png'
+prf_plot_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/final_Metappuccino_LLM_results/output_analysis-v3-1500/plots/precision_recall_f1.png'
 
 reference_df = pd.read_csv(reference_path, sep='\t')
 reference_runs = set(reference_df['run_accession_number'])
@@ -48,82 +48,104 @@ category_rename = {
 }
 
 ####################################################################################
-#FILTER RUNS
+# FILTER RUNS
 
 clean_pred = lambda x: re.sub(r'\(e=.*?\)', '', str(x)).strip()
 threshold = 0.45
 
+synonym_map = {
+    'primarytissue': 'primarycells'
+}
 
-def normalize(x):
-    return re.sub(r'[-_]', ' ', str(x)).strip().lower()
-
+def normalize(x, category):
+    if pd.isna(x):
+        return ''
+    s = str(x).lower()
+    s = re.sub(r'[^a-z0-9]', '', s)
+    if s in synonym_map:
+        s = synonym_map[s]
+    return s
 
 for filename in os.listdir(input_dir):
-    if filename.endswith('_final_llm_sample_analysis.csv'):
-        model_key = filename.replace('_final_llm_sample_analysis.csv', '')
-        model_name, precision_type = model_name_map[model_key]
-        file_path = os.path.join(input_dir, filename)
-        df = pd.read_csv(file_path, sep='\t')
-        df = df[df['run_accession_number'].isin(reference_runs)]
+    if not filename.endswith('_final_llm_sample_analysis.csv'):
+        continue
 
-        for category in df.columns:
-            if category in ['run_accession_number', 'study_accession', 'number_base_pairs']:
-                continue
-            if category not in reference_df.columns:
-                continue
+    model_key = filename.replace('_final_llm_sample_analysis.csv', '')
+    model_name, precision_type = model_name_map[model_key]
+    file_path = os.path.join(input_dir, filename)
+    df = pd.read_csv(file_path, sep='\t')
+    df = df[df['run_accession_number'].isin(reference_runs)]
 
-            df[f'{category}_clean'] = df[category].apply(clean_pred)
-            reference_df[f'{category}_clean'] = reference_df[category].apply(clean_pred)
-            preds = df[f'{category}_clean'].values
-            refs = reference_df.set_index('run_accession_number').loc[df['run_accession_number']][f'{category}_clean'].values
-            accuracy_type = 'Normal' if category in normal_accuracy_categories else 'Semantic'
+    for category in df.columns:
+        if category in ['run_accession_number', 'study_accession', 'number_base_pairs']:
+            continue
+        if category not in reference_df.columns:
+            continue
 
-            if accuracy_type == 'Normal':
-                refs_norm = [normalize(x) for x in refs]
-                preds_norm = [normalize(x) for x in preds]
-                accuracy = accuracy_score(refs_norm, preds_norm)
-                similarities = [np.nan] * len(preds)
-                mean_similarity = np.nan
-                # Standard metrics
-                precision, recall, f1, _ = precision_recall_fscore_support(refs, preds, average='weighted', zero_division=0)
-            else:
-                embeddings_preds = embed_model.encode(preds)
-                embeddings_refs = embed_model.encode(refs)
-                similarities = np.diag(cosine_similarity(embeddings_preds, embeddings_refs))
-                similarities = np.clip(similarities, 0, 1)
-                accuracy = np.mean(similarities > threshold)
-                mean_similarity = float(np.mean(similarities))
-                true_positives = np.sum(similarities > threshold)
-                soft_precision = true_positives / len(preds) if len(preds) > 0 else 0
-                soft_recall = true_positives / len(refs) if len(refs) > 0 else 0
-                soft_f1 = 2 * (soft_precision * soft_recall) / (soft_precision + soft_recall + 1e-10) if (soft_precision + soft_recall) > 0 else 0
-                precision, recall, f1 = soft_precision, soft_recall, soft_f1
+        df[f'{category}_clean'] = df[category].apply(clean_pred)
+        reference_df[f'{category}_clean'] = reference_df[category].apply(clean_pred)
 
-            metrics_summary.append({
+        preds = df[f'{category}_clean'].values
+        refs = (
+            reference_df
+            .set_index('run_accession_number')
+            .loc[df['run_accession_number']][f'{category}_clean']
+            .values
+        )
+
+        accuracy_type = 'Normal' if category in normal_accuracy_categories else 'Semantic'
+
+        if accuracy_type == 'Normal':
+            preds_norm = [normalize(x, category) for x in preds]
+            refs_norm = [normalize(x, category) for x in refs]
+
+            accuracy = accuracy_score(refs_norm, preds_norm)
+            similarities = [np.nan] * len(preds)
+            mean_similarity = np.nan
+
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                refs_norm, preds_norm, average='weighted', zero_division=0
+            )
+        else:
+            embeddings_preds = embed_model.encode(preds)
+            embeddings_refs = embed_model.encode(refs)
+            similarities = np.diag(cosine_similarity(embeddings_preds, embeddings_refs))
+            similarities = np.clip(similarities, 0, 1)
+            accuracy = np.mean(similarities > threshold)
+            mean_similarity = float(np.mean(similarities))
+            true_positives = np.sum(similarities > threshold)
+            soft_precision = true_positives / len(preds) if len(preds) > 0 else 0
+            soft_recall = true_positives / len(refs) if len(refs) > 0 else 0
+            soft_f1 = 2 * (soft_precision * soft_recall) / (
+                soft_precision + soft_recall + 1e-10
+            ) if (soft_precision + soft_recall) > 0 else 0
+            precision, recall, f1 = soft_precision, soft_recall, soft_f1
+
+        metrics_summary.append({
+            'Model': model_name,
+            'Precision Type': precision_type,
+            'Category': category,
+            'Accuracy': accuracy,
+            'Accuracy Type': accuracy_type,
+            'Precision': precision,
+            'Recall': recall,
+            'F1': f1,
+            'Mean Similarity': mean_similarity
+        })
+
+        for run, pred, ref, sim in zip(df['run_accession_number'], preds, refs, similarities):
+            sim = np.clip(sim, 0, 1)
+            detail_output.append({
+                'Run Accession': run,
                 'Model': model_name,
                 'Precision Type': precision_type,
                 'Category': category,
-                'Accuracy': accuracy,
-                'Accuracy Type': accuracy_type,
-                'Precision': precision,
-                'Recall': recall,
-                'F1': f1,
-                'Mean Similarity': mean_similarity
+                'Prediction': pred,
+                'Reference': ref,
+                'Prediction_normalized': normalize(pred, category) if accuracy_type == 'Normal' else '',
+                'Reference_normalized': normalize(ref, category) if accuracy_type == 'Normal' else '',
+                'Semantic Accuracy': sim if accuracy_type == 'Semantic' else np.nan
             })
-
-            for run, pred, ref, sim in zip(df['run_accession_number'], preds, refs, similarities):
-                sim = np.clip(sim, 0, 1)
-                detail_output.append({
-                    'Run Accession': run,
-                    'Model': model_name,
-                    'Precision Type': precision_type,
-                    'Category': category,
-                    'Prediction': pred,
-                    'Reference': ref,
-                    'Prediction_normalized': normalize(pred) if accuracy_type == 'Normal' else '',
-                    'Reference_normalized': normalize(ref) if accuracy_type == 'Normal' else '',
-                    'Semantic Accuracy': sim if accuracy_type == 'Semantic' else np.nan
-                })
 
 detail_df = pd.DataFrame(detail_output)
 detail_df.to_csv(pred_and_acc, index=False)
@@ -131,19 +153,29 @@ metrics_df = pd.DataFrame(metrics_summary)
 metrics_df.to_csv(metrics_summary_path, index=False)
 
 ####################################################################################
-#MAKE PLOT
+# CALCUL DES MOYENNES PAR CATÉGORIE ET PAR MODÈLE
 
 categories = metrics_df['Category'].unique()
-num_plots = len(categories)
-rows = int(np.ceil(num_plots / 3))
 order_models = ['DeepSeek-V2', 'LLaMA-70B', 'LLaMA-8B', 'Mistral-7B', 'Fine-tuned Mistral-7B']
 
 semantic_categories = [c for c in categories if c not in normal_accuracy_categories]
-mean_semantic_acc = (metrics_df[metrics_df['Category'].isin(semantic_categories)]
-                     .groupby(['Model', 'Precision Type'])['Accuracy']
-                     .mean()
-                     .reset_index()
-                     .rename(columns={'Accuracy': 'Mean Semantic Accuracy'}))
+
+mean_per_cat_model = (
+    metrics_df[metrics_df['Category'].isin(semantic_categories)]
+      .groupby(['Category', 'Model'])['Accuracy']
+      .mean()
+      .reset_index()
+      .rename(columns={'Accuracy': 'Mean Accuracy Per Model'})
+)
+
+print("=== Moyennes d'Accuracy par catégorie et par modèle ===")
+print(mean_per_cat_model.sort_values(['Category', 'Model']))
+
+####################################################################################
+# MAKE PLOT
+
+num_plots = len(categories)
+rows = int(np.ceil(num_plots / 3))
 
 fig, axes = plt.subplots(rows, 3, figsize=(18, 5 * rows))
 sns.set_style('whitegrid')
@@ -152,8 +184,11 @@ for idx, category in enumerate(categories):
     ax = axes.flatten()[idx]
     plot_data = metrics_df[metrics_df['Category'] == category].copy()
     plot_data['Model'] = pd.Categorical(plot_data['Model'], categories=order_models, ordered=True)
-    plot_data['Precision Type'] = pd.Categorical(plot_data['Precision Type'], categories=['FP32/Q8_0', 'Q4_M'],
-                                                 ordered=True)
+    plot_data['Precision Type'] = pd.Categorical(
+        plot_data['Precision Type'],
+        categories=['FP32/Q8_0', 'Q4_M'],
+        ordered=True
+    )
     plot_data = plot_data.sort_values(['Model', 'Precision Type'])
 
     sns.barplot(
@@ -161,31 +196,42 @@ for idx, category in enumerate(categories):
         x='Model', y='Accuracy', hue='Precision Type', ax=ax,
         palette='Greys', edgecolor='black'
     )
-    ax.legend(title=None)
-    category_title = category_rename.get(category, category.replace('_', ' ').capitalize())
-    ax.set_title(category_title)
+    ax.set_title(category_rename.get(category, category.replace('_', ' ').capitalize()))
     ax.set_ylim(0, 1)
     ax.set_xticks(range(len(order_models)))
     ax.set_xticklabels(order_models, rotation=45, ha='right')
 
     if category in semantic_categories:
-        for i, (model, precision_type) in enumerate(plot_data[['Model', 'Precision Type']].drop_duplicates().values):
-            mean_val = mean_semantic_acc[
-                (mean_semantic_acc['Model'] == model) &
-                (mean_semantic_acc['Precision Type'] == precision_type)
-                ]['Mean Semantic Accuracy']
+        # Ajout de la ligne rouge pour chaque modèle
+        for i, model in enumerate(order_models):
+            mean_val = mean_per_cat_model[
+                (mean_per_cat_model['Category'] == category) &
+                (mean_per_cat_model['Model'] == model)
+            ]['Mean Accuracy Per Model']
             if not mean_val.empty:
-                ax.axhline(mean_val.values[0], color='red', linestyle='--', linewidth=2,
-                           xmin=(i + 0.1) / len(order_models), xmax=(i + 0.9) / len(order_models),
-                           label='Mean Semantic Accuracy' if i == 0 else None)
-        handles, labels = ax.get_legend_handles_labels()
-        if 'Mean Semantic Accuracy' not in labels:
-            handles.append(plt.Line2D([], [], color='red', linestyle='--', linewidth=2))
-            labels.append('Mean Semantic Accuracy')
-        ax.legend(handles, labels, loc='upper right', fontsize='small')
-    else:
-        ax.legend(title=None)
+                xmin = (i + 0.05) / len(order_models)
+                xmax = (i + 0.95) / len(order_models)
+                ax.axhline(
+                    y=mean_val.values[0],
+                    color='red',
+                    linestyle='--',
+                    linewidth=2,
+                    xmin=xmin, xmax=xmax,
+                    label='Mean per Model' if i == 0 else None
+                )
 
+    handles, labels = ax.get_legend_handles_labels()
+    ncol = len(labels) if len(labels) <= 3 else 3
+    ax.legend(
+        handles, labels,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 0.95),
+        ncol=ncol,
+        fontsize='small',
+        frameon=False
+    )
+
+# Supprime les axes vides si nécessaire
 for idx in range(len(categories), len(axes.flatten())):
     fig.delaxes(axes.flatten()[idx])
 
@@ -202,8 +248,11 @@ for idx, category in enumerate(categories):
     ax = axes2.flatten()[idx]
     plot_data = metrics_df[metrics_df['Category'] == category].copy()
     plot_data['Model'] = pd.Categorical(plot_data['Model'], categories=order_models, ordered=True)
-    plot_data['Precision Type'] = pd.Categorical(plot_data['Precision Type'], categories=['FP32/Q8_0', 'Q4_M'],
-                                                 ordered=True)
+    plot_data['Precision Type'] = pd.Categorical(
+        plot_data['Precision Type'],
+        categories=['FP32/Q8_0', 'Q4_M'],
+        ordered=True
+    )
     plot_data = plot_data.sort_values(['Model', 'Precision Type'])
 
     melted = plot_data.melt(
@@ -220,7 +269,17 @@ for idx, category in enumerate(categories):
     ax.set_ylim(0, 1)
     ax.set_xticks(range(len(order_models)))
     ax.set_xticklabels(order_models, rotation=45, ha='right')
-    ax.legend(loc='upper right', fontsize='small')
+
+    handles, labels = ax.get_legend_handles_labels()
+    ncol = len(labels) if len(labels) <= 3 else 3
+    ax.legend(
+        handles, labels,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 0.95),
+        ncol=ncol,
+        fontsize='small',
+        frameon=False
+    )
 
 for idx in range(len(categories), len(axes2.flatten())):
     fig2.delaxes(axes2.flatten()[idx])

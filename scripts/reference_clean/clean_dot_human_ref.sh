@@ -2,8 +2,8 @@
 
 #CREATE CLEAN UBERON COMP TABLE
 
-input_file="/Users/fionahak/Documents/phd/phd_code/MetaMap/data/raw/HumanDO.txt"
-output_file="/Users/fionahak/Documents/phd/phd_code/MetaMap/data/DOT_TABLE_CLEAN.csv"
+input_file="/Users/fionahak/Documents/phd/phd_code/Metappuccino/data/raw/HumanDO.txt"
+output_file="/Users/fionahak/Documents/phd/phd_code/Metappuccino/data/DOT_TABLE_CLEAN.csv"
 
 echo "code_dot,name,synonym" > "$output_file"
 
