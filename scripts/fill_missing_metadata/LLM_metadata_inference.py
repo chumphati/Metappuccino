@@ -1,0 +1,289 @@
+##########################################################################################
+#IMPORT
+import os
+import psutil
+from llama_cpp import Llama
+import torch
+import sys
+import argparse
+import math
+import numpy as np
+import re
+import json
+
+parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser.add_argument("--base_path", type=str, required=True)
+parser.add_argument("--input_metadata_path", type=str, required=True)
+parser.add_argument("--error_file_path", type=str, required=True)
+parser.add_argument("--log_file_path", type=str, required=True)
+parser.add_argument("--flag_file", type=str, required=True)
+parser.add_argument("--initial_n_ctx", type=int, default=2500)
+parser.add_argument("--model", type=str, required=True)
+args = parser.parse_args()
+
+base_path           = args.base_path
+input_metadata_path = args.input_metadata_path
+error_file_path     = args.error_file_path
+log_file_path       = args.log_file_path
+FLAG_FILE           = args.flag_file
+initial_n_ctx       = args.initial_n_ctx
+model               = args.model
+
+raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
+output_dir          = os.path.join(base_path, "METADATA_LLM_INFERENCE")
+skipped_runs_path   = os.path.join(base_path, "skipped_runs.txt")
+model_path          = os.path.join(base_path, model)
+error_file_header   = "run_accession\tsummary"
+
+sys.stdout = open(log_file_path, "a")
+sys.stderr = sys.stdout
+
+##########################################################################################
+#FUNCTIONS
+
+def print_memory_usage(proc):
+    m = proc.memory_info()
+    v = psutil.virtual_memory()
+    print(f"rss: {m.rss/1024**2:.2f} MB, virt used: {v.used/1024**2:.2f} MB")
+
+def get_llama_model(path, ctx):
+    return Llama(
+        model_path=path,
+        n_ctx=ctx,
+        n_gpu_layers=-1,
+        use_mmap=True,
+        n_threads=4,
+        logits_all=True,
+        flash_attn=True
+    )
+
+def write_reload_file(fp, header, parts):
+    dirpath = os.path.dirname(fp)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+    entry = "\t".join(parts)
+    if not os.path.exists(fp):
+        with open(fp, "w") as f:
+            f.write(header + "\n")
+    with open(fp, "r+") as f:
+        content = f.read()
+        if entry not in content:
+            f.write(entry + "\n")
+
+def calculate_entropy_optimized(logprobs):
+    arr = np.array(logprobs)
+    arr -= np.max(arr)
+    probs = np.exp(arr)
+    probs /= probs.sum()
+    return float(-np.sum(probs * np.log(probs + 1e-10)))
+
+def find_subsequence(full, sub):
+    L, l = len(full), len(sub)
+    for i in range(L - l + 1):
+        if full[i:i+l] == sub:
+            return i
+    return -1
+
+def get_token_spans(text, tokens):
+    spans = []
+    offset = 0
+    for tok in tokens:
+        decoded = llm.detokenize([tok]).decode("utf-8", errors="ignore")
+        offset = text.find(decoded, offset)
+        if offset == -1:
+            spans.append(None)
+        else:
+            spans.append(offset)
+            offset += len(decoded)
+    return spans
+
+
+##########################################################################################
+#MAIN
+process = psutil.Process(os.getpid())
+llm = get_llama_model(model_path, initial_n_ctx)
+
+with open(input_metadata_path) as mf:
+    header = mf.readline()
+    metadata_lines = mf.readlines()
+
+with open(raw_final_info_path) as rf:
+    raw = rf.readlines()
+    raw_headers = raw[0].strip().split("\t")
+    raw_data = {r.split("\t")[0]: r.strip().split("\t") for r in raw[1:]}
+    print(raw_data)
+
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+categories = [
+    "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
+    "cell_line", "cell_type", "organ", "disease", "treatment",
+    "treatment_time", "response", "age", "sex", "ethnicity", "localization"
+]
+
+definitions = {
+    "library_selection": "one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection)",
+    "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context",
+    "biopsy_site": "body location WHERE TISSUE WAS SAMPLED",
+    "biopsy_type": "one of: 'primary', 'metastasis', 'blood'",
+    "cell_line": "exact cell line code",
+    "cell_type": "exact cell type if the cells are identified from a certain type or write 'primary tissue'",
+    "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site)",
+    "disease": "report associated disease or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)",
+    "treatment": "treatment applied (can be molecules, specific techniques, control, etc...)",
+    "treatment_time": "time or phase relative to treatment (qualitative or quantitative information)",
+    "response": "treatment response, state of the cell after treatment, any kind of event after treatment if applicable",
+    "age": "sample donor age",
+    "sex": "sample donor sex",
+    "ethnicity": "sample donor ethnicity (origins, genetics)",
+    "localization": "all geographical origin information"
+}
+
+skipped_runs = []
+
+for idx, line in enumerate(metadata_lines):
+    run, summary = line.strip().split("\t", 1)
+    print(run)
+
+    if run not in raw_data:
+        skipped_runs.append(run)
+        continue
+
+    na_columns = categories.copy()
+    print(na_columns)
+
+    raw_vals = raw_data[run]
+    extra_info = []
+    for col, val in zip(raw_headers, raw_vals):
+        if val and val != "":
+            extra_info.append(f"- {col}: {val}")
+
+    extra_metadata_block = ""
+    if extra_info:
+        extra_metadata_block = (
+                "\nWARNING: The complementary following information are information on the sample that you have to consider to be true. Use them to infer properly from the context the other categories:\n"
+                + "\n".join(extra_info)
+        )
+
+    print(f"\n[{idx+1}/{len(metadata_lines)}] {run}", flush=True)
+    print_memory_usage(process)
+
+    inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
+    fmt_keys   = ", ".join(f'"{c}": "<value>"' for c in na_columns)
+
+    prompt = f"""Run accession: {run}
+            Summary: {summary}
+            
+            Categories and definitions:
+            {inst_lines}
+            
+            For each category below:
+            - Infer from the summary if possible
+            - If not applicable (eg. no treatment, so impossible to infer treatment_time and response ; or cell_type = primary tissue or a mix of cells so no cell_line), RETURN "not applicable"
+            - If impossible to infer, return "unknown", applicable for all categories
+            {extra_metadata_block}
+            
+            Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys:
+            {{{fmt_keys}}}
+            """
+
+    print("PROMPT:", flush=True)
+    print(prompt, flush=True)
+
+    print("BEGIN:", flush=True)
+    resp      = llm(prompt, max_tokens=300, logprobs=True)
+    print("ANSWER:", flush=True)
+    print(resp["choices"][0]["text"])
+    text      = resp["choices"][0]["text"].strip()
+
+    m = re.search(r'\{.*\}', text, flags=re.DOTALL)
+    if m:
+        json_str = m.group(0)
+        try:
+            parsed_json = json.loads(json_str)
+            print("Json good format: ", parsed_json)
+        except json.JSONDecodeError:
+            print("Json format error")
+            write_reload_file(error_file_path, error_file_header, [run, summary])
+            skipped_runs.append(run)
+            continue
+    else:
+        print("No json bloc in the answer")
+        write_reload_file(error_file_path, error_file_header, [run, summary])
+        skipped_runs.append(run)
+        continue
+
+    category_token_patterns = {
+        "library_selection": [' {"', 'library', '_', 'selection', '":', ' "'],
+        "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
+        "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
+        "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
+        "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
+        "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
+        "organ": [' "', 'organ', '":', ' "'],
+        "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
+        "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
+        "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
+        "response": [' "', 'response', '":', ' "'],
+        "age": [' "', 'age', '":', ' "'],
+        "sex": [' "', 'sex', '":', ' "'],
+        "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
+        "localization": [' "', 'local', 'ization', '":', ' "'],
+    }
+
+    tokens = resp["choices"][0]["logprobs"]["tokens"]
+    logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
+
+    ordered_keys = list(parsed_json.keys())
+    entropy_dict = {}
+
+    for i, key in enumerate(ordered_keys):
+        pat = category_token_patterns[key]
+        idx = find_subsequence(tokens, pat)
+        start = idx + len(pat) if idx >= 0 else None
+        if start is None:
+            entropy_dict[key] = None
+            continue
+
+        if i + 1 < len(ordered_keys):
+            next_pat = category_token_patterns[ordered_keys[i + 1]]
+            next_idx = find_subsequence(tokens, next_pat)
+            end = next_idx if next_idx >= 0 else len(tokens)
+        else:
+            end = len(tokens)
+
+        if end <= start:
+            entropy_dict[key] = None
+            continue
+
+        # segment_token_ids = tokens[start:end]
+        # segment_text = llm.detokenize(segment_token_ids).decode('utf-8', errors='ignore')
+        # segment_logits = logprobs[start:end]
+        # print(f"-- Key «{key}»:")
+        # print(f"   Tokens ids : {segment_token_ids}")
+        # print(f"   Tokens text: {segment_text!r}")
+        # print(f"   Logits     : {segment_logits}")
+
+        segment = logprobs[start:end]
+        entropy_dict[key] = calculate_entropy_optimized(segment)
+
+    output = {run: parsed_json, "entropy": entropy_dict}
+    print("Final output:", flush=True)
+    print(output)
+    out_fp = os.path.join(output_dir, f"{run}.json")
+    with open(out_fp, "w") as of:
+        json.dump(output, of, indent=2)
+
+with open(skipped_runs_path, "w") as sf:
+    for r in skipped_runs:
+        sf.write(r + "\n")
+
+if llm:
+    try:
+        llm.close()
+    except:
+        pass
+sys.stdout.close()
+
+open(FLAG_FILE, "w").close()

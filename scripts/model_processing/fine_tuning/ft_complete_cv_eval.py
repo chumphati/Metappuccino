@@ -44,11 +44,12 @@ n_splits = args.n_splits
 
 prompt_train_file = os.path.join(base_path, "finetune_data_train_corrected.csv")
 prompt_val_file = os.path.join(base_path, "finetune_data_val_corrected.csv")
+prompt_test_file = os.path.join(base_path, "finetune_data_test_corrected.csv")
 train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/tensorboard"
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_ft_final_templates/FINE_TUNING/tensorboard"
 
 # parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
@@ -349,11 +350,15 @@ class MyTrainer(Trainer):
 print("Load dataset with prompts", flush=True)
 df_train = pd.read_csv(prompt_train_file)
 df_val = pd.read_csv(prompt_val_file)
+df_test = pd.read_csv(prompt_test_file)
 
 # Select 5% of train and 20% of val for test
-df_train_test, df_train_final = train_test_split(df_train, test_size=0.95, random_state=SEED)
-df_val_test, df_val_final = train_test_split(df_val, test_size=0.80, random_state=SEED)
-df_test = pd.concat([df_train_test, df_val_test]).reset_index(drop=True)
+# df_train_test, df_train_final = train_test_split(df_train, test_size=0.95, random_state=SEED)
+# df_val_test, df_val_final = train_test_split(df_val, test_size=0.80, random_state=SEED)
+# df_test = pd.concat([df_train_test, df_val_test]).reset_index(drop=True)
+
+df_train_final = df_train
+df_val_final = df_val
 
 print(f"Training set size: {len(df_train_final)}, Validation set size: {len(df_val_final)}, Test set size: {len(df_test)}", flush=True)
 
@@ -394,9 +399,9 @@ tokenized_val_final = val_dataset_final.map(clean_output_text).map(tokenize_func
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=4,
+    r=8,
     lora_alpha=16,
-    lora_dropout=0.1,
+    lora_dropout=0.2,
     target_modules=['q_proj', 'v_proj']
 )
 
@@ -408,15 +413,15 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     learning_rate=5e-6,
-    per_device_train_batch_size=1,
+    per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
-    num_train_epochs=4,
-    weight_decay=0.01,
+    num_train_epochs=10,
+    weight_decay=0.02,
     save_strategy='steps',
     logging_strategy='no',
     logging_steps=250,
     fp16=True,
-    gradient_accumulation_steps=1,
+    gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,

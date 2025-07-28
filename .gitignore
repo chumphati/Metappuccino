@@ -175,3 +175,5 @@ data/raw/cellosaurus.txt
 results_train/
 results*/
 results_mistral7B_original/
+results_ft_patron_semi/
+results_metappuccino/

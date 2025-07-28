@@ -1,14 +1,24 @@
 #!/bin/bash
+
 #PBS -N Metappuccino
 #PBS -l walltime=10000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=1:mem=8gb
 
+#SBATCH --job-name=Metappuccino
+#SBATCH --partition=common
+#SBATCH --time=10000:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="results_mistral7B_v4_FT_4M"
+RES="results"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral7B-Instruct-ft-v1500tt-Q4_K_M.gguf"
+MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
 
 exec > "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.out" 2> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.err"
 
@@ -32,9 +42,9 @@ print_metappuccino_logo() {
 
 print_metappuccino_logo
 
-echo "✨Beginning of Metappuccino analysis✨"
+echo "Beginning of Metappuccino analysis"
 echo "Beginning date: $(date)"
-echo "🔄 Please wait while we analyze your data..."
+echo "Please wait while your data ara analyzed..."
 
 #create dir
 mkdir -p $METAPPUCCINO_DIR/$RES/logs
@@ -49,9 +59,9 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --res_dir "$RES" \
     --env_requirement "$ENV_REQUIREMENT" \
     --model "$MODEL" \
-    --getmetadata --fillmetadata --associateinformation --completestudy \
+    --getmetadata --fillmetadata --associateinformation \
     >> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.out" 2>> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.err"
 deactivate
 
 echo "End date: $(date)"
-echo "✨End of Metappuccino analysis! All results are stored in '$METAPPUCCINO_DIR/$RES'✨"
+echo "End of Metappuccino analysis! All results are stored in '$METAPPUCCINO_DIR/$RES'"

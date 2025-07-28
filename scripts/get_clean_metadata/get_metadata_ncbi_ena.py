@@ -91,7 +91,7 @@ def execute_bash_download_metadata():
                     echo "{METADATA_DIR} already downloaded."
                 else
                     /usr/bin/mkdir -p "{METADATA_DIR}"
-                    /usr/bin/tail -n +2 "{RUNS_TSV}" | while IFS=$'\t' read -r RUN_ACCESSION; do
+                    /usr/bin/tail "{RUNS_TSV}" | grep -v '^\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
                         RUN_ACCESSION=$(echo "$RUN_ACCESSION" | tr -d '\r' | tr -d '\n' | tr -d ' ')
                         OUTPUT_FILE="{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml"
                         if [ ! -f "$OUTPUT_FILE" ]; then
@@ -162,7 +162,7 @@ def main():
     # get_run_accessions("PRJNA523380")
 
     with open(RUNS_TSV, 'r') as file:
-        next(file)
+        # next(file)
         run_accessions = [line.strip() for line in file if line.strip()]
         print(run_accessions, flush=True)
         if not run_accessions:
@@ -173,7 +173,7 @@ def main():
     execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
-    with Pool(5) as pool:  # multiprocess on 5 CPUs
+    with Pool(4) as pool:  # multiprocess on 4 CPUs
         pool.map(extract_and_save_metadata, run_accessions)
 
     #create flag end process before cleaning

@@ -1,0 +1,66 @@
+[
+  [
+    "SRR28579086, Total RNA was extracted from cells using the ReliaPrep RNA miniprep system (Promega). RNA was submitted to the __INSTRUMENT_PLATFORM__ for RNA-seq library synthesis using a TruSeq Stranded mRNA kit (__INSTRUMENT_PLATFORM__) according to manufacturer's instructions., SRP500160PRJNA1097251GSE263385CPSF1 inhibition promotes widespread use of intergenic __LIBRARY_SELECTION__ sites and impairs glycolysis in __TISSUE_TYPE__ __DISEASE__ cells RNA seq The goal of this study was to compare global expression changes upon __TREATMENT__ in __CELL_LINE__ __CELL_LINE__ and __CELL_LINE__ __DISEASE__ cells Overall design Comparative gene expression profiling in __CELL_LINE__ __CELL_LINE__ and __CELL_LINE__ cells between three groups total __CELL_LINE__ cells with __TREATMENT__ GSE263385pubmed39847481 __CELL_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR24898238, Using the Rneasy micro kit the RNA was extracted. __LIBRARY_SELECTION__-enrichment and low input library prep kit, SRP442899PRJNA982783GSE234700Profiling of __CELL_TYPE__ nodules in __DISEASE__ reveals propensity for lesion formation __CELL_TYPE__ cell clusters are associated with __TISSUE_TYPE__ pathology In this post mortem study we investigated whether they represent the first stage of __DISEASE__ formation We show that __CELL_TYPE__ nodules are associated with more severe __DISEASE__ pathology Compared to __CELL_TYPE__ nodules in __DISEASE__ those in __DISEASE__ show enhanced expression of genes previously found upregulated in __DISEASE__ lesions Furthermore genes associated with lipid metabolism presence of __CELL_TYPE__ activation of the complement cascade and metabolic stress are upregulated in __CELL_TYPE__ nodules in __DISEASE__ Compared to __DISEASE__ they more frequently phagocytose oxidized phospholipids and possess a more tubular mitochondrial network Strikingly in __DISEASE__ some __CELL_TYPE__ nodules encapsulate partially demyelinated axons Taken together we propose that activation of __CELL_TYPE__ nodules in __DISEASE__ by __CELL_TYPE__ of oxidized phospholipids may lead to a __CELL_TYPE__ phenotype prone to __DISEASE__ lesion formation Overall design __DISEASE__ and __DISEASE__ normal appearing white matter __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "GEO531A72, Protocols: __CELL_LINE__ , __CELL_TYPE__, __DISEASE__ patients (before and after __TREATMENT__, __INSTRUMENT_PLATFORM__ 2000 paired end sequencing: RNA-seq of human __DISEASE__, __DISEASE__ and __DISEASE__ __CELL_LINE__ blas__CELL_TYPE__s, __CELL_TYPE__, RNA-seq of human __DISEASE__ and __DISEASE__+__CELL_TYPE__, ERS3632318SAMEA5843772GEO531A__TREATMENT_TIME____DONOR_INFORMATION__Protocols __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__CELL_LINE__, __CELL_LINE__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM5005612: __CELL_LINE__ __TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, RNA Sequencing of __HOST_PHENOTYPE__, __TREATMENT__, and __TREATMENT__, SRS7972315SAMN17217064GSM5005612__TREATMENT__ __TREATMENT_TIME____DONOR_INFORMATION__bioproject689786PRJNA689786source name__TREATMENT__ derived __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__CELL_LINE__ inducible SEES__TREATMENT_TIME__uman ES cells with tet-on system, __CELL_LINE__ 2, __TREATMENT__, duration __TREATMENT_TIME__ours, __CELL_TYPE__ inducible SEES__TREATMENT_TIME__uman __CELL_TYPE__ cells with tet-on system, __CELL_LINE__ 2, __TREATMENT__, duration __TREATMENT_TIME__ours, __INSTRUMENT_PLATFORM__ sequencing: __INSTRUMENT_PLATFORM__ __HOST_PHENOTYPE__ sequencing of SAMD00092176, Large scaled transcription factor induction in __CELL_TYPE__ cells, DRS111125SAMD00092176PKNOX2 inducible SEES__TREATMENT_TIME__uman __CELL_TYPE__ cells with tet on system __CELL_LINE__ 2 __TREATMENT__ duration __TREATMENT_TIME__ours__TREATMENT_TIME____DONOR_INFORMATION__bioproject578511PRJDB5361sample namesample 2 D __TREATMENT_TIME____CELL_LINE__ 2sex__DONOR_INFORMATION__ __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__CELL_LINE__ __HOST_PHENOTYPE__ cells treated with __TREATMENT__, __CELL_LINE__ __HOST_PHENOTYPE__ treated with __TREATMENT__, __INSTRUMENT_PLATFORM__  sequencing: __INSTRUMENT_PLATFORM__ sequencing of SAMD00792118, Unraveling the heterogeneity of multiple __CELL_TYPE__ identifies therapy __RESPONSE__ subpopulation with vulnerability to the splicing pathway intervention, DRS392926SAMD00792118AMO 1__HOST_PHENOTYPE__ treated with __TREATMENT__ __DONOR_INFORMATION__sample name __TREATMENT_TIME__r fastq gz__DONOR_INFORMATION__biomaterial provider__DONOR_INFORMATION__ __CELL_LINE__ 1collection __DONOR_INFORMATION____TISSUE_TYPE__ __ORGAN__ __DISEASE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__",
+    1
+  ],
+  [
+    "__CELL_LINE__, __CELL_LINE__, __INSTRUMENT_PLATFORM__ sequencing: GSM4162159: __TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Functional genomics of human __ORGAN__ organoids (RNA-Seq), SRS5663724SAMN13291966GSM4162159ML __TREATMENT_TIME____DONOR_INFORMATION__bioproject589843PRJNA589843source nameHuman organoid__TISSUE_TYPE__ __CELL_TYPE__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "ERRUUUUUUUU, __DONOR_INFORMATION__ and __TISSUE_TYPE__. The Carnegie staging system of __DONOR_INFORMATION__: a practical guide in Molecular Genetics of __DONOR_INFORMATION__. __TISSUE_TYPE__ samples were staged using foot and knee-heel lengths (__DONOR_INFORMATION__) Correlation of __TISSUE_TYPE__ and measurements between 10 and __TREATMENT_TIME__s of gestations. Obstet. Gynecol.63: 26-32) All nucleic acid preparation was performed by __DONOR_INFORMATION__ following standardised procedures (__DONOR_INFORMATION__). __DONOR_INFORMATION__. RNA was extracted on the QIAsymphony SP using manufacturer's protocol miRNA v05. Library preparation followed __INSTRUMENT_PLATFORM__'s guidelines for the TruSeq stranded mRNA stranded LT sample prep kit. (http://support.__INSTRUMENT_PLATFORM__.com/\u2026). __CELL_LINE__ __CELL_LINE__ __TREATMENT_TIME__uman Developmental Biology Resource HDBR expression resource RNAseq The Human Developmental Biology Resource expression resource is a new resource for studying __DONOR_INFORMATION__ __TISSUE_TYPE__ development It consists of two parts which have been uploaded as two submissions HDBR expression resource RNAseq __CELL_LINE__ this submission and HDBR expression resource SNP data __CELL_LINE__ It is unique in the age range 4 post conception weeks PCW to 17 PCW and number of __TISSUE_TYPE__s studied particularly those under 8 PCW It is also unique in that both the large-scale data sets and the corresponding RNA and DNA samples are available the latter via the __DONOR_INFORMATION__ http www.hdbr.org There are 628 RNA-seq datasets from different regions of the __TISSUE_TYPE__s studied The number of regions depends on the stage and size of the sample and / or the __TISSUE_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __CELL_TYPE__",
+    1
+  ],
+  [
+    "BIDC053 [RNA-seq], BIDC053 [RNA-seq], __INSTRUMENT_PLATFORM__ sequencing: GSM5398140: BIDC053 [RNA-seq] __DONOR_INFORMATION__ RNA-Seq, __DONOR_INFORMATION__ in __DISEASE__e [RNA-seq], SRS9272390SAMN19853303GSM5398140BIDC053 RNA seq __TREATMENT_TIME____DONOR_INFORMATION__bioproject741118PRJNA741118source name__ORGAN____TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR493947, SRP012656PRJNA163279GSE37764A high dimensional deep sequencing study of non small cell __ORGAN__ __DISEASE__ in never __DONOR_INFORMATION__s Seq One of the most fertile applications of next generation sequencing will be in the field of __DISEASE__ genomics Here we report a high throughput multi dimensional sequencing study of primary non small cell __ORGAN__ __DISEASE__ __TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__CELL_LINE__, __CELL_LINE__, __INSTRUMENT_PLATFORM__ sequencing: GSM2130393: __CELL_LINE____TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Next Generation Sequencing Analysis  and vector __TREATMENT__ Transcriptomes in __DISEASE__ cells, SRS1405953SAMN04883128GSM2130393M7NC__TREATMENT_TIME____DONOR_INFORMATION__bioproject319220PRJNA319220source name __DISEASE__ cells__CELL_LINE__ __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__CELL_LINE__, __CELL_LINE____CELL_LINE__An isoform resolution transcriptomic atlas of __ORGAN__ __DISEASE__ from long read __LIBRARY_SOURCE__ sequencing__ORGAN__ __DISEASE__ __DISEASE__ is the second leading cause of __DISEASE__ death worldwide In recent years short read __LIBRARY_SOURCE__ RNA sequencing scRNA seq has been instrumental in deciphering __DISEASE__ cell heterogeneities However these studies only enable gene level expression quantification but neglect alterations in transcript structures which arise from alternative end processing or splicing and are frequently observed in __DISEASE__ In this study we integrated short and long read scRNA seq of __DISEASE__ patient samples to build the first isoform resolution __DISEASE__ transcriptomic atlas We identified 394 dysregulated transcript structures in __DISEASE__ __TISSUE_TYPE__ cells including 299 resulting from various combinations of multiple splicing events Secondly we characterized genes and isoforms associated with __TISSUE_TYPE__ lineages and subpopulations that exhibit distinct prognoses Finally we built an algorithm that integrated novel peptides derived from predicted ORFs of recurrent __DISEASE__ specific transcripts with mass spectrometry data and identified a panel of recurring neoepitopes that may aid the development of neoantigen based __DISEASE__ __TREATMENT__ __CELL_TYPE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "7096q5, 7096q5, __INSTRUMENT_PLATFORM__  sequencing: GSM3724096: 7096q__TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, RNA-seq transcript and gene data on __TREATMENT__, SRS4633117SAMN11435626GSM37240967096q__TREATMENT_TIME____DONOR_INFORMATION__bioproject533086PRJNA533086source nameserumpatient7096sample7096q5visit5timeEarly AcuteSex__DONOR_INFORMATION__exposure__HOST_PHENOTYPE__ __CELL_TYPE__ __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR7867942, SRP161982PRJNA491629Clinically relevant biomarker discovery in high risk __RESPONSE__ __DISEASE____TREATMENT_TIME__igh risk __CELL_LINE__ sequenced using the __INSTRUMENT_PLATFORM__ __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR1036137, __TREATMENT__ mini Kit (Qiagen, #74106) TruSeq RNA Sample Preparation (__INSTRUMENT_PLATFORM__), SRP033266PRJNA229548GSE52656 AML sequencing part 2 RNA sequencing of __DISEASE__ Overall design The goals of this project are to obtain a comprehensive study of mutations and gene expression in __CELL_TYPE__ Methods __CELL_LINE__ cells were thawed DNA and RNA __LIBRARY_SELECTION__ was extracted and sequences were obtained with an __INSTRUMENT_PLATFORM__ sequencer Results are __RESPONSE__ GSE52656pubmed26834243pubmed26968532__HOST_PHENOTYPE__ bioprojectPRJNA278766 __TISSUE_TYPE__ __ORGAN__ __LIBRARY_SOURCE__ __TREATMENT_TIME__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "IPIPNET016T1_rna_live_S65, IPIPNET016T1_rna_live_S65, __HOST_PHENOTYPE____INSTRUMENT_PLATFORM__ sequencing: GSM5586912: IPIPNET016T1_rna_live_S__TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, __CELL_LINE__ RNA-sequencing of __DISEASE__ infiltrating cells across 12 different __INSTRUMENT_PLATFORM__ __DISEASE__s type, SRS10229518SAMN21506993GSM5586912IPIPNET016T1 rna live S__TREATMENT_TIME____DONOR_INFORMATION__bioproject764510PRJNA764510source name__DISEASE__ infiltrating viable cells sorted by flow cytometry from __TISSUE_TYPE__ __DISEASE__ specimen__TISSUE_TYPE__ __CELL_TYPE__ __ORGAN__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ]
+]

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#PBS -N summary_context_pbs
+#PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:ncpus=10:mem=16gb
+
+#SBATCH --job-name=summary_context_slurm
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=16G
+
+METAPPUCCINO=${1:-$METAPPUCCINO}
+RES=${2:-$RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+
+LOG_DIR=$METAPPUCCINO/$RES/logs
+TMP_DIR=$METAPPUCCINO/$RES/tmp
+SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+
+mkdir -p "$SCRATCH_DIR"
+cd "$SCRATCH_DIR"
+
+exec > "$LOG_DIR/summary_context.out" 2> "$LOG_DIR/summary_context.err"
+
+cleanup() {
+    cp "$SCRATCH_DIR/metadata_sra_summarized.txt" "$TMP_DIR/" 2>/dev/null || echo "Output file not found, skipping."
+    cp "$SCRATCH_DIR/STEP2_2.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
+    echo "End date: $(date)"
+    rm -rf "$SCRATCH_DIR"
+}
+trap cleanup EXIT
+
+cp "$TMP_DIR/metadata_sra.txt" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/get_clean_metadata/summarize_inputs.py" $SCRATCH_DIR/
+
+source $ENV_REQUIREMENT/bin/activate
+
+echo "Start $(date)"
+
+python3 -u summarize_inputs.py --base_path "$SCRATCH_DIR"

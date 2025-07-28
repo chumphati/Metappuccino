@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#PBS -N install_requirements_pbs
+#PBS -l walltime=12:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+
+#SBATCH --job-name=install_requirements_slurm
+#SBATCH --partition=common
+#SBATCH --time=12:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --nodes=1
+#SBATCH --nodelist=node49
+#SBATCH --cpus-per-task=30
+#SBATCH --mem=80G
+
+METAPPUCCINO=${1:-$METAPPUCCINO}
+ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+PATH_CUDA=${3:-$PATH_CUDA}
+
+LOG_DIR=$METAPPUCCINO/results/logs
+SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+
+mkdir -p $SCRATCH_DIR
+cd $SCRATCH_DIR
+
+exec >"$LOG_DIR/install_requirements.out" 2>"$LOG_DIR/install_requirements.err"
+
+cleanup() {
+  echo "End $(date)"
+  rm -rf "$SCRATCH_DIR"
+}
+trap cleanup EXIT
+
+source $ENV_REQUIREMENT/bin/activate
+
+echo "Start $(date)"
+
+python3 -m pip install -r "$METAPPUCCINO/requirements.txt"
+
+echo "Installing llama-cpp-python with CUDA support." \
+  >> "$SCRATCH_DIR/llm_log_install.txt"
+export CMAKE_ARGS="-DGGML_CUDA=on \
+  -DCUDA_PATH=$PATH_CUDA \
+  -DCUDAToolkit_ROOT=$PATH_CUDA \
+  -DCUDAToolkit_INCLUDE_DIR=$PATH_CUDA/include \
+  -DCUDAToolkit_LIBRARY_DIR=$PATH_CUDA/lib64"
+export CUDACXX=$PATH_CUDA/bin/nvcc
+python3 -m pip install llama-cpp-python \
+  --upgrade --force-reinstall --no-cache-dir

@@ -1,0 +1,250 @@
+[
+  [
+    "wk16-Cor, replicate 1, scRNAseq, wk16-Cor, replicate 1, scRNAseq, __INSTRUMENT_PLATFORM__ sequencing: GSM6594441: wk16-Cor, replicate 1, scRNAseq __DONOR_INFORMATION__ __LIBRARY_SOURCE__, Aberrant layer development of __TISSUE_TYPE__ organoids developed from __DISEASE__, SRS15177105SAMN30937118GSM__TREATMENT_TIME__16 Cor replicate 1 scRNAseq__TREATMENT_TIME__ __DONOR_INFORMATION__ bioproject882459PRJNA882459source nameiPSC__CELL_TYPE__ __CELL_LINE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __RESPONSE__",
+    2
+  ],
+  [
+    "1674_006_v1_HFWB_TPM_X__TREATMENT_TIME__r, 1674_006_v1_HFWB_TPM_X__TREATMENT_TIME__r, __INSTRUMENT_PLATFORM__ sequencing: GSM3122581: 1674_006_v1_HFWB_TPM_X__TREATMENT_TIME__r __DONOR_INFORMATION__ __LIBRARY_SELECTION__, TimeSignature: A Universal Method for Robust Detection of Circadian State from Gene Expression, SRS3239001SAMN09006754GSM31225811674 006 v__TREATMENT_TIME__FWB TPM X__TREATMENT_TIME__r__TREATMENT_TIME__ __DONOR_INFORMATION__bioproject454445PRJNA454445source name__TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    2
+  ],
+  [
+    "__LIBRARY_SOURCE__, __LIBRARY_SOURCE__, __INSTRUMENT_PLATFORM__ sequencing: GSM7870848: __LIBRARY_SOURCE__ __DONOR_INFORMATION__ RNA-Seq, __CELL_TYPE__ responses in __TREATMENT__ with sustained or declined antibody titer, SRS19339258SAMN38041201GSM7870848 8 13 15 __LIBRARY_SOURCE____TREATMENT_TIME____DONOR_INFORMATION__bioproject1033588PRJNA1033588source name__CELL_TYPE____TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __RESPONSE__",
+    1
+  ],
+  [
+    "RS57, RS57, __INSTRUMENT_PLATFORM__ sequencing: GSM4830754: RS__TREATMENT_TIME____DONOR_INFORMATION__ __LIBRARY_SOURCE__, Deficient expression is associated with __TREATMENT__ __RESPONSE__ and hyperexcitability in __CELL_TYPE__s derived from __DISEASE__ patients, SRS7515263SAMN16431606GSM4830754RS__TREATMENT_TIME____DONOR_INFORMATION__bioproject669045PRJNA669045source name__CELL_TYPE__scohort derived cohort disease state__TREATMENT____CELL_LINE__ __LIBRARY_SOURCE__Sorted__TREATMENT__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__",
+    1
+  ],
+  [
+    "SRR8060776, Cells were harvest, and total RNA was extracted and  __TREATMENT__s were added according to kit guidelines (Thermo 4456740). Libraries were constructed using __LIBRARY_SELECTION__ LTSample Prep Kit (__INSTRUMENT_PLATFORM__) according to the manufacturer's instructions., SRP165924PRJNA496574GSE121273Gene expression profiles of __CELL_LINE__ treated with __TREATMENT__ and __TREATMENT__ respectivelyBy screening an epigenetic related compound library we identified __TREATMENT__ a covalent inhibitor as a promising candidate Multiple long established and patient derived __CELL_LINE__ were used to validate the efficacy of __TREATMENT__ in vitro In addition patient derived __TREATMENT__ were utilized for examining __TREATMENT__ efficacy in vivo __TREATMENT_TIME__ Furthermore RNA Seq based Super Enhancers SEs analyses were performed to reveal the molecular mechanism of __TREATMENT__ __TREATMENT__ __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __RESPONSE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR18656216,SRR18656149, __ORGAN__ were purified from 0.5-1 mL serum using the exoRNeasy Midi kit (Qiagen Cat#77144) according to the manufacturer's instructions. For __LIBRARY_SOURCE__ extraction, __ORGAN__ were lysed on column with 1 mL Trizol reagent (Invitrogen Cat#15596026) and the pellet was dissolved in 11 \u03bcL of deionized water treated with __TREATMENT__. __ORGAN__ long libraries were constructed using __LIBRARY_SELECTION__) independent extracellular RNA sequencing . Briefly, 1 ng RNA was reverse transcribed with random primer by SMART technology. cDNA was purified twice using Ampure XP beads (Beckman Coulter, Cat# A63881) and amplified with indexed primers. 200\u2013500 base-paired PCR products were size-selected using Ampure XP beads., SRP367846PRJNA824000GSE200288Extracellular vesicle long RNA markers of early stage __ORGAN__ __DISEASE__The serum EV genes has great diagnostic value for __ORGAN__ __DISEASE__ patients with __DISEASE__ size smaller than 2cm which may serve as an important supplement to __ORGAN__ __DISEASE__ screening Overall design Extracellular vesicle long RNA profiles of human serum by next generation sequencingGSE200288pubmed36451312pubmed38409480 __CELL_TYPE__ __TISSUE_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "815855, 815855, __INSTRUMENT_PLATFORM__ sequencing: GSM6738544: __TREATMENT_TIME____DONOR_INFORMATION__ __LIBRARY_SOURCE__, __ORGAN__ Gene Expression and __DISEASE__ in Childhood __DISEASE__ Survivors, SRS15794356SAMN31782124GSM__TREATMENT_TIME____DONOR_INFORMATION__bioproject903071PRJNA903071source name__TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "__LIBRARY_SELECTION__, __LIBRARY_SELECTION__, __INSTRUMENT_PLATFORM__ sequencing: GSM6185790: __LIBRARY_SELECTION____TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Multi-omic profiling of the developing __HOST_PHENOTYPE__ at the __LIBRARY_SOURCE__ level, SRS13155877SAMN28632874GSM6185790__LIBRARY_SOURCE____TREATMENT_TIME____DONOR_INFORMATION__bioproject841957PRJNA841957source name__CELL_LINE____TISSUE_TYPE__ __CELL_TYPE__ __ORGAN__ __DISEASE__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "SPECTRUM-OV-014_S1___CELL_TYPE__, SPECTRUM-OV-014_S1___CELL_TYPE__, __INSTRUMENT_PLATFORM__ sequencing: GSM5467131: SPECTRUM-OV-014_S1___CELL_TYPE__, __ORGAN__ __DISEASE__ mutational processes drive site-specific immune evasion, SRS9560862SAMN20350706GSM5467131SPECTRUM__RESPONSE__ OV 014 S1 __CELL_TYPE__ __TISSUE_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __TREATMENT_TIME__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR14333546, SRP316573PRJNA__TREATMENT_TIME____DONOR_INFORMATION__ Raw sequence reads __DISEASE__ __RESPONSE__ pathways associated with __DISEASE__ __RESPONSE__ __CELL_TYPE__ __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "SRR27386938, RNA was extracted from __TISSUE_TYPE__, __DONOR_INFORMATION__), following the manufacturer's instructions., SRP480717PRJNA1059238GSE252280__CELL_TYPE__ __LIBRARY_SOURCE__ profiling of patients with recurrent implantation failure during hormone replacement therapy __TREATMENT__ mechanisms underlying window of __ORGAN__ displacement in patients with recurrent __ORGAN__ failure remain unclear This study aims to explore the __LIBRARY_SELECTION__ signatures of __TISSUE_TYPE__ with normal and displaced __ORGAN__ and to identify the causes of __ORGAN__ receptivity in __DONOR_INFORMATION__ patients __DONOR_INFORMATION__ were recruited and underwent personalized __ORGAN__ transfer by the predicted results of __TISSUE_TYPE__ receptivity diagnosis __RESPONSE__ Transcriptome analysis of __CELL_TYPE__ from patients with clinical __DONOR_INFORMATION__ after was performed to identify differentially expressed genes associated with __DISEASE__ The results indicated that 67 5 of patients 27 40 were __RESPONSE__ The clinical __DONOR_INFORMATION__ rate in __RESPONSE__ Among the 26 patients with clinical __DONOR_INFORMATION__ the gene expression profiles were __RESPONSE__ __CELL_LINE__ __HOST_PHENOTYPE__ __TREATMENT_TIME__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__CELL_LINE__ o.e __DISEASE__ __LIBRARY_SOURCE__ (KAS20000456), __CELL_TYPE__ o.e __DISEASE__ __LIBRARY_SOURCE__ (KAS20000456), __INSTRUMENT_PLATFORM__ paired end sequencing: __INSTRUMENT_PLATFORM__ paired-end Sequencing of KAS20000456 (KAE20000180), Optimization of epigenome data analysis system and development of __DISEASE__ (KAP200011), DRS427546SAMD00834926Luminal1 __CELL_TYPE__ e __DISEASE__ RNA KAS20000456 __TREATMENT_TIME____DONOR_INFORMATION__bioproject1193870PRJDB19218sample nameKAS20000456 Luminal1 __CELL_LINE__ o e __DISEASE__ RNAagenot applicablebiomaterial provider__DONOR_INFORMATION__ isolate__ORGAN__ __DISEASE__ patient with project idKAP200011kobic registration __DONOR_INFORMATION__ idKASG103908kobic sample idKAS20000456kobic submission__DONOR_INFORMATION____TISSUE_TYPE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRRxxxxxx, __LIBRARY_SOURCE__ was extracted from __CELL_TYPE__ cells using the __TREATMENT__ kit (Cat# R2051) and __LIBRARY_SELECTION__ quality assessed using the __TREATMENT__. The __RESPONSE__ scores for all samples were > 7.0. Total __LIBRARY_SELECTION__ libraries were generated using __TREATMENT__ Kit __TREATMENT_TIME__, SRP382047PRJNA849921GSE206263__TISSUE_TYPE__ accessibility in peripheral __ORGAN__ underlies __DISEASE__ __LIBRARY_SOURCE__RNA Seq __DISEASE__ triggers profound and variable __RESPONSE__ in human __HOST_PHENOTYPE__ has been observed in individuals severely ill or convalescing with __DISEASE__ but __TREATMENT__ early in disease __TREATMENT_TIME__  has not been defined We performed the Assay for __TISSUE_TYPE__ on peripheral __ORGAN__ cells __CELL_TYPE__s from outpatients with mild or moderate symptom severity at different stages of clinical illness Early in the disease course prior to __TREATMENT__ modifications associated with mild or moderate symptoms were already robust and included __RESPONSE__ Furthermore __LIBRARY_SOURCE__ analyses revealed evolution of the __CELL_LINE__ accessibility landscape and factor motif accessibility for individual __CELL_TYPE__ __CELL_TYPE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__TREATMENT__-Wall-5, __TREATMENT__-Wall-5, __INSTRUMENT_PLATFORM__ sequencing: GSM8328838: __TREATMENT__-Wall-__TREATMENT_TIME____DONOR_INFORMATION__ __LIBRARY_SELECTION__, __TREATMENT__ Predicts __TISSUE_TYPE__ and is a Novel Therapeutic Target, SRS21752289SAMN41833121GSM8328838__TREATMENT__ Wall __TREATMENT_TIME____DONOR_INFORMATION__bioproject1124005PRJNA1124005source name,_PHENOTYPE__ Wall__TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR28604739, Cryopreserved __ORGAN__ biopsies were homogenized using __TREATMENT__ basic. __TISSUE_TYPE__ was extracted according to the Rneasy Micro Kit (__DONOR_INFORMATION__). __CELL_TYPE__ integrity was determined using a 2100 Bioanalyzer and RNA 6000 Nano LabChip kits (__DONOR_INFORMATION__). QuantSeq 3'protocol (__DONOR_INFORMATION__) according to manufacturers's recommendations, SRP500638PRJNA1098409GSE263614Gene expression profiling of __ORGAN__ normothermic machine perfusionNormothermic machine perfusion NMP has been successfully implemented in clinical routine of __ORGAN__ transplantation over __TREATMENT_TIME__ However little is known about the mechanisms how it impacts on the __LIBRARY_SOURCE__ of a donor __ORGAN__ We herein examined gene expression __RESPONSE__ in transplanted and non transplanted __ORGAN__ after a maximum of __TREATMENT_TIME__ perfusion while 15 were discarded due to poor performance Biopsies were collected before __TREATMENT_TIME__ and after reperfusion Next generation sequencing was applied in __ORGAN__ biopsies to assess differential gene expression over perfusion time samples were collected regularly to monitor __ORGAN__ function Comparison in differential gene expression between __TREATMENT_TIME__ NMP showed __RESPONSE__ __CELL_LINE__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "SRR11561998, __CELL_TYPE__ RNA samples were converted into cDNA libraries using the __INSTRUMENT_PLATFORM__ __LIBRARY_SELECTION__ sample preparation kit (__INSTRUMENT_PLATFORM__ # RS-122-2103). Libraries were prepared for sequencing using the __LIBRARY_SELECTION__ kit for sequencing on __INSTRUMENT_PLATFORM__, SRP256921PRJNA625957GSE148849Gene Expression Analysis of the response to __TREATMENT__. BACKGROUND AIMS __DISEASE__ is a chronic __ORGAN__ disease characterized by __TISSUE_TYPE__ alteration, inflammation and progressive fibrosis. __TREATMENT__ regulates lipid metabolism and function in __CELL_TYPE__s. __TREATMENT__ reduces __ORGAN__ content and markers of __RESPONSE__ in __DISEASE__ patients, however the effect of __TREATMENT__ on __ORGAN__ fibrosis has not been reported. METHODS A direct role for __TREATMENT__ in fibrosis was evaluated by measuring molecular processes and gene expression in __CELL_TYPE__s in the absence or presence of __TREATMENT__. __TREATMENT__ was evaluated in __HOST_PHENOTYPE__ models of __DISEASE__ induced by environmental or chemical exposure. Fibrosis and __TISSUE_TYPE__ alterations were evaluated by histological and biochemical assessments. RESULTS In stimulated __CELL_TYPE__s, __TREATMENT__ reduced activation and expression of fibrosis markers independent of mitochondrial pathways by blocking metabolic processes. __TREATMENT__ prevented a metabolic switch necessary for cellular activation. Consistent with this mechanism in __CELL_TYPE__s, __TREATMENT__ reduced __ORGAN__ fibrosis in a __CELL_LINE__ model and in response to chronic __TREATMENT_TIME__ induced __ORGAN__ injury that lacked lipid accumulation. CONCLUSIONS In addition to reducing lipid accumulation in __CELL_TYPE__s, __TREATMENT__ also directly impairs pro-fibrogenic activity of __CELL_TYPE__s. __TREATMENT__ may reduce __ORGAN__ fibrosis by both reducing toxicity in __CELL_TYPE__s and directly reducing __CELL_TYPE__ activation, providing a mechanistic rationale for its use in __HOST_PHENOTYPE__. Samples were derived from __DONOR_INFORMATION__ and processed via __LIBRARY_SOURCE__ for sequencing.",
+    1
+  ],
+  [
+    "SRR26846530, __LIBRARY_SELECTION__ was selected for __CELL_LINE__ samples and all the other samples were selected __LIBRARY_SELECTION__ +RNA isolation, cDNA synthesis, end-repair, A-base addition, and ligation of the __INSTRUMENT_PLATFORM__ indexed adapters were performed according to the __LIBRARY_SELECTION__ protocol (__INSTRUMENT_PLATFORM__). Libraries were size selected for 250\u2013300 bp cDNA fragments on a 3% gel, recovered using standard reagents, and PCR amplified using DNA polymerase. Library quality was measured on a bioanalyzer for product size and concentration. Paired-end libraries were sequenced with the __INSTRUMENT_PLATFORM__ X (2\u00d7100 nucleotide read length) with sequence coverage to 15\u201320M paired reads., SRP472276PRJNA1040955GSE247949 Targeting chromatin remodeling complexes in __CELL_TYPE__-dependent __DISEASE__ malignancies. RNA-seq profiling revealed that the chromatin remodeling complex plays a significant role in __DISEASE__igenesis, unveiling therapeutic prospects in specific __HOST_PHENOTYPE__ models. This investigation highlighted the targeting of chromatin remodeling complexes in __CELL_TYPE__-driven __DISEASE__ in __ORGAN__ and other __CELL_TYPE__ malignancies. Functional screening and pharmacological validation identified a dependency of __CELL_TYPE__s on chromatin remodeling complexes. In vivo studies exhibited significant __RESPONSE__ in __DISEASE__ xenografts with a __TREATMENT__. Furthermore, similar __RESPONSE__ to the chromatin complex targeting __TREATMENT__ was observed in __CELL_LINE__ models, suggesting shared therapeutic potential. Samples were collected from __DONOR_INFORMATION__ and processed using __LIBRARY_SOURCE__ methods across various __TREATMENT_TIME__. Analyses were performed on __TISSUE_TYPE__ material across all experimental conditions.",
+    1
+  ],
+  [
+    "PACE_085, PACE_085, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM7310460: PACE___TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, __RESPONSE__ Score Predicts Risk in __DISEASE__, SRS17593287SAMN35006477GSM7310460PACE __TREATMENT_TIME____HOST_PHENOTYPE__bioproject970668PRJNA970668source namewhole blood__TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __DONOR_INFORMATION__ __ORGAN__",
+    1
+  ],
+  [
+    "SRR19443109, SRP377571PRJNA843486RNA seq of __TREATMENT__ in __CELL_LINE__ cells RNA seq of __TREATMENT__ knockdown __CELL_LINE__ cells __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__DONOR_INFORMATION__ sample from __HOST_PHENOTYPE__, Human sample from __HOST_PHENOTYPE__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: __CELL_LINE__, __LIBRARY_SELECTION__ of Human Primary __CELL_TYPE__s Under __TREATMENT__, SRS6691028SAMN149884454__CELL_LINE__ __TREATMENT_TIME____HOST_PHENOTYPE__bioproject634332PRJNA634332isolate__CELL_LINE__agenotypeNAproviderNAsexNA__TISSUE_TYPE__ __LIBRARY_SOURCE__ __DISEASE__ __ORGAN__ __RESPONSE__",
+    1
+  ],
+  [
+    "WJC1, WJC1, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 2500 sequencing: GSM3211551: WJC__TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, RNA-seq profiling of __CELL_LINE__-derived xenograft models in __DISEASE__, SRS3447668SAMN09470181GSM3211551WJC__TREATMENT_TIME____HOST_PHENOTYPE__bioproject477510PRJNA477510source name__DISEASE__ xenograft host__HOST_PHENOTYPE__ model nameWJC__DISEASE__ type__DISEASE__ __CELL_TYPE__ __TISSUE_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__ __DONOR_INFORMATION__ __ORGAN__",
+    1
+  ],
+  [
+    "SRR7231919, RNA was extracted using __LIBRARY_SELECTION__ kit. Library for RNA-Seq was prepared according to __LIBRARY_SELECTION__ selected kit with 300bp insert size using 250 ng total RNAs as input. Final library quality and quantity was analyzed by standard instruments. 150 bp paired end reads were sequenced on __INSTRUMENT_PLATFORM__ HighSeq 4000. SRP149285PRJNA473582GSE115058 Differential gene expression in __TISSUE_TYPE__ and __CELL_TYPE__ populations of __CELL_LINE__ cells. __CELL_LINE__ cells were sorted into two subpopulations using markers. Cells negative for markers were __CELL_TYPE__ in morphology, while positive cells were __TISSUE_TYPE__. We performed RNA sequencing and expression of several __TISSUE_TYPE__ and __CELL_TYPE__-associated proteins. In addition to __RESPONSE__ genes, the two populations expressed a unique gene set. Overall design: __TISSUE_TYPE__ and __CELL_TYPE__ populations of __CELL_LINE__ cells. __ORGAN__ __DISEASE__ __LIBRARY_SOURCE__ __TREATMENT__ __TREATMENT_TIME__ __HOST_PHENOTYPE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "CTR18d80, CTR18d80, __INSTRUMENT_PLATFORM__ sequencing: GSM2945904: CTR18d__TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, __DISEASE__ iPSC-derived cortical __CELL_TYPE__s display altered transcriptomics, morphology and electrophysiological maturation, SRS2861283SAMN08388588GSM2945904CTR18d__TREATMENT_TIME____HOST_PHENOTYPE__bioproject431312PRJNA431312source name differentiation protocol for __CELL_LINE__ day __TREATMENT_TIME__ disease status __TREATMENT__ number repeats __RESPONSE__ individual identifier __DONOR_INFORMATION__ __TISSUE_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __ORGAN__",
+    1
+  ],
+  [
+    "SRR7257622, Trizol __INSTRUMENT_PLATFORM__ __LIBRARY_SELECTION__, SRP149738PRJNA474537GSE115328 __RESPONSE__ Gene expression profiles of __CELL_LINE__ cells were tested after exposure to __TREATMENT__ and __TREATMENT__ at 5 and __TREATMENT_TIME__ hours. Overall design: Examination of 4 __TREATMENT__ conditions at 2 timepoints GSE115328. __CELL_TYPE__ __TISSUE_TYPE__ __DISEASE__ __ORGAN__ __LIBRARY_SOURCE__ __HOST_PHENOTYPE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "CCI-002_Sx, CCI-002_Sx, __INSTRUMENT_PLATFORM__ sequencing: GSM4146320: CCI-002_Sx __HOST_PHENOTYPE__ RNA-Seq, __RESPONSE__, a Possible Answer to the __TREATMENT__ Paradox, SRS5598063SAMN13174057GSM4146320CCI 002 Sx__TREATMENT_TIME____HOST_PHENOTYPE__bioproject586892PRJNA586892source name__TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __DISEASE__ __ORGAN__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "COVIRS_91_V0_21-01979, COVIRS_91_V0_21-01979, __INSTRUMENT_PLATFORM__ sequencing: GSM6194189: COVIRS_91_V0_21-__TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, __DISEASE__ __TREATMENT__ __RESPONSE__ Study, SRS13180657SAMN28662232GSM6194189COVIRS 91 V0 21 __TREATMENT_TIME____HOST_PHENOTYPE__bioproject821445PRJNA821445source name__TISSUE_TYPE__ subject id __DONOR_INFORMATION__ Sex __DONOR_INFORMATION__ timepoint V0 __TREATMENT__ sample number __CELL_LINE__ __CELL_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __ORGAN__",
+    1
+  ],
+  [
+    "GEO accession GSM5625601 is currently private and is scheduled to be released __DONOR_INFORMATION__., GEO accession GSM5625601 is currently private and is scheduled to be released on Oct 12, 2024., __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 4000 sequencing: GSM5625601: __CELL_LINE__ RNAseq __HOST_PHENOTYPE__ RNA-Seq, __TREATMENT__ Unmasks Silent __RESPONSE__ Risk Variants for __DISEASE__ [RNA-seq], SRS10572464SAMN22304825GSM5625601__CELL_LINE__ RNAseq__TREATMENT_TIME____HOST_PHENOTYPE__bioproject771341PRJNA771341source name__CELL_LINE__ __TREATMENT__ __DONOR_INFORMATION__ __CELL_TYPE__ __TISSUE_TYPE__ __ORGAN__ __LIBRARY_SOURCE__ __LIBRARY_SELECTION__",
+    1
+  ],
+  [
+    "TM00186_LG0481F231P0000P1000P2140P3, Protocols: models were generated using subcutaneous __DISEASE__ implantation in __DONOR_INFORMATION__ host mice. __DISEASE__s were grown, collected, and fragmented for serial passage in model organisms. __DISEASE__ samples at described passage numbers were taken for expression analysis. __TISSUE_TYPE__, including the optional DNase digest step. RNA quality and concentration were assessed using standard instruments. Non-stranded libraries were constructed using __LIBRARY_SELECTION__ Prep Kit (__INSTRUMENT_PLATFORM__). __LIBRARY_SELECTION__ containing mRNA was isolated using oligo-dT magnetic beads, followed by RNA fragmentation, cDNA synthesis, adapter ligation with __INSTRUMENT_PLATFORM__-specific barcodes, and PCR amplification. Libraries were quality-checked and quantified using standard protocols. __INSTRUMENT_PLATFORM__ paired end sequencing: RNA-seq expression analysis of __CELL_LINE__-derived __DISEASE__ models. TM00186 LG0481F231P0000P1000P2140P__TREATMENT_TIME____HOST_PHENOTYPE__. __CELL_TYPE__ __LIBRARY_SOURCE__ __RESPONSE__ __ORGAN__ __TREATMENT__",
+    1
+  ],
+  [
+    "MT10, MT10, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM5425583: MT__TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, A factor suppresses pathway activity in __ORGAN__ __DISEASE__ through modulation of molecular signaling, SRS9415271SAMN20090787GSM5425583MT__TREATMENT_TIME____HOST_PHENOTYPE__bioproject744471PRJNA744471source name__CELL_LINE__ __CELL_TYPE__ __TISSUE_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR12150556, Total RNA was extracted using standard kits. Library preparation was performed using the __LIBRARY_SELECTION__ Sample Prep Kit and protocol. SRP270250PRJNA644324GSE153830 GEO accession GSE153830 is currently private and is scheduled to be released. If GSE__TREATMENT_TIME__ has been cited, please notify to initiate release. GSE153830. __CELL_TYPE__ __CELL_LINE__ __TISSUE_TYPE__ __LIBRARY_SOURCE__ __INSTRUMENT_PLATFORM__ __DONOR_INFORMATION__ __DISEASE__ __ORGAN__ __RESPONSE__ __TREATMENT__ __HOST_PHENOTYPE__",
+    1
+  ],
+  [
+    "SRR30786060, __LIBRARY_SOURCE__ library preparation was performed using __LIBRARY_SOURCE__ reagent kits. The cell suspensions were loaded on the __LIBRARY_SOURCE__ chip for GEM generation and barcoding. __LIBRARY_SOURCE__ library was generated on a droplet-based platform. Reverse transcription, __LIBRARY_SOURCE__ cleanup, amplification, and quantification were performed. The libraries were sequenced on __INSTRUMENT_PLATFORM__. SRP534475PRJNA1164738GSE277905 Exploring immune microenvironment of __ORGAN__ __DISEASE__ patients after treatment. __LIBRARY_SELECTION__ RNA-seq analysis was performed from several __DISEASE__ and adjacent normal __ORGAN__ tissues. Fresh __TISSUE_TYPE__ was used for transcriptomic profiling. __CELL_TYPE__ __CELL_LINE__ __LIBRARY_SELECTION__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __HOST_PHENOTYPE__",
+    1
+  ],
+  [
+    "SRRYYY, Custom __TISSUE_TYPE__, SRP364313PRJNA816914GSE198809 Changes in subcutaneous white __TISSUE_TYPE__. __CELL_TYPE__ __CELL_LINE__ __LIBRARY_SOURCE__ __LIBRARY_SELECTION__ __INSTRUMENT_PLATFORM__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DISEASE__ __ORGAN__ __DONOR_INFORMATION__ __HOST_PHENOTYPE__",
+    1
+  ],
+  [
+    "SRR14668465,SRR14668541, Total RNA was extracted from stably transduced __CELL_LINE__ cultures using a standard RNA extraction kit according to the manufacturer\u2019s protocol. The RNA samples were quantified, and quality __TREATMENT__led using an RNA analysis kit on a bioanalyzer system. Samples with low RNA Integrity Number (RIN) were discarded. RNA samples were transformed into barcoded DNA libraries using __LIBRARY_SELECTION__ preparation kits (__INSTRUMENT_PLATFORM__), which were then paired-end sequenced, generating 2x100bp reads, using an __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__2000 sequencer. SRP321655PRJNA733187GSE175685 Transcriptomic profiling of __CELL_LINE__ overexpressing genes associated with __DISEASE__. The study aimed to uncover the role of genes expressed in __CELL_TYPE__ by overexpressing them in the __CELL_LINE__. An empty vector was used as __TREATMENT__. Biological replicates were performed. The impact on the transcriptome was analyzed via __LIBRARY_SOURCE__ sequencing and followed by __RESPONSE__ analysis. Functional enrichment was done using an external tool. Overall design mRNA profile of __CELL_LINE__ overexpressing __DISEASE__ genes. __TISSUE_TYPE__ __ORGAN__ __TREATMENT_TIME__ __DONOR_INFORMATION__ __HOST_PHENOTYPE__",
+    1
+  ],
+  [
+    "4Y ileum __DONOR_INFORMATION__ __DISEASE__, 4Y ileum __DONOR_INFORMATION__ __DISEASE__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 2500 sequencing: GSM2212703: 4Y ileum __DONOR_INFORMATION__ __DISEASE__ __TREATMENT_TIME__ __HOST_PHENOTYPE__ RNA-Seq, A functional genomics predictive network model identifies regulators of __DISEASE__ Population Specimen Collection and Profiling. SRS1523957SAMN05291477GSM22127034Y ileum __DONOR_INFORMATION__ __DISEASE__ __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject326727PRJNA326727source name__TISSUE_TYPE__ gender__DONOR_INFORMATION__ clinical condition __DISEASE__ __CELL_TYPE__ __CELL_LINE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__ __ORGAN__",
+    1
+  ],
+  [
+    "SRR23491511, SRP422869PRJNA935489__LIBRARY_SOURCE__ analysis of LUAD __TISSUE_TYPE__ __CELL_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "egfp_pseudo_1, egfp_pseudo_1, __INSTRUMENT_PLATFORM__ 550 sequencing: GSM3130437: egfp_pseudo___TREATMENT_TIME__ __HOST_PHENOTYPE__ RNA-Seq, Human 5' UTR design and variant effect prediction from a massively parallel translation assay, SRS3253919SAMN09045426GSM3130437 egfp_pseudo __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject454863PRJNA454863source name__CELL_LINE__ __CELL_TYPE__ __TISSUE_TYPE__ __LIBRARY_SOURCE__ __LIBRARY_SELECTION__ __DONOR_INFORMATION__ __DISEASE__ __ORGAN__ __RESPONSE__ __TREATMENT__",
+    1
+  ],
+  [
+    "sample.kidney_17_1year, sample.kidney_17_1year, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 3000 sequencing: GSM3613702: sample.__ORGAN__ Homo sapiens RNA-Seq, Transcriptional trajectories of human __ORGAN__ injury progression, SRS4383279SAMN10974029GSM3613702 sample __ORGAN__ __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject523370PRJNA523370 source name __TISSUE_TYPE__ biopsy patient __DONOR_INFORMATION__ time point __TREATMENT_TIME__ __CELL_TYPE__ __CELL_LINE__ __LIBRARY_SOURCE__ __LIBRARY_SELECTION__ __RESPONSE__ __TREATMENT__ __DISEASE__",
+    1
+  ],
+  [
+    "ERR5353963, __DONOR_INFORMATION__ embryos were obtained with ethical approval. Embryos were dissociated and cultured under controlled conditions. Cells were lysed, and __LIBRARY_SELECTION__ libraries were generated using Smart-seq2 as previously described. Library quality was assessed with a bioanalyzer. ERP127249PRJEB43297E MTAB 10096 __LIBRARY_SOURCE__ Multi-omics study demonstrates susceptibility to excess __TREATMENT__ exposure. __LIBRARY_SOURCE__ sequencing and bisulfite sequencing were used to study effects on embryos. Small RNA analysis was also performed. Parallel sequencing approaches revealed transcriptional and epigenetic __RESPONSE__ in early __HOST_PHENOTYPE__. __CELL_TYPE__ __TISSUE_TYPE__ __DISEASE__ __INSTRUMENT_PLATFORM__ __ORGAN__ __CELL_LINE__ __TREATMENT_TIME__",
+    1
+  ],
+  [
+    "K562_sgNTC-1_NA_NA_rep1, K562_sgNTC-1_NA_NA_rep1, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 6000 sequencing: GSM6448755: K562_sgNTC-1_NA_NA_rep__TREATMENT_TIME____HOST_PHENOTYPE__ RNA-Seq, A __CELL_TYPE__ maturation program initiated by __TREATMENT__ during S phase, SRS14620179SAMN30266524GSM6448755 K562 sgNTC-1 __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject722986PRJNA722986 source name__CELL_LINE__ human __DISEASE__ cells with sgRNA targeting __CELL_TYPE__ under __TREATMENT__, sequenced from __TISSUE_TYPE__ using __LIBRARY_SOURCE__. __ORGAN__ __LIBRARY_SELECTION__ __RESPONSE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "NYU1428-N (RNA-seq), NYU1428-N (RNA-seq), __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 6000 sequencing: GSM7173516: NYU1428-N (RNA-seq) __HOST_PHENOTYPE__ RNA-Seq, __DISEASE__-adjacent __ORGAN__ transcriptome as a predictor of __RESPONSE__ in early-stage __ORGAN__ __DISEASE__, SRS17310973SAMN34179215GSM7173516 NYU1428-N RNA-seq __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject955664PRJNA955664 source name __TISSUE_TYPE__ from patient __DONOR_INFORMATION__, sequenced using __LIBRARY_SOURCE__ and prepared with __LIBRARY_SELECTION__ from __CELL_TYPE__-enriched samples. __CELL_LINE__ __TREATMENT__",
+    1
+  ],
+  [
+    "__DISEASE__ BOB11738_2, __DISEASE__ BOB11738_2, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 6000 sequencing: GSM7677835: __DISEASE__ BOB11738___TREATMENT_TIME__ __HOST_PHENOTYPE__ RNA-Seq, Peripheral __ORGAN__ TCR clonotype diversity as a marker of __RESPONSE__ in __DISEASE__ progression, SRS18485167SAMN36812449GSM7677835 __DISEASE__ BOB11738 __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject1001503PRJNA1001503 source name __TISSUE_TYPE__, isolated from __CELL_TYPE__ in __CELL_LINE__ context and processed with __LIBRARY_SELECTION__ and __LIBRARY_SOURCE__ under __TREATMENT__ __DONOR_INFORMATION__.",
+    1
+  ],
+  [
+    "SRR25544692, SRP453636PRJNA1002810 __LIBRARY_SOURCE__ RNA sequencing of clinical malignant and benign __DISEASE__. Whole __ORGAN__ samples were collected from patients with different clinical __RESPONSE__ profiles. The samples were processed within __TREATMENT_TIME__ hours, and platelets were preserved before sequencing. __CELL_TYPE__s were isolated, and libraries prepared with __LIBRARY_SELECTION__ protocols. Sequencing was performed on an __INSTRUMENT_PLATFORM__ platform, and samples were annotated with __DONOR_INFORMATION__ and associated __CELL_LINE__ models. Tissue analysis included __TISSUE_TYPE__ from relevant __HOST_PHENOTYPE__ individuals. __TREATMENT__",
+    1
+  ],
+  [
+    "__LIBRARY_SOURCE__ GEX library for Patient 29, __LIBRARY_SOURCE__ GEX library for Patient 29, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ 6000 sequencing: GSM4995436: __LIBRARY_SOURCE__ GEX library for Patient __TREATMENT_TIME__ __HOST_PHENOTYPE__ RNA-Seq, Global immune __RESPONSE__ profiling in the context of __DISEASE__, SRS7945868SAMN17184508GSM4995436 __LIBRARY_SOURCE__ GEX Patient __TREATMENT_TIME__ __HOST_PHENOTYPE__ bioproject688684PRJNA688684 source name __TISSUE_TYPE__ drawn from whole blood, collected from __DONOR_INFORMATION__, processed with __LIBRARY_SELECTION__ from a __CELL_LINE__ model derived from __CELL_TYPE__s, associated with __ORGAN__ involvement under __TREATMENT__ conditions.",
+    1
+  ],
+  [
+    "SRR11825722, SRP262616PRJNA634332Ribosome Profiling of Human Primary __CELL_TYPE__s Under __LIBRARY_SOURCE__ and __LIBRARY_SOURCE__ of human primary __CELL_TYPE__s at three time points __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__HOST_PHENOTYPE__, __CELL_LINE__, __INSTRUMENT_PLATFORM__ 4000 sequencing: GSM5340995: __CELL_TYPE__ __DONOR_INFORMATION__ RNA-Seq, Revisiting the Hayflick Limit: Insights from an Integrated Analysis of Changing Transcripts, Proteins, Metabolites, and Chromatin, SRS9064341SAMN19337007GSM5340995RS PDL50 TP8 A__TREATMENT_TIME__omo sapiensbioproject732700PRJNA732700source nameWI 38__CELL_LINE__ 38time courseRS timecoursepopulation doublings50time point dayTP8extract protocolCells were lysed on the __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "Human sample from __DONOR_INFORMATION__, Duplicate sample3, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: RNA-seq of __DISEASE__ cell:__CELL_LINE__, RNAsequencing samples of breast __DISEASE__ cells with __TREATMENT__ treatment, SRS20133892SAMN39433644T__TREATMENT_TIME__omo sapiensDuplicate sample3bioproject1064464PRJNA1064464isolatenot applicableagemissingbiomaterial provider__DONOR_INFORMATION__exmissing__TISSUE_TYPE__ using __LIBRARY_SOURCE__ and __LIBRARY_SELECTION__ with response from __RESPONSE__ in __CELL_TYPE__ and __HOST_PHENOTYPE__ and __ORGAN__",
+    1
+  ],
+  [
+    "SRRXXXXXXXX, Total RNA was isolated using TRI-REAGENT (MRC) followed by a column-based Total RNA Zol-Out\u2122 D kit (A&A Biotechnology) following the manufacturer's protocol RNA-seq libraries were prepared in two biological replicates from 1ug of total RNA using NEBNext\u00ae Ultra\u2122 II RNA Library Prep Kit for __INSTRUMENT_PLATFORM__\u00ae (NEB) together with NEBNext __LIBRARY_SELECTION__) mRNA Magnetic Isolation Module (NEB) and NEBNext\u00ae Multiplex Oligos for __INSTRUMENT_PLATFORM__\u00ae (NEB) according to manufacturer's protocol, SRP414924PRJNA916231GSE221804Time dependent recruitment and composite genes shapes __CELL_LINE__ activated transcriptional responses and explains functional overlap __LIBRARY_SOURCE__ Although the core __CELL_TYPE__ signaling pathways are distinct their expression profiles show considerable overlap and are difficult to discern Using a genome wide __LIBRARY_SELECTION__ integrative approach our results identify a novel class of responsive genes that use composite sites to recruit like complexes and for optimal expression Moreover they support the existence of an analogous transcriptional regulatory mechanism of inducible genes in which STAT1 and STAT2 containing like complexes and are recruited to individual or combined composite sites and time dependent manner In addition we present proof for the involvement of an composite dependent regulatory system in activated positive feedback regulation of genes and long term response which depends on phosphorylation and expression of like components These findings provide further insight in the existence of a novel intracellular amplifier circuit that offer an explanation for the existing molecular and functional overlap between expression Overall design Comparative gene expression profiling analysis of RNA seq data for the human __DISEASE__ __CELL_LINE__ and variants treated with alpha and gamma GSE221804pubmed37347298pubmed38139463parent bioprojectPRJNA922988 with results from __TREATMENT__, __TREATMENT_TIME__, __TISSUE_TYPE__, __LIBRARY_SOURCE__, __CELL_TYPE__, __HOST_PHENOTYPE__, __RESPONSE__, __DONOR_INFORMATION__, __ORGAN__",
+    1
+  ],
+  [
+    "cyto_RMC4745_3, cyto_RMC4745_3, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM4107753: cyto_RM02___TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Selective Inhibitors of __TREATMENT__ Activate __CELL_TYPE__ and Suppress __DISEASE__ Growth, SRS5477656SAMN12911261GSM4107753cyto __CELL_TYPE__ __TREATMENT_TIME____DONOR_INFORMATION__bioproject575792PRJNA575792source name__CELL_LINE__ __LIBRARY_SELECTION__ typeCytosolic__TREATMENT__ __LIBRARY_SELECTION__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "RNA-seq from Luminal1, __TREATMENT__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM4201653: RNA-seq from __TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Epigenomic analyses of __CELL_LINE__-mediated enhancer reprogramming to __TREATMENT__ __DISEASE__ subtype plasticity through __CELL_LINE__ signalling feedback between __CELL_TYPE__ [RNA-seq], SRS5757990SAMN13471377GSM4201653__LIBRARY_SELECTION__ from Luminal__TREATMENT_TIME____DONOR_INFORMATION__bioproject593203PRJNA593203source name__ORGAN__ __DISEASE__ organoidsubtypeluminal__TISSUE_TYPE__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__CELL_TYPE__ from __DISEASE__ donor __CELL_LINE__, Neutrophils from __DISEASE__ donor __CELL_LINE__, __INSTRUMENT_PLATFORM__ sequencing: GSM4715411: __TISSUE_TYPE__ from __DISEASE__ donor HD__TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Immunological Biomarkers of Fatal __DISEASE__: A Study of __DONOR_INFORMATION__, SRS7167585SAMN15762467GSM4715411__TISSUE_TYPE__ from healthy donor HD__TREATMENT_TIME____DONOR_INFORMATION__sbioproject655952PRJNA655952source nameNeutrophils from __ORGAN__individualhealthy donor __DISEASE__ status__HOST_PHENOTYPE__ donorgender__DONOR_INFORMATION__Nohaematological __DISEASE__No__TISSUE_TYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "__TREATMENT__, __TREATMENT__, __INSTRUMENT_PLATFORM__ sequencing: GSM4388166: sgZFP36L2_sg1_rep__TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, post-transcriptionally acute __CELL_TYPE__ differentiation (__TREATMENT__), SRS6269251SAMN14316076GSM4388166sgZFP36L2 sg1 rep__TREATMENT_TIME____DONOR_INFORMATION__bioproject610798PRJNA610798source name__CELL_LINE__ __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR18856557, SRP338085PRJNA765009Integrated __LIBRARY_SELECTION__ seq CyTOF and CITE seq analysis of __TISSUE_TYPE__ immune microenvironmentAs part of the MMRF immune atlas pilot project we compared __CELL_TYPE__ of __DISEASE__ __ORGAN__ samples from __DONOR_INFORMATION__ assessed by scRNA seq CyTOF and CITE seq to understand the concordance of measurements among __LIBRARY_SOURCE__ techniques __CELL_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "SRR17296854, __LIBRARY_SOURCE__ Genomcis __LIBRARY_SOURCE__ __LIBRARY_SOURCE__ preparation, SRP351944PRJNA791326GSE192391__LIBRARY_SOURCE__ transcriptomics of __CELL_TYPE__s during severe __DISEASE____LIBRARY_SOURCE__ RNA seq analysis of __CELL_TYPE__s during __DISEASE__ Overall design __CELL_TYPE__s were isolated at the stated days into __DISEASE__ study enrollment and hospitalizaiton for __LIBRARY_SOURCE__ RNA sequencingGSE192391pubmed35169146__HOST_PHENOTYPE__bioprojectPRJEB40771 __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __LIBRARY_SELECTION__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "SRR30689098, Total RNA was extracted from pediatric __DISEASE__ cells following coculture with pediatric __CELL_TYPE__ using standard RNA isolation techniques. RNA was prepared for downstream __LIBRARY_SELECTION__ analysis to assess transcriptional changes due to coculture conditions. Quality of sequencing was assessed using FastQC version 0.11.5 (Andrews, 2010), and sequences were trimmed using TrimGalore version 0.4.4_dev (Krueger, 2015) with 3' end trimming and paired parameters, using a quality score threshold of 20. The __DONOR_INFORMATION__ was obtained via Ensembl (__DONOR_INFORMATION__) reads were aligned to the genome using hisat2 (Kim et al. 2015)., SRP533167PRJNA1162081GSE277382Paediatric __ORGAN__ support acute myeloid __DISEASE__ cell survival and enhance __RESPONSE__ via contact independent mechanismPediatric __CELL_TYPE__ within the __ORGAN__ marrow BM niche play a crucial role in regulating pediatric acute __CELL_TYPE__ survival and therapy __RESPONSE__ In this study we isolated __CELL_TYPE__ from __DISEASE__ __ORGAN__ samples and characterized their phenotype and differentiation potential We performed coculture experiments with __CELL_LINE__ cells in both autologous and allogenic settings with and without direct contact RNA sequencing and multiplex immunoassays revealed that __CELL_TYPE__ promote __DISEASE__ survival through changes in gene expression __CELL_TYPE__ secretion and extracellular matrix components specifically enhancing chemoprotection from __TREATMENT__ Inhibition of the pathways using __TREATMENT__ abrogated the __CELL_TYPE__ induced chemoprotection suggesting a contact independent mechanism These findings provide new insights into how the BM microenvironment contributes to therapy __RESPONSE__ in pediatric __DISEASE__ and highlights the potential for targeting __CELL_TYPE__ induced signaling pathways in __TREATMENT__ __TISSUE_TYPE__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __TREATMENT_TIME__ __INSTRUMENT_PLATFORM__",
+    1
+  ],
+  [
+    "__CELL_LINE__ sgRNA#2, __CELL_LINE__ sgRNA#2, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM2829443: __CELL_LINE__ sgRNA#__TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, __DONOR_INFORMATION__ Inhibition Synergizes with __TREATMENT__ in __CELL_TYPE__ Cells, SRS2622071SAMN07829582GSM2829443__CELL_LINE__ __TREATMENT_TIME____DONOR_INFORMATION__bioproject415591PRJNA415591source namemantle cell __DISEASE__ __CELL_LINE__ and induced with __TREATMENT__ for __TREATMENT_TIME__ __TISSUE_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "__DISEASE__, __DISEASE__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM6793236: __TREATMENT____DONOR_INFORMATION__ RNA-Seq, Severe __DISEASE__ is associated with molecular signatures of aging in the human __TISSUE_TYPE__, SRS15979448SAMN32071507GSM6793236COVID__TREATMENT_TIME____DONOR_INFORMATION__bioproject780522PRJNA780522source name__ORGAN__ of __TISSUE_TYPE____DONOR_INFORMATION__Sex__DONOR_INFORMATION__matching groupJgroup__DISEASE__ __CELL_TYPE__ __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR2959445, Total RNA isolated using the standard __TREATMENT__ protocol. __INSTRUMENT_PLATFORM__ libraries were prepared using __LIBRARY_SELECTION__ Magnetic Gold Kit (epicenter) and NEBNext Ultra RNA Library Prep Kit (NEB) and run on a __INSTRUMENT_PLATFORM__, SRP066619PRJNA304002GSE75354A __DONOR_INFORMATION__ __DISEASE__ model reveals emergence of neural crest identity during __DISEASE__ initiation __CELL_LINE__ We report gene expression data for human __DISEASE__ using RNAseq Overall design RNAseq was performed on __DISEASE__ and one normal __TISSUE_TYPE__ done as single replicates except for two biological replicates of __CELL_LINE__ GSE75354pubmed26823433parent bioprojectPRJNA303997 __CELL_TYPE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SOURCE__ __TREATMENT_TIME__ __RESPONSE__",
+    1
+  ],
+  [
+    "226x__TREATMENT_TIME__4, 226x__TREATMENT_TIME__4, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: GSM3123650: 226x__TREATMENT_TIME____TREATMENT_TIME____DONOR_INFORMATION__ RNA-Seq, Cell cycle plasticity driven by MTOR signaling: integral mechanism for __RESPONSE__ to __CELL_TYPE__ inhibition, SRS3239481SAMN09007107GSM3123650226x__TREATMENT_TIME____DONOR_INFORMATION__bioproject454470PRJNA454470source namePatient derived __TREATMENT__ __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__",
+    1
+  ],
+  [
+    "__CELL_LINE__, __CELL_LINE__, __INSTRUMENT_PLATFORM__ __INSTRUMENT_PLATFORM__ sequencing: __LIBRARY_SOURCE__ of __DONOR_INFORMATION__: __ORGAN__, Shifts in Serum Acid Profiles Associated with __ORGAN__ and Stages of Progression to __ORGAN__ __DISEASE__, SRS20099729SAMN39328775RNASeq Human __TREATMENT_TIME____DONOR_INFORMATION__bioproject1063201PRJNA1063201isolateJK037__DONOR_INFORMATION__biomaterial provider__DONOR_INFORMATION____TISSUE_TYPE__ __CELL_TYPE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __TREATMENT__ __RESPONSE__",
+    1
+  ],
+  [
+    "SRR12617989, RNA was extracted using RNeasy plus Mini Kit (Qiagen) according to manufacturer's guidelines and the quality of the isolated RNA was evaluated by BIOanalyzer 2100 (Agilent) using the Agilent RNA 6000 Nano Kit. Library preparation was performed with __INSTRUMENT_PLATFORM__ TruSeq Stranded mRNA Library Prep Kit High Throughput (Catalog ID: RS-122-2103), according to manufacturer's protocol, SRP281874PRJNA662582GSE157729Secretory pathway differences between __CELL_LINE__ and __CELL_LINE__ enable rescue of difficult to express human proteinsBiologics have emerged as leading blockbuster therapeutics but many advanced recombinant protein moieties remain difficult to produce Here we identify bottlenecks limiting expression of challenging recombinant human proteins through a systems biology analysis of the transcriptomes of __CELL_LINE__ and __CELL_LINE__ Surprisingly one third of the challenging human proteins displayed an improved secretion upon host __CELL_TYPE__ swapping from __CELL_LINE__ to __CELL_LINE__ While most components of the secretory machinery showed comparable expression levels in both expression hosts a key set of genes with extreme expression variation was identified Among were validated as general productivity boosters in __CELL_LINE__ Further we found that more heavily glycosylated products benefit more from the elevated activities of the N and O glycosyltransferases found in __CELL_LINE__ cells Collectively our results demonstrate the utilization of __CELL_LINE__ cells for expression rescue of human proteins and suggest a strategy for identification of secretory pathway components improving yield and quality in __CELL_LINE__ and __CELL_LINE__ Overall design Expression profiling and comparative analysis of __CELL_LINE__ and __CELL_LINE__ cells producing a panel of recombinant proteins GSE157729pubmed35301123 __TISSUE_TYPE__ __ORGAN__ __DISEASE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __TREATMENT_TIME__ __RESPONSE__ __DONOR_INFORMATION__",
+    1
+  ],
+  [
+    "SRR18154497, Frozen on dry ice and RNA was harvested using __TREATMENT__. __INSTRUMENT_PLATFORM__ TruSeq RNA Sample Prep Kit (Cat#FC-122-1001) was used with 1 ug of total RNA for the construction of sequencing libraries. RNA libraries were prepared for sequencing using standard __INSTRUMENT_PLATFORM__ protocols, SRP361640PRJNA810728GSE197514RNA sequencing of __DISEASE__ educated __CELL_TYPE__ reveals a three gene diagnostic signature in __TISSUE_TYPE__ squamous cell __DISEASE__We aimed to investigate the diagnostic potential of __DISEASE__ educated __CELL_TYPE__ in __DISEASE__ In this study __DONOR_INFORMATION__ ESCC patients and __DONOR_INFORMATION__ healthy individuals were enrolled and divided into training cohort __DONOR_INFORMATION__ and __DONOR_INFORMATION__ and validation cohort __DONOR_INFORMATION__ and __DONOR_INFORMATION__ Next generation RNA sequencing was performed on __CELL_TYPE__ isolated from peripheral __ORGAN__ of all participants and a support vector machine leave one out cross validation approach was used for binary classification A diagnostic signature composed of __RESPONSE__ discriminated __DISEASE__ patients from healthy individuals with 91 3 __RESPONSE__ and 85 2 specificity in the training cohort and 87 5 __RESPONSE__ and 81 1 specificity in the validation cohort The AUC was 0 924 95 CI 0 845\u20130 956 and 0 893 95 CI 0 821\u20130 966 respectively in the training cohort and validation cohort This 3 gene platelet RNA signature could effectively discriminate __DISEASE__ from healthy __TREATMENT__ Our data highlighted the potential of __DISEASE__ educated __CELL_TYPE__ for the noninvasive diagnosis of __DISEASE__ Moreover we found keratin and collagen protein families and ECM related pathways might be involved in __DISEASE__ progression and metastasis of __DISEASE__ which might provide insights to understand __DISEASE__ pathobiology and advance novel therapeutics Overall design RNA sequencing of periphral __ORGAN__ __CELL_TYPE__ in __DONOR_INFORMATION__ __TISSUE_TYPE__ __DISEASE__ patients and __DONOR_INFORMATION__ __TREATMENT__s GSE197514 __CELL_LINE__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT_TIME__",
+    1
+  ],
+  [
+    "S1433, S1433, __INSTRUMENT_PLATFORM__ sequencing, TestSITE: an Integrated Gene-to-Outcome Data Commons for Precision Medicine Research, ERS14371623SAMEA112260766S__TREATMENT_TIME____DONOR_INFORMATION__ nameEDSubmitter IdS1433common namehumannash crn __DISEASE__ st__DONOR_INFORMATION__sample nameS1433scientific name__DONOR_INFORMATION__ __CELL_TYPE__ __TISSUE_TYPE__ __CELL_LINE__ __ORGAN__ __HOST_PHENOTYPE__ __LIBRARY_SELECTION__ __LIBRARY_SOURCE__ __TREATMENT__ __RESPONSE__",
+    1
+  ]
+]
