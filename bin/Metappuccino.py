@@ -38,6 +38,7 @@ def main():
                         help="Fill metadata with LLMs [Input: Cleaned sra file]")
     parser.add_argument("--associateinformation", action="store_true",
                         help="Associate medical codes with LLMs answers and clean them [Input: LLMs answers]")
+    parser.add_argument("--iteration_limit", type=int, default=1, help="Number of attempts to restart inference if less than 30% of categories have been predicted or if the JSON is malformed.")
     args = parser.parse_args()
 
     #scripts to execute and flags
@@ -46,25 +47,30 @@ def main():
     env_dir = args.env_requirement
     cuda_path = args.cuda
     model_path = args.model
+    iteration_limit = args.iteration_limit
     tmp_dir = os.path.join(metappuccino_dir+"/"+res_dir, "tmp")
 
     step1_flag = os.path.join(tmp_dir, "STEP1_1.flag")
+    step2_0_flag = os.path.join(tmp_dir, "STEP2_0.flag")
     step2_flag = os.path.join(tmp_dir, "STEP2_1.flag")
     step3_flag = os.path.join(tmp_dir, "STEP2_2.flag")
     step4_flag = os.path.join(tmp_dir, "STEP3_1.flag")
     step5_flag = os.path.join(tmp_dir, "STEP3_2.flag")
+    step6_flag = os.path.join(tmp_dir, "STEP4_1.flag")
 
     install_requirements = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "install_requirements.sh")
     download_metadata = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "download_metadata.sh")
+    clean_metadata = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "clean_metadata.sh")
     extract_preprocess = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "extract_preprocess.sh")
     summary_context = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "summary_context.sh")
     llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_metadata_inference.sh")
     reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_model.sh")
+    normalize_final = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "normalize_final.sh")
 
     ##INSTALL REQUIREMENTS
     try:
         if not shutil.which("sbatch") and not shutil.which("qsub"):
-            print("❌ Error: 'sbatch' or 'qsub' command not found", file=sys.stderr)
+            print("Error: 'sbatch' or 'qsub' command not found", file=sys.stderr)
             sys.exit(1)
 
         if args.requirements:
@@ -85,6 +91,15 @@ def main():
                     subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,  download_metadata], check=True)
             wait_for_flag_file(step1_flag)
             print("✔ Metadata download completed!")
+
+            #clean metadata
+            if not os.path.isfile(step2_0_flag):
+                if shutil.which("qsub"):
+                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir,  clean_metadata], check=True)
+                elif shutil.which("sbatch"):
+                    subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir,  clean_metadata], check=True)
+            wait_for_flag_file(step2_0_flag)
+            print("✔ Metadata cleaned!")
 
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
@@ -119,24 +134,29 @@ def main():
                 if shutil.which("qsub"):
                     subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_model], check=True)
                 elif shutil.which("sbatch"):
-                    subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_model], check=True)
+                    subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path+","+"ITERATION_LIMIT="+str(iteration_limit), reload_model], check=True)
             wait_for_flag_file(step5_flag)
             print("✔ Context reloaded successfully!")
 
         ##STEP 3: ASSOCIATE TERMS WITH CODE
-        # if args.associateinformation:
-        #     #association uberon/dot with ref table and clean
-        #     if not os.path.isfile(step6_flag):
-        #         # subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
-        #         subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, associate_information], check=True)
-        #     wait_for_flag_file(step6_flag)
-        #     print("✔ Code association and cleaning LLM answers successfully completed!")
+        if args.associateinformation:
+            if not os.path.isfile(step6_flag):
+                if shutil.which("qsub"):
+                    subprocess.run(["qsub", "-q", "alphafold", "-v",
+                                    "METAPPUCCINO=" + metappuccino_dir + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    normalize_final], check=True)
+                elif shutil.which("sbatch"):
+                    subprocess.run(["sbatch",
+                                    "--export=METAPPUCCINO=" + metappuccino_dir + "," + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    normalize_final], check=True)
+            wait_for_flag_file(step6_flag)
+            print("✔ Code association and cleaning LLM answers successfully completed!")
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)
+        print(f"Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        print(f"Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

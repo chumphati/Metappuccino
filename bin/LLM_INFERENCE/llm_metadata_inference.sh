@@ -34,7 +34,7 @@ mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
 cleanup() {
-    cp -r "$SCRATCH_DIR/METADATA_LLM_INFERENCE" "$RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/" \
+    cp -r "$SCRATCH_DIR/METADATA_LLM_INFERENCE" "$RESULTS_DIR/COMPLETED_INFERENCE/" \
       2>/dev/null || echo "METADATA_LLM_INFERENCE not founded"
     cp "$SCRATCH_DIR/skipped_runs.txt"            "$TMP_DIR/" 2>/dev/null || echo "No skipped_runs"
     cp "$SCRATCH_DIR/reload_model_bio_info.txt"   "$TMP_DIR/" 2>/dev/null || echo "No reload_model"
@@ -46,7 +46,7 @@ cleanup() {
 trap cleanup EXIT
 
 cp "$MODEL"                                 $SCRATCH_DIR/
-cp "$TMP_DIR/metadata_sra_summarized.txt"          $SCRATCH_DIR/
+cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra_summarized.txt"          $SCRATCH_DIR/
 cp "$TMP_DIR/database_metadata_curated.csv"      $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py"  $SCRATCH_DIR/
 

@@ -26,15 +26,15 @@ parser.add_argument("--base_path", type=str, required=True, help="Base path to M
 args = parser.parse_args()
 
 base_path = args.base_path
-INPUT_FILE = os.path.join(base_path, "metadata_sra.txt")
+INPUT_FILE = os.path.join(base_path, "cleaned_metadata_sra.txt")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 
 # INPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_metappuccino/tmp/metadata_sra.txt"
 # OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_ft_final_templates/metadata_sra_summarized.txt"
 
-MAX_WORDS = 1200
-TOKEN_THRESHOLD = 1200
+MAX_WORDS = 1000
+TOKEN_THRESHOLD = 1000
 CHUNK_SIZE = 100
 CATEGORY_KEYWORDS = [
     'cell type', 'tissue type', 'cell line', 'organ', 'disease',
@@ -85,20 +85,44 @@ def summarize_by_clauses(text):
     clauses = extract_clauses(text)
     if not clauses:
         return text.strip()
-    scores, _ = score_clauses(clauses)
+
+    scores, vect = score_clauses(clauses)
     order = np.argsort(-scores)
     summary = []
     total = 0
+    used_idxs = set()
+
     for i in order:
         words = clauses[i]['text'].split()
         if total + len(words) <= MAX_WORDS:
             summary.append((clauses[i]['orig_idx'], clauses[i]['text']))
+            used_idxs.add(i)
             total += len(words)
         if total >= MAX_WORDS:
             break
+
+    for cat_idx, cdoc in enumerate(category_docs):
+        best_sim = 0.0
+        best_idx = -1
+        for i, clause in enumerate(clauses):
+            if i in used_idxs:
+                continue
+            doc = nlp(clause['text'])
+            sim = doc.similarity(cdoc)
+            if sim > best_sim:
+                best_sim = sim
+                best_idx = i
+        if best_sim > SEMANTIC_THRESHOLD and best_idx >= 0:
+            words = clauses[best_idx]['text'].split()
+            if total + len(words) <= MAX_WORDS:
+                summary.append((clauses[best_idx]['orig_idx'], clauses[best_idx]['text']))
+                used_idxs.add(best_idx)
+                total += len(words)
+
     summary.sort(key=lambda x: x[0])
     texts = [s for _, s in summary]
     return ' '.join(t if t.endswith(('.', '?', '!')) else t + '.' for t in texts)
+
 
 ########################################################################################################################
 #MAIN
@@ -117,5 +141,6 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
         else:
             summ = ctx
         wtr.writerow([run_acc, summ])
+        print(f"{run_acc}\t{len(summ.split())} words", flush=True)
 
 open(FLAG_FILE, 'w').close()

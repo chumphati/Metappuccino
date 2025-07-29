@@ -29,14 +29,14 @@ cd "$SCRATCH_DIR"
 exec > "$LOG_DIR/summary_context.out" 2> "$LOG_DIR/summary_context.err"
 
 cleanup() {
-    cp "$SCRATCH_DIR/metadata_sra_summarized.txt" "$TMP_DIR/" 2>/dev/null || echo "Output file not found, skipping."
+    cp "$SCRATCH_DIR/metadata_sra_summarized.txt" "$METAPPUCCINO/$RES/ORIGINAL_METADATA/" 2>/dev/null || echo "Output file not found, skipping."
     cp "$SCRATCH_DIR/STEP2_2.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
 }
 trap cleanup EXIT
 
-cp "$TMP_DIR/metadata_sra.txt" $SCRATCH_DIR/
+cp "$TMP_DIR/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/summarize_inputs.py" $SCRATCH_DIR/
 
 source $ENV_REQUIREMENT/bin/activate

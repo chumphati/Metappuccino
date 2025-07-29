@@ -28,8 +28,8 @@ cd $SCRATCH_DIR
 exec >"$LOG_DIR/download_metadata.out" 2>"$LOG_DIR/download_metadata.err"
 
 cleanup() {
-  cp -r "$SCRATCH_DIR/metadata" "$TMP_DIR/" 2>/dev/null || echo "No metadata"
-  cp "$SCRATCH_DIR/metadata_sra.txt" "$TMP_DIR/" 2>/dev/null || echo "No metadata_sra.txt"
+  cp -r "$SCRATCH_DIR/metadata" "$METAPPUCCINO/$RES/ORIGINAL_METADATA/" 2>/dev/null || echo "No metadata"
+  cp "$SCRATCH_DIR/metadata_sra.txt" "$METAPPUCCINO/$RES/ORIGINAL_METADATA/" 2>/dev/null || echo "No metadata_sra.txt"
   cp "$SCRATCH_DIR/STEP1_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
   echo "End $(date)"
   rm -rf "$SCRATCH_DIR"

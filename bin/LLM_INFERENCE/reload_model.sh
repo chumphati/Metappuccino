@@ -21,6 +21,7 @@ METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
+ITERATION_LIMIT=${5:-$ITERATION_LIMIT}
 
 RESULTS_DIR=$METAPPUCCINO/$RES
 TMP_DIR=$RESULTS_DIR/tmp
@@ -32,8 +33,12 @@ mkdir -p $SCRATCH_DIR
 cd $SCRATCH_DIR
 
 cleanup() {
-    cp -r "$SCRATCH_DIR/METADATA_LLM_INFERENCE" "$RESULTS_DIR/SPECIFIC_RUN_ANALYSIS/" \
-      2>/dev/null || echo "METADATA_LLM_INFERENCE not founded"
+#    ls
+#    ls METADATA_LLM_INFERENCE/
+#    ls "$METAPPUCCINO/$RES/COMPLETED_INFERENCE/METADATA_LLM_INFERENCE/"
+#    echo "end"
+    cp -r "$SCRATCH_DIR/METADATA_LLM_INFERENCE/" "$METAPPUCCINO/$RES/COMPLETED_INFERENCE/" \
+      || echo "METADATA_LLM_INFERENCE not founded"
     cp "$SCRATCH_DIR/skipped_runs.txt"            "$TMP_DIR/" 2>/dev/null || echo "No skipped_runs"
     cp "$SCRATCH_DIR/reload_model_bio_info.txt"   "$TMP_DIR/" 2>/dev/null || echo "No reload_model"
     cp "$SCRATCH_DIR/llm_log_reload.txt"              "$LOG_DIR/" 2>/dev/null || echo "No log"
@@ -58,7 +63,7 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Begin date: $(date)"
 
-iteration_limit=2
+iteration_limit=ITERATION_LIMIT
 for (( i=0; i<$iteration_limit; i++ )); do
 
     if [ -f "$TMP_DIR/reload_model_bio_info.txt" ]; then

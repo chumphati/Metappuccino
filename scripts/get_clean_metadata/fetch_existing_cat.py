@@ -83,7 +83,7 @@ for _, r in cell_df.iterrows():
         cell_syn[s.lower()] = name
 
 cols = [
-    "run_accession", "study_accession", "library_selection", "sequencing_source",
+    "run_accession", "library_selection", "sequencing_source",
     "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line", "cell_type",
     "organ", "organ_uberon_code", "disease", "do_code",
     "treatment", "treatment_time", "response",
@@ -98,7 +98,6 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     ctx = open(path, "r", encoding="utf-8", errors="ignore").read()
     o = {c: "" for c in cols}
     o["run_accession"] = run
-    o["study_accession"] = extract_tag(ctx, "study_accession")
     raw_cl = extract_tag(ctx, "cell_line")
     if raw_cl and raw_cl.lower() not in invalid_entries:
         mapped = cell_syn.get(raw_cl.lower(), raw_cl)

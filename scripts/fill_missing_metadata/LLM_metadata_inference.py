@@ -41,10 +41,10 @@ sys.stderr = sys.stdout
 ##########################################################################################
 #FUNCTIONS
 
-def print_memory_usage(proc):
-    m = proc.memory_info()
-    v = psutil.virtual_memory()
-    print(f"rss: {m.rss/1024**2:.2f} MB, virt used: {v.used/1024**2:.2f} MB")
+# def print_memory_usage(proc):
+#     m = proc.memory_info()
+#     v = psutil.virtual_memory()
+#     print(f"rss: {m.rss/1024**2:.2f} MB, virt used: {v.used/1024**2:.2f} MB")
 
 def get_llama_model(path, ctx):
     return Llama(
@@ -126,18 +126,18 @@ definitions = {
     "library_selection": "one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection)",
     "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context",
     "biopsy_site": "body location WHERE TISSUE WAS SAMPLED",
-    "biopsy_type": "one of: 'primary', 'metastasis', 'blood'",
+    "biopsy_type": "one of: 'primary', 'metastasis', 'blood'. If in situ, it's primary unless blood related information is mentioned.",
     "cell_line": "exact cell line code",
-    "cell_type": "exact cell type if the cells are identified from a certain type or write 'primary tissue'",
+    "cell_type": "extract cell type: if known, specify it (e.g., 'T cell'); otherwise, write 'primary tissue'.",
     "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site)",
     "disease": "report associated disease or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)",
     "treatment": "treatment applied (can be molecules, specific techniques, control, etc...)",
     "treatment_time": "time or phase relative to treatment (qualitative or quantitative information)",
-    "response": "treatment response, state of the cell after treatment, any kind of event after treatment if applicable",
-    "age": "sample donor age",
+    "response": "treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable",
+    "age": "sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)",
     "sex": "sample donor sex",
     "ethnicity": "sample donor ethnicity (origins, genetics)",
-    "localization": "all geographical origin information"
+    "localization": "all geographical information available"
 }
 
 skipped_runs = []
@@ -167,7 +167,7 @@ for idx, line in enumerate(metadata_lines):
         )
 
     print(f"\n[{idx+1}/{len(metadata_lines)}] {run}", flush=True)
-    print_memory_usage(process)
+    # print_memory_usage(process)
 
     inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
     fmt_keys   = ", ".join(f'"{c}": "<value>"' for c in na_columns)
@@ -180,9 +180,9 @@ for idx, line in enumerate(metadata_lines):
             
             For each category below:
             - Infer from the summary if possible
-            - If not applicable (eg. no treatment, so impossible to infer treatment_time and response ; or cell_type = primary tissue or a mix of cells so no cell_line), RETURN "not applicable"
-            - If impossible to infer, return "unknown", applicable for all categories
-            {extra_metadata_block}
+            - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories
+            - If one value is impossible to infer, return "unknown", applicable for all categories
+            {extra_metadata_block} 
             
             Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys:
             {{{fmt_keys}}}
@@ -192,7 +192,7 @@ for idx, line in enumerate(metadata_lines):
     print(prompt, flush=True)
 
     print("BEGIN:", flush=True)
-    resp      = llm(prompt, max_tokens=300, logprobs=True)
+    resp      = llm(prompt, max_tokens=350, logprobs=True)
     print("ANSWER:", flush=True)
     print(resp["choices"][0]["text"])
     text      = resp["choices"][0]["text"].strip()
@@ -215,7 +215,7 @@ for idx, line in enumerate(metadata_lines):
         continue
 
     category_token_patterns = {
-        "library_selection": [' {"', 'library', '_', 'selection', '":', ' "'],
+        "library_selection": ['library', '_', 'selection', '":', ' "'],
         "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
         "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
         "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
@@ -258,7 +258,7 @@ for idx, line in enumerate(metadata_lines):
             continue
 
         # segment_token_ids = tokens[start:end]
-        # segment_text = llm.detokenize(segment_token_ids).decode('utf-8', errors='ignore')
+        # segment_text = ''.join(segment_token_ids)
         # segment_logits = logprobs[start:end]
         # print(f"-- Key «{key}»:")
         # print(f"   Tokens ids : {segment_token_ids}")
@@ -279,11 +279,7 @@ with open(skipped_runs_path, "w") as sf:
     for r in skipped_runs:
         sf.write(r + "\n")
 
-if llm:
-    try:
-        llm.close()
-    except:
-        pass
+
 sys.stdout.close()
 
 open(FLAG_FILE, "w").close()

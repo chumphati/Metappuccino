@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#PBS -N extract_preprocess_pbs
+#PBS -N normalize_final_pbs
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-#SBATCH --job-name=extract_preprocess_slurm
+#SBATCH --job-name=normalize_final_slurm
 #SBATCH --partition=common
 #SBATCH --time=12:00:00
 #SBATCH --output=/dev/null
@@ -26,25 +26,25 @@ SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 mkdir -p "$SCRATCH_DIR"
 cd "$SCRATCH_DIR"
 
-exec > "$LOG_DIR/extract_preprocess.out" 2> "$LOG_DIR/extract_preprocess.err"
+exec > "$LOG_DIR/normalize_final.out" 2> "$LOG_DIR/normalize_final.err"
 
 cleanup() {
-    cp "$SCRATCH_DIR/database_metadata_curated.csv" "$TMP_DIR/" 2>/dev/null || echo "Output file not found, skipping."
-    cp "$SCRATCH_DIR/STEP2_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
+    cp "$SCRATCH_DIR/completed_metadata.csv" "$METAPPUCCINO/$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "Output file not found, skipping."
+    cp "$SCRATCH_DIR/STEP4_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
 }
 trap cleanup EXIT
 
+cp "$TMP_DIR/database_metadata_curated.csv" $SCRATCH_DIR/
+cp -r "$METAPPUCCINO/$RES/COMPLETED_INFERENCE/METADATA_LLM_INFERENCE" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp -r "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata" $SCRATCH_DIR/
-cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
-cp "$METAPPUCCINO/scripts/get_clean_metadata/fetch_existing_cat.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/normalize_graph/norm_complete.py" $SCRATCH_DIR/
 
 source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
-python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR"
+python3 -u norm_complete.py --base_path "$SCRATCH_DIR"
