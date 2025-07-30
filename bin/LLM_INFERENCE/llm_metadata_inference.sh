@@ -4,7 +4,7 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 #SBATCH --job-name=llm_inference_slurm
 #SBATCH --partition=alphafold

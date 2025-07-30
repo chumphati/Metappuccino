@@ -104,7 +104,7 @@ for _, r in cell_df.iterrows():
 
 fields = ["run_accession", "study_accession", "instrument_platform", "library_selection", "library_strategy",
           "base_count", "sequencing_source", "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line",
-          "cell_type", "organ", "organ_uberon_code", "disease", "do_code", "treatment", "treatment_time",
+          "cell_type", "organ", "organ_uberon_code", "disease", "do_code", "is_cancer", "treatment", "treatment_time",
           "response", "age", "sex", "ethnicity", "localization"]
 
 no_entropy_fields = {"do_code", "organ_uberon_code", "bs_uberon_code"}
@@ -192,6 +192,7 @@ out_df = pd.DataFrame(augmented_data, columns=output_cols)
 
 exclude_cols = {"cell_line", "treatment_time", "response"}
 for col in out_df.columns:
+    out_df[col] = out_df[col].replace("None", "unknown")
     if col in exclude_cols:
         continue
     out_df[col] = out_df[col].replace("not applicable", "unknown")

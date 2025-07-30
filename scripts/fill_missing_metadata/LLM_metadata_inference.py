@@ -119,18 +119,19 @@ if not os.path.exists(output_dir):
 categories = [
     "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
     "cell_line", "cell_type", "organ", "disease", "treatment",
-    "treatment_time", "response", "age", "sex", "ethnicity", "localization"
+    "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
 ]
 
 definitions = {
     "library_selection": "one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection)",
     "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context",
-    "biopsy_site": "body location WHERE TISSUE WAS SAMPLED",
+    "biopsy_site": "organ, body part or fluid WHERE TISSUE WAS SAMPLED",
     "biopsy_type": "one of: 'primary', 'metastasis', 'blood'. If in situ, it's primary unless blood related information is mentioned.",
     "cell_line": "exact cell line code",
     "cell_type": "extract cell type: if known, specify it (e.g., 'T cell'); otherwise, write 'primary tissue'.",
     "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site)",
     "disease": "report associated disease or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)",
+    "is_cancer":"return 'True' if the disease is cancer related, 'False' otherwise",
     "treatment": "treatment applied (can be molecules, specific techniques, control, etc...)",
     "treatment_time": "time or phase relative to treatment (qualitative or quantitative information)",
     "response": "treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable",
@@ -230,6 +231,7 @@ for idx, line in enumerate(metadata_lines):
         "sex": [' "', 'sex', '":', ' "'],
         "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
         "localization": [' "', 'local', 'ization', '":', ' "'],
+        "is_cancer": [' "', 'is', 'c', 'ancer', '":', ' "'],
     }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]
@@ -257,13 +259,13 @@ for idx, line in enumerate(metadata_lines):
             entropy_dict[key] = None
             continue
 
-        # segment_token_ids = tokens[start:end]
-        # segment_text = ''.join(segment_token_ids)
-        # segment_logits = logprobs[start:end]
-        # print(f"-- Key «{key}»:")
-        # print(f"   Tokens ids : {segment_token_ids}")
-        # print(f"   Tokens text: {segment_text!r}")
-        # print(f"   Logits     : {segment_logits}")
+        segment_token_ids = tokens[start:end]
+        segment_text = ''.join(segment_token_ids)
+        segment_logits = logprobs[start:end]
+        print(f"-- Key «{key}»:")
+        print(f"   Tokens ids : {segment_token_ids}")
+        print(f"   Tokens text: {segment_text!r}")
+        print(f"   Logits     : {segment_logits}")
 
         segment = logprobs[start:end]
         entropy_dict[key] = calculate_entropy_optimized(segment)

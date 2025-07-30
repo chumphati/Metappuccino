@@ -80,14 +80,14 @@ print("Config LoRA", flush=True)
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=4000)["input_ids"]
-    output_ids = tokenizer(output, truncation=True, max_length=200)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=2500)["input_ids"]
+    output_ids = tokenizer(output, truncation=True, max_length=300)["input_ids"]
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
 
-    max_length = 4000
+    max_length = 2500
     padding_length = max_length - len(input_ids)
     input_ids += [tokenizer.pad_token_id] * padding_length
     attention_mask += [0] * padding_length
@@ -99,9 +99,9 @@ def tokenize_function(example):
 # deduplicate prediction categories
 def deduplicate_categories(pred_text):
     allowed = {
-        'cell_type', 'tissue_type', 'cell_line', 'organ', 'disease',
-        'host_phenotype', 'library_selection', 'library_source',
-        'treatment', 'treatment_time', 'response', 'donor_information'
+        "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
+        "cell_line", "cell_type", "organ", "disease", "treatment",
+        "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
     }
     seen = set()
     final_output = []
@@ -134,7 +134,7 @@ def parse_pred_block(raw_pred):
 
 
 normal_accuracy_categories = {
-    'cell_line', 'phenotype', 'library_selection', 'library_source', 'treatment_time'
+    'cell_line', 'library_selection', 'library_source', 'treatment_time'
 }
 
 
@@ -316,13 +316,13 @@ class MyTrainer(Trainer):
         for example in ds:
             prompt = example['prompt']
             expected = example['output']
-            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4000).to(self.model.device)
+            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2500).to(self.model.device)
 
             with torch.no_grad():
                 out_ids = self.model.generate(
                     input_ids=inputs["input_ids"],
                     attention_mask=inputs["attention_mask"],
-                    max_new_tokens=150,
+                    max_new_tokens=350,
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=tokenizer.eos_token_id,
                     early_stopping=True,
@@ -399,7 +399,7 @@ tokenized_val_final = val_dataset_final.map(clean_output_text).map(tokenize_func
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=8,
+    r=4,
     lora_alpha=16,
     lora_dropout=0.2,
     target_modules=['q_proj', 'v_proj']
@@ -415,8 +415,8 @@ training_args_final = TrainingArguments(
     learning_rate=5e-6,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
-    num_train_epochs=10,
-    weight_decay=0.02,
+    num_train_epochs=6,
+    weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='no',
     logging_steps=250,
@@ -484,7 +484,7 @@ for i, row in test_df.iterrows():
         output_ids = model_final.generate(
             input_ids=input_encoded["input_ids"],
             attention_mask=input_encoded["attention_mask"],
-            max_new_tokens=150,
+            max_new_tokens=350,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
             early_stopping=True,

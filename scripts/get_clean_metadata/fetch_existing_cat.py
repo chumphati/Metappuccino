@@ -159,6 +159,8 @@ for c in ['base_count', 'library_strategy', 'instrument_platform', 'study_access
     if c in df.columns:
         df[c] = df[c].fillna('')
 
+df['is_cancer'] = ''
+
 df.to_csv(output_file_df, sep="\t", index=False)
 
 open(FLAG_FILE, 'w').close()

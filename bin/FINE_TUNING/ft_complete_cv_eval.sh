@@ -13,8 +13,8 @@
 
 METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-LOG_DIR="$METAPPUCCINO/results_ft_final_templates/logs"
-RESULT_DIR="$METAPPUCCINO/results_ft_final_templates/FINE_TUNING"
+LOG_DIR="$METAPPUCCINO/results/logs"
+RESULT_DIR="$METAPPUCCINO/results/FINE_TUNING"
 #SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
 SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
 

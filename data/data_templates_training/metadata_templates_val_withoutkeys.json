@@ -1,0 +1,66 @@
+[
+  [
+    "SRR28579086, Total RNA was extracted from cells using the ReliaPrep RNA miniprep system (Promega). RNA was submitted to the  for RNA-seq library synthesis using a TruSeq Stranded mRNA kit () according to manufacturer's instructions., SRP500160PRJNA1097251GSE263385CPSF1 inhibition promotes widespread use of intergenic  sites and impairs glycolysis in   cells RNA seq The goal of this study was to compare global expression changes upon  in   and   cells Overall design Comparative gene expression profiling in   and  cells between three groups total  cells with  GSE263385pubmed39847481       ",
+    1
+  ],
+  [
+    "SRR24898238, Using the Rneasy micro kit the RNA was extracted. -enrichment and low input library prep kit, SRP442899PRJNA982783GSE234700Profiling of  nodules in  reveals propensity for lesion formation  cell clusters are associated with  pathology In this post mortem study we investigated whether they represent the first stage of  formation We show that  nodules are associated with more severe  pathology Compared to  nodules in  those in  show enhanced expression of genes previously found upregulated in  lesions Furthermore genes associated with lipid metabolism presence of  activation of the complement cascade and metabolic stress are upregulated in  nodules in  Compared to  they more frequently phagocytose oxidized phospholipids and possess a more tubular mitochondrial network Strikingly in  some  nodules encapsulate partially demyelinated axons Taken together we propose that activation of  nodules in  by  of oxidized phospholipids may lead to a  phenotype prone to  lesion formation Overall design  and  normal appearing white matter          ",
+    1
+  ],
+  [
+    "GEO531A72, Protocols:  , ,  patients (before and after ,  2000 paired end sequencing: RNA-seq of human ,  and   blass, , RNA-seq of human  and +, ERS3632318SAMEA5843772GEO531AProtocols       ",
+    1
+  ],
+  [
+    ", ,   sequencing: GSM5005612:   RNA-Seq, RNA Sequencing of , , and , SRS7972315SAMN17217064GSM5005612 bioproject689786PRJNA689786source name derived       ",
+    1
+  ],
+  [
+    " inducible SEESuman ES cells with tet-on system,  2, , duration ours,  inducible SEESuman  cells with tet-on system,  2, , duration ours,  sequencing:   sequencing of SAMD00092176, Large scaled transcription factor induction in  cells, DRS111125SAMD00092176PKNOX2 inducible SEESuman  cells with tet on system  2  duration bioproject578511PRJDB5361sample namesample 2 D  2sex      ",
+    1
+  ],
+  [
+    "  cells treated with ,   treated with ,   sequencing:  sequencing of SAMD00792118, Unraveling the heterogeneity of multiple  identifies therapy  subpopulation with vulnerability to the splicing pathway intervention, DRS392926SAMD00792118AMO 1 treated with  sample name r fastq gzbiomaterial provider  1collection     ",
+    1
+  ],
+  [
+    ", ,  sequencing: GSM4162159:  RNA-Seq, Functional genomics of human  organoids (RNA-Seq), SRS5663724SAMN13291966GSM4162159ML bioproject589843PRJNA589843source nameHuman organoid       ",
+    1
+  ],
+  [
+    "ERRUUUUUUUU,  and . The Carnegie staging system of : a practical guide in Molecular Genetics of .  samples were staged using foot and knee-heel lengths () Correlation of  and measurements between 10 and s of gestations. Obstet. Gynecol.63: 26-32) All nucleic acid preparation was performed by  following standardised procedures (). . RNA was extracted on the QIAsymphony SP using manufacturer's protocol miRNA v05. Library preparation followed 's guidelines for the TruSeq stranded mRNA stranded LT sample prep kit. (http://support..com/\u2026).   uman Developmental Biology Resource HDBR expression resource RNAseq The Human Developmental Biology Resource expression resource is a new resource for studying   development It consists of two parts which have been uploaded as two submissions HDBR expression resource RNAseq  this submission and HDBR expression resource SNP data  It is unique in the age range 4 post conception weeks PCW to 17 PCW and number of s studied particularly those under 8 PCW It is also unique in that both the large-scale data sets and the corresponding RNA and DNA samples are available the latter via the  http www.hdbr.org There are 628 RNA-seq datasets from different regions of the s studied The number of regions depends on the stage and size of the sample and / or the         ",
+    1
+  ],
+  [
+    "BIDC053 [RNA-seq], BIDC053 [RNA-seq],  sequencing: GSM5398140: BIDC053 [RNA-seq]  RNA-Seq,  in e [RNA-seq], SRS9272390SAMN19853303GSM5398140BIDC053 RNA seq bioproject741118PRJNA741118source name       ",
+    1
+  ],
+  [
+    "SRR493947, SRP012656PRJNA163279GSE37764A high dimensional deep sequencing study of non small cell   in never s Seq One of the most fertile applications of next generation sequencing will be in the field of  genomics Here we report a high throughput multi dimensional sequencing study of primary non small cell            ",
+    1
+  ],
+  [
+    ", ,  sequencing: GSM2130393:  RNA-Seq, Next Generation Sequencing Analysis  and vector  Transcriptomes in  cells, SRS1405953SAMN04883128GSM2130393M7NCbioproject319220PRJNA319220source name  cells       ",
+    1
+  ],
+  [
+    ", An isoform resolution transcriptomic atlas of   from long read  sequencing   is the second leading cause of  death worldwide In recent years short read  RNA sequencing scRNA seq has been instrumental in deciphering  cell heterogeneities However these studies only enable gene level expression quantification but neglect alterations in transcript structures which arise from alternative end processing or splicing and are frequently observed in  In this study we integrated short and long read scRNA seq of  patient samples to build the first isoform resolution  transcriptomic atlas We identified 394 dysregulated transcript structures in   cells including 299 resulting from various combinations of multiple splicing events Secondly we characterized genes and isoforms associated with  lineages and subpopulations that exhibit distinct prognoses Finally we built an algorithm that integrated novel peptides derived from predicted ORFs of recurrent  specific transcripts with mass spectrometry data and identified a panel of recurring neoepitopes that may aid the development of neoantigen based         ",
+    1
+  ],
+  [
+    "7096q5, 7096q5,   sequencing: GSM3724096: 7096q RNA-Seq, RNA-seq transcript and gene data on , SRS4633117SAMN11435626GSM37240967096qbioproject533086PRJNA533086source nameserumpatient7096sample7096q5visit5timeEarly AcuteSex        ",
+    1
+  ],
+  [
+    "SRR7867942, SRP161982PRJNA491629Clinically relevant biomarker discovery in high risk  igh risk  sequenced using the         ",
+    1
+  ],
+  [
+    "SRR1036137,  mini Kit (Qiagen, #74106) TruSeq RNA Sample Preparation (), SRP033266PRJNA229548GSE52656 AML sequencing part 2 RNA sequencing of  Overall design The goals of this project are to obtain a comprehensive study of mutations and gene expression in  Methods  cells were thawed DNA and RNA  was extracted and sequences were obtained with an  sequencer Results are  GSE52656pubmed26834243pubmed26968532 bioprojectPRJNA278766     ",
+    1
+  ],
+  [
+    "IPIPNET016T1_rna_live_S65, IPIPNET016T1_rna_live_S65,  sequencing: GSM5586912: IPIPNET016T1_rna_live_S RNA-Seq,  RNA-sequencing of  infiltrating cells across 12 different  s type, SRS10229518SAMN21506993GSM5586912IPIPNET016T1 rna live Sbioproject764510PRJNA764510source name infiltrating viable cells sorted by flow cytometry from   specimen      ",
+    1
+  ]
+]

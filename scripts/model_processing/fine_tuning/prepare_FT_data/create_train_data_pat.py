@@ -5,36 +5,43 @@ import random
 
 ##########################################################################################
 #PATHS
-train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/Metappuccino_store/results_ft_patron_semi/train_metadata_replaced_table.csv'
-val_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/Metappuccino_store/results_ft_patron_semi/val_metadata_replaced_table.csv'
-train_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/Metappuccino_store/results_ft_patron_semi/train_prompt_output.csv'
-val_output   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/Metappuccino_store/results_ft_patron_semi/val_prompt_output.csv'
+train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/train_metadata_replaced_table.csv'
+val_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/val_metadata_replaced_table.csv'
+test_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test_metadata_replaced_table.csv'
+train_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_train_corrected.csv'
+val_output   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_val_corrected.csv'
+test_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_test_corrected.csv'
 
 ##########################################################################################
 #MAIN
 static_prompt = """Run accession: {run_accession}
-Metadata to analyze: {context}
+Summary: {context}
 
-For each row in the metadata line (the first line contains the column names), extract and format the following information concisely. For the 8 following categories, provide a single answer without redundancy. Each category **MUST** have one distinct and explicit answer, even if inferred. **Do not leave any category empty.** Do not repeat information already provided in previous categories. Remove redundant text.
-cell_type - The type of cell in the sample. It can be among connective cells, fat cells, specialized integrated cells, migratory cells, kidney cells, muscle cells, bone cells, cartilage cells, stomach cells, sex cells, lung cells, pancreatic cells, liver cells (= hepatic cells), intestinal cells (= enterocytes), nerve cells, blood cells (= blood elements). First cite one of those huge categories, and if possible specify more specifically into each categorie (example: resident cells (fibroblasts, fibrocytes, tendinocytes, keratocytes), migratory cells (lymphocytes, histiocytes, melanocytes, natural killer cells), fat cells (mesenchymal cells, white adipocytes, brown adipocytes), specialized integrated cells (neuroepithelial cells, myoepithelial cells, goblet cells), kidney cells (podocytes, distal tubular cells, proximal tubular cells), muscle cells (smooth muscle cells, cardiac muscle cells, skeletal muscle cells), bone cells (osteoblasts, osteoclasts, osteocytes), cartilage cells (chondroblasts, hypertrophic chondrocytes), connective tissue cells (type A synoviocytes, type B synoviocytes), stomach cells (chief cells, parietal cells), sex cells (spermatozoa, spermatocytes, oocytes, sertoli cells, leydig cells), lung cells (type 1 pneumocytes, type 2 pneumocytes), pancreatic cells (alpha cells, beta cells, delta cells), liver cells (hepatocytes, kupffer cells), intestinal cells (enterocytes), nerve cells (neurons, neuroblasts, astrocytes, oligodendrocytes, schwann cells), blood cells (erythrocytes, thrombocytes, leukocytes, monocytes, eosinophils, basophils, neutrophils)). If not provided, deduce based on the tissue type and the rest of the context and state the inference. Use the Cell Ontology terms terminology. WARNING: IF CELL LINE CAN'T BE DETERMINE AND IF IT IS A PRIMARY TISSUE THERE, mark this category as 'Primary tissue' too.
-tissue_type – The tissue type from which the sample originates (e.g., epithelial tissue, connective tissue, muscle tissue, nervous tissue). If not specified, deduce from context, from the organ or the type of cell it comes from.
-cell_line – Specify the cell line which is a strict code, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.
-organ - Provide me the organ(s) concerned by this study, in the UBERON GTEX terminology for the tissue type (e.g., lungs, liver, heart, etc.). If not specified, deduce from context, or search one related to the tissue.
-disease – Return the Disease Ontology term corresponding to the disease associated with the sample in the format of the disease name. If the sample is explicitly described as 'normal' or 'healthy', do not infer any disease. If no disease, state 'normal'. In case of cancer, something adjacent means that it's healthy. Non-disease conditions (e.g., pregnancy, aging, lifestyle factors) should be placed in the Donor information output column instead of the Disease Ontology Term field.
-host_phenotype - Determine if 'parental' or 'persistent'.
-library_selection - Determine 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other'.
-library_source - Determine 'single-cell' or 'bulk'.
-treatment – If the sample received a treatment, specify it; otherwise 'no treatment'.
-treatment_time – State the treatment time or 'no treatment'/'nan'.
-response – State the response or 'nan'.
-donor_information – Specify donor info or 'nan'.
+Categories and definitions:
+- library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection)
+- sequencing_source: one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context
+- biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
+- biopsy_type: one of: 'primary', 'metastasis', 'blood'. If in situ, it's primary unless blood related information is mentioned.
+- cell_line: exact cell line code
+- cell_type: extract cell type: if known, specify it (e.g., 'T cell'); otherwise, write 'primary tissue'.
+- organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
+- disease: report associated disease or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
+- treatment: treatment applied (can be molecules, specific techniques, control, etc...)
+- treatment_time: time or phase relative to treatment (qualitative or quantitative information)
+- response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable
+- age: sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)
+- sex: sample donor sex
+- ethnicity: sample donor ethnicity (origins, genetics)
+- localization: all geographical information available
+- is_cancer: return 'True' if the disease is cancer related, 'False' otherwise
 
-If missing, specify 'nan'. Only one answer per category.
-Strict output format:
-Category: [single unique answer]
+For each category below:
+- Infer from the summary if possible
+- The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories
+- If one value is impossible to infer, return "unknown", applicable for all categories
 
-(one line per category, no repetition):
-Here is the output:
+Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys:
+{{"library_selection": "<value>", "sequencing_source": "<value>", "biopsy_site": "<value>", "biopsy_type": "<value>", "cell_line": "<value>", "cell_type": "<value>", "organ": "<value>", "disease": "<value>", "treatment": "<value>", "treatment_time": "<value>", "response": "<value>", "age": "<value>", "sex": "<value>", "ethnicity": "<value>", "localization": "<value>", "is_cancer": "<value>"}}
 """
 
 def process_file(input_csv, output_csv):
@@ -42,11 +49,11 @@ def process_file(input_csv, output_csv):
     records = []
     for _, row in df.iterrows():
         run_acc = f"TRR{random.randint(100000,999999)}"
-        prompt = static_prompt.format(run_accession=run_acc, context=row['phrase_text'])
+        prompt = static_prompt.format(run_accession=run_acc, context=row['phrase'])
         fields = [
-            'cell_type','tissue_type','organ','cell_line','disease',
-            'treatment','treatment_time','response','host_phenotype',
-            'library_selection','library_source','donor_information','instrument_platform'
+            "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
+            "cell_line", "cell_type", "organ", "disease", "treatment",
+            "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
         ]
         output = '\n'.join(f"{field}: {row[field]}" for field in fields)
         records.append({'prompt': prompt, 'output': output})
@@ -55,3 +62,4 @@ def process_file(input_csv, output_csv):
 if __name__ == "__main__":
     process_file(train_input, train_output)
     process_file(val_input, val_output)
+    process_file(test_input, test_output)
