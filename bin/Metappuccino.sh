@@ -50,7 +50,7 @@ echo "Please wait while your data ara analyzed..."
 mkdir -p $METAPPUCCINO_DIR/$RES/logs
 mkdir -p $METAPPUCCINO_DIR/$RES/tmp
 mkdir -p $METAPPUCCINO_DIR/$RES/ORIGINAL_METADATA
-mkdir -p $METAPPUCCINO_DIR/$RES/COMPLETED_INFERENCE
+mkdir -p $METAPPUCCINO_DIR/$RES/COMPLETED_INFERENCE/VISUALISATION
 
 #call script that manage the analysis
 source "$ENV_REQUIREMENT/bin/activate"
@@ -59,7 +59,7 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --res_dir "$RES" \
     --env_requirement "$ENV_REQUIREMENT" \
     --model "$MODEL" \
-    --getmetadata --fillmetadata --associateinformation \
+    --getmetadata --fillmetadata --associateinformation --visualisation \
     --iteration_limit 1 \
     >> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.out" 2>> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.err"
 deactivate

@@ -4,6 +4,7 @@ import random
 import math
 import torch
 import re
+import json
 import os
 import optuna
 import numpy as np
@@ -49,13 +50,13 @@ train_model = os.path.join(base_path, "mistral7B_train")
 output_model = os.path.join(base_path, "mistral7B_fine_tuned")
 merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
-tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_ft_final_templates/FINE_TUNING/tensorboard"
+tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/tensorboard"
 
 # parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 # value to consider prediction true
-threshold = 0.45
+threshold = 0.4
 
 ##########################################################################################
 # MODEL
@@ -81,7 +82,7 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     prompt_ids = tokenizer(prompt, truncation=True, max_length=2500)["input_ids"]
-    output_ids = tokenizer(output, truncation=True, max_length=300)["input_ids"]
+    output_ids = tokenizer(output, truncation=True, max_length=250)["input_ids"]
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
@@ -97,44 +98,50 @@ def tokenize_function(example):
 
 
 # deduplicate prediction categories
-def deduplicate_categories(pred_text):
-    allowed = {
-        "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
-        "cell_line", "cell_type", "organ", "disease", "treatment",
-        "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
-    }
-    seen = set()
-    final_output = []
-    for line in pred_text.splitlines():
-        if ':' not in line:
-            continue
-        key, val = line.split(':', 1)
-        key = key.strip()
-        key_lower = key.lower()
-        if key_lower not in allowed:
-            continue
-        if key_lower in seen:
-            continue
-        final_output.append(f"{key_lower}: {val.strip()}")
-        seen.add(key_lower)
-    return '\n'.join(final_output)
+# def deduplicate_categories(pred_text):
+#     allowed = {
+#         "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
+#         "cell_line", "cell_type", "organ", "disease", "treatment",
+#         "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
+#     }
+#     seen = set()
+#     final_output = []
+#     for line in pred_text.splitlines():
+#         if ':' not in line:
+#             continue
+#         key, val = line.split(':', 1)
+#         key = key.strip()
+#         key_lower = key.lower()
+#         if key_lower not in allowed:
+#             continue
+#         if key_lower in seen:
+#             continue
+#         final_output.append(f"{key_lower}: {val.strip()}")
+#         seen.add(key_lower)
+#     return '\n'.join(final_output)
 
 
 # clean output before tokenization
-def clean_output_text(example):
-    example["output"] = deduplicate_categories(example["output"])
-    return example
+# def clean_output_text(example):
+#     example["output"] = deduplicate_categories(example["output"])
+#     return example
 
 
 # parse raw generation into deduplicated block
 def parse_pred_block(raw_pred):
-    split_output = raw_pred.split("Here is the output:")
-    after = split_output[1].strip() if len(split_output) > 1 else raw_pred
-    return deduplicate_categories(after)
+    json_pattern = re.search(r'({.*?})', raw_pred, re.DOTALL)
+    if json_pattern:
+        try:
+            pred_json = json.loads(json_pattern.group(1))
+            return pred_json
+        except json.JSONDecodeError:
+            pass
+    print("Invalid JSON format in prediction:", raw_pred)
+    return {}
 
 
 normal_accuracy_categories = {
-    'cell_line', 'library_selection', 'library_source', 'treatment_time'
+    'cell_line', 'library_selection', 'treatment_time', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
 }
 
 
@@ -152,17 +159,19 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("raw pred: ", pred, flush=True)
             print("raw ref: ", ref, flush=True)
 
-            p_block = parse_pred_block(pred)
-            p_dict = {}
-            for line in p_block.splitlines():
-                if ":" not in line:
-                    continue
-                raw_cat, val = line.split(":", 1)
-                cat_clean = re.sub(r'^[^A-Za-z0-9]+', '', raw_cat.strip())
-                p_dict[cat_clean] = val.strip()
+            # p_block = parse_pred_block(pred)
+            # p_dict = {}
+            # for line in p_block.splitlines():
+            #     if ":" not in line:
+            #         continue
+            #     raw_cat, val = line.split(":", 1)
+            #     cat_clean = re.sub(r'^[^A-Za-z0-9]+', '', raw_cat.strip())
+            #     p_dict[cat_clean] = val.strip()
 
-            r_dict = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip()
-                      for l in ref.splitlines() if ":" in l}
+            p_dict = parse_pred_block(pred)
+            r_dict = json.loads(ref)
+            # r_dict = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip()
+            #           for l in ref.splitlines() if ":" in l}
             print("--------------------")
             print("p_dict: ", p_dict, flush=True)
             print("r_dict: ", r_dict, flush=True)
@@ -178,11 +187,6 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                     r_val = val.strip()
                     break
 
-            print("--------------------")
-            print("category: ", cat, flush=True)
-            print("pred val: ", p_val, flush=True)
-            print("ref val: ", r_val, flush=True)
-            print("--------------------")
             # nan or empty references
             #if ref is nan
             if r_val.lower() == 'nan':
@@ -205,6 +209,19 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
                 acc = cos > threshold
             accs.append(acc)
+
+            print("--------------------")
+            print("category: ", cat, flush=True)
+            print("pred val: ", p_val, flush=True)
+            print("ref val: ", r_val, flush=True)
+            print("match: ", acc, flush=True)
+            print("--------------------")
+
+            if cat == "cell_type" and not acc:
+                print("Pred failed for cell_type →")
+                print(f"Predicted: {p_val}")
+                print(f"Expected: {r_val}")
+
         metrics[f"accuracy_{cat.lower()}"] = sum(accs) / len(accs) if accs else 0.0
     metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
     return metrics
@@ -241,7 +258,7 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
 ##########################################################################################
 #CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.1, **kwargs):
         super().__init__(*args, **kwargs)
         #freeze semantic model
         self.sem_model = sem_model.eval()
@@ -322,13 +339,13 @@ class MyTrainer(Trainer):
                 out_ids = self.model.generate(
                     input_ids=inputs["input_ids"],
                     attention_mask=inputs["attention_mask"],
-                    max_new_tokens=350,
+                    max_new_tokens=250,
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=tokenizer.eos_token_id,
                     early_stopping=True,
                     do_sample=True,
                     top_p=0.9,
-                    temperature=0.7,
+                    temperature=0.6,
                     repetition_penalty=1.2,
                 )
 
@@ -389,8 +406,8 @@ print(run_accessions_list, flush=True)
 # new cut
 train_dataset_final = Dataset.from_pandas(df_train_final)
 val_dataset_final = Dataset.from_pandas(df_val_final)
-tokenized_train_final = train_dataset_final.map(clean_output_text).map(tokenize_function)
-tokenized_val_final = val_dataset_final.map(clean_output_text).map(tokenize_function)
+tokenized_train_final = train_dataset_final.map(tokenize_function)
+tokenized_val_final = val_dataset_final.map(tokenize_function)
 
 # final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 # final_writer_training.add_scalar("final/train_size", len(df_train_final), 0)
@@ -435,7 +452,7 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.2,
+    label_smoothing=0.1,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
@@ -484,7 +501,7 @@ for i, row in test_df.iterrows():
         output_ids = model_final.generate(
             input_ids=input_encoded["input_ids"],
             attention_mask=input_encoded["attention_mask"],
-            max_new_tokens=350,
+            max_new_tokens=250,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
             early_stopping=True,
@@ -496,7 +513,8 @@ for i, row in test_df.iterrows():
     raw = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     split_output = raw.split("Here is the output:")
     after_output = split_output[1].strip() if len(split_output) > 1 else raw
-    clean_prediction = deduplicate_categories(after_output)
+    clean_prediction = after_output
+    # clean_prediction = raw.strip()
 
     print(f"--- Predicted output {i + 1}: {clean_prediction}", flush=True)
     print(f"--- Expected output  {i + 1}: {expected}", flush=True)

@@ -38,6 +38,8 @@ def main():
                         help="Fill metadata with LLMs [Input: Cleaned sra file]")
     parser.add_argument("--associateinformation", action="store_true",
                         help="Associate medical codes with LLMs answers and clean them [Input: LLMs answers]")
+    parser.add_argument("--visualisation", action="store_true",
+                        help="Build graphs to visualise the inferred metadata [Input: Metappuccino metadata output csv file]")
     parser.add_argument("--iteration_limit", type=int, default=1, help="Number of attempts to restart inference if less than 30% of categories have been predicted or if the JSON is malformed.")
     args = parser.parse_args()
 
@@ -57,6 +59,7 @@ def main():
     step4_flag = os.path.join(tmp_dir, "STEP3_1.flag")
     step5_flag = os.path.join(tmp_dir, "STEP3_2.flag")
     step6_flag = os.path.join(tmp_dir, "STEP4_1.flag")
+    step7_flag = os.path.join(tmp_dir, "STEP4_2.flag")
 
     install_requirements = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "install_requirements.sh")
     download_metadata = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "download_metadata.sh")
@@ -66,6 +69,7 @@ def main():
     llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_metadata_inference.sh")
     reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_model.sh")
     normalize_final = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "normalize_final.sh")
+    visualisation = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "visualisation.sh")
 
     ##INSTALL REQUIREMENTS
     try:
@@ -151,6 +155,19 @@ def main():
                                     normalize_final], check=True)
             wait_for_flag_file(step6_flag)
             print("✔ Code association and cleaning LLM answers successfully completed!")
+
+        if args.visualisation:
+            if not os.path.isfile(step7_flag):
+                if shutil.which("qsub"):
+                    subprocess.run(["qsub", "-q", "alphafold", "-v",
+                                    "METAPPUCCINO=" + metappuccino_dir + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    visualisation], check=True)
+                elif shutil.which("sbatch"):
+                    subprocess.run(["sbatch",
+                                    "--export=METAPPUCCINO=" + metappuccino_dir + "," + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    visualisation], check=True)
+            wait_for_flag_file(step7_flag)
+            print("✔ Graphs build successfully!")
 
     except subprocess.CalledProcessError as e:
         print(f"Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)

@@ -40,8 +40,9 @@ For each category below:
 - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories
 - If one value is impossible to infer, return "unknown", applicable for all categories
 
-Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys:
-{{"library_selection": "<value>", "sequencing_source": "<value>", "biopsy_site": "<value>", "biopsy_type": "<value>", "cell_line": "<value>", "cell_type": "<value>", "organ": "<value>", "disease": "<value>", "treatment": "<value>", "treatment_time": "<value>", "response": "<value>", "age": "<value>", "sex": "<value>", "ethnicity": "<value>", "localization": "<value>", "is_cancer": "<value>"}}
+Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys.
+
+Here is the output:
 """
 
 def process_file(input_csv, output_csv):
