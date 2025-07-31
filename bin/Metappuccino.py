@@ -108,7 +108,7 @@ def main():
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
                 if shutil.which("qsub"):
-                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, extract_preprocess], check=True)
+                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, extract_preprocess], check=True)
                 elif shutil.which("sbatch"):
                     subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, extract_preprocess], check=True)
             wait_for_flag_file(step2_flag)
@@ -116,7 +116,7 @@ def main():
 
             if not os.path.isfile(step3_flag):
                 if shutil.which("qsub"):
-                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, summary_context], check=True)
+                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, summary_context], check=True)
                 elif shutil.which("sbatch"):
                     subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, summary_context], check=True)
             wait_for_flag_file(step3_flag)
@@ -147,7 +147,7 @@ def main():
             if not os.path.isfile(step6_flag):
                 if shutil.which("qsub"):
                     subprocess.run(["qsub", "-q", "alphafold", "-v",
-                                    "METAPPUCCINO=" + metappuccino_dir + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,
                                     normalize_final], check=True)
                 elif shutil.which("sbatch"):
                     subprocess.run(["sbatch",
@@ -160,7 +160,7 @@ def main():
             if not os.path.isfile(step7_flag):
                 if shutil.which("qsub"):
                     subprocess.run(["qsub", "-q", "alphafold", "-v",
-                                    "METAPPUCCINO=" + metappuccino_dir + "RES=" + res_dir + "," + "ENV_REQUIREMENT=" + env_dir,
+                                    "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir,
                                     visualisation], check=True)
                 elif shutil.which("sbatch"):
                     subprocess.run(["sbatch",
