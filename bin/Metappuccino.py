@@ -136,7 +136,7 @@ def main():
             #reload context
             if not os.path.isfile(step5_flag):
                 if shutil.which("qsub"):
-                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path, reload_model], check=True)
+                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path+","+"ITERATION_LIMIT="+str(iteration_limit), reload_model], check=True)
                 elif shutil.which("sbatch"):
                     subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"MODEL="+model_path+","+"ITERATION_LIMIT="+str(iteration_limit), reload_model], check=True)
             wait_for_flag_file(step5_flag)

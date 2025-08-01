@@ -231,7 +231,7 @@ for idx, line in enumerate(metadata_lines):
         "sex": [' "', 'sex', '":', ' "'],
         "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
         "localization": [' "', 'local', 'ization', '":', ' "'],
-        "is_cancer": [' "', 'is', 'c', 'ancer', '":', ' "'],
+        "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
     }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]
@@ -284,4 +284,7 @@ with open(skipped_runs_path, "w") as sf:
 
 sys.stdout.close()
 
+del llm
+import gc
+gc.collect()
 open(FLAG_FILE, "w").close()

@@ -1,6 +1,6 @@
 ########################################################################################################################
 #IMPORT
-import argparse, csv, math, hashlib, re
+import argparse, csv, math, hashlib, re, os
 from pathlib import Path
 from collections import defaultdict, Counter
 from statistics import mean, median
@@ -18,7 +18,6 @@ IMPORTANT_FIELDS = [
     "localization", "organ_uberon_code", "bs_uberon_code", "do_code",
     "response", "is_cancer", "treatment_time"
 ]
-FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
 
 ########################################################################################################################
 #FUNCTIONS
@@ -190,6 +189,7 @@ def main():
 
     in_path  = Path(args.input)
     out_dir  = Path(args.outdir)
+    base_path = args.base_path
     FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
     for d in ("entropies", "categories", "tables", "stats"):
         ensure_dir(out_dir/d)

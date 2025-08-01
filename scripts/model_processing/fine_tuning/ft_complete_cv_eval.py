@@ -152,6 +152,7 @@ def normalize(x):
 # compute per-category metrics using semantic similarity
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
+    print("List categories: ", categories, flush=True)
     for cat in categories:
         accs = []
         for pred, ref in zip(pred_texts, ref_texts):
@@ -176,16 +177,24 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("p_dict: ", p_dict, flush=True)
             print("r_dict: ", r_dict, flush=True)
 
-            p_val = ""
-            for key, val in p_dict.items():
-                if cat in key:
-                    p_val = val.strip()
-                    break
-            r_val = ""
-            for key, val in r_dict.items():
-                if cat in key:
-                    r_val = val.strip()
-                    break
+            p_val = p_dict.get(cat, "").strip()
+            r_val = r_dict.get(cat, "").strip()
+
+            print("--------------------")
+            print("category: ", cat, flush=True)
+            print("pred val: ", p_val, flush=True)
+            print("ref val: ", r_val, flush=True)
+
+            # p_val = ""
+            # for key, val in p_dict.items():
+            #     if cat in key:
+            #         p_val = val.strip()
+            #         break
+            # r_val = ""
+            # for key, val in r_dict.items():
+            #     if cat in key:
+            #         r_val = val.strip()
+            #         break
 
             # nan or empty references
             #if ref is nan
@@ -210,10 +219,6 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 acc = cos > threshold
             accs.append(acc)
 
-            print("--------------------")
-            print("category: ", cat, flush=True)
-            print("pred val: ", p_val, flush=True)
-            print("ref val: ", r_val, flush=True)
             print("match: ", acc, flush=True)
             print("--------------------")
 
@@ -430,8 +435,8 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     learning_rate=5e-6,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=1,
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=2,
     num_train_epochs=6,
     weight_decay=0.01,
     save_strategy='steps',
