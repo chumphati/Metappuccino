@@ -14,7 +14,7 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --mem=80G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
@@ -60,5 +60,5 @@ python3 -u LLM_metadata_inference.py \
   --error_file_path reload_model_bio_info.txt \
   --log_file_path llm_log_SB.txt \
   --flag_file STEP3_1.flag \
-  --initial_n_ctx 2500 \
+  --initial_n_ctx 3000 \
   --model "$(basename "$MODEL")"

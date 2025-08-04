@@ -1,26 +1,32 @@
 #!/bin/bash
 
 #PBS -N install_requirements_pbs
-#PBS -l walltime=12:00:00
+#PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 #SBATCH --job-name=install_requirements_slurm
-#SBATCH --partition=common
-#SBATCH --time=12:00:00
+#SBATCH --partition=alphafold
+#SBATCH --time=500:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
+#SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
-METAPPUCCINO=${1:-$METAPPUCCINO}
-ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
-PATH_CUDA=${3:-$PATH_CUDA}
+#METAPPUCCINO=${1:-$METAPPUCCINO}
+#ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
+#PATH_CUDA=${3:-$PATH_CUDA}
 
-LOG_DIR=$METAPPUCCINO/results/logs
+METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+RES="results_riboprof"
+ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+PATH_CUDA="/usr/local/cuda"
+
+LOG_DIR=$METAPPUCCINO/$RES/logs
 SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 
 mkdir -p $SCRATCH_DIR
@@ -38,6 +44,7 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
+chmod 777 "$METAPPUCCINO/requirements.txt"
 python3 -m pip install -r "$METAPPUCCINO/requirements.txt"
 
 echo "Installing llama-cpp-python with CUDA support." \

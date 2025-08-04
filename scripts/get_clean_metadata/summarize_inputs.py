@@ -33,8 +33,8 @@ FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 # INPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_metappuccino/tmp/metadata_sra.txt"
 # OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_ft_final_templates/metadata_sra_summarized.txt"
 
-MAX_WORDS = 1000
-TOKEN_THRESHOLD = 1000
+MAX_WORDS = 800
+TOKEN_THRESHOLD = 800
 CHUNK_SIZE = 100
 CATEGORY_KEYWORDS = [
     'cell type', 'tissue type', 'cell line', 'organ', 'disease',

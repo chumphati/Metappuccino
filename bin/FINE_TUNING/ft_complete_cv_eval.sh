@@ -1,5 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=ft_complete_cv
+
+#PBS -N ft_complete_cv_pbs
+#PBS -l walltime=500:00:00
+#PBS -o /dev/null
+#PBS -e /dev/null
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=45gb
+
+#SBATCH --job-name=ft_complete_cv_slurm
 #SBATCH --partition=alphafold
 #SBATCH --time=100:00:00
 #SBATCH --output=/dev/null
@@ -7,16 +14,14 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:2
-#SBATCH --mem=80G
-
+#SBATCH --gres=gpu:1
+#SBATCH --mem=45G
 
 METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 LOG_DIR="$METAPPUCCINO/results/logs"
 RESULT_DIR="$METAPPUCCINO/results/FINE_TUNING"
-#SCRATCH_DIR=/scratchlocal/$USER/$PBS_JOBID
-SCRATCH_DIR="/scratchlocal/$USER/$SLURM_JOB_ID"
+SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 
 mkdir -p $SCRATCH_DIR
 mkdir -p $LOG_DIR

@@ -149,6 +149,11 @@ def normalize(x):
     return re.sub(r'[-_]', ' ', str(x)).strip().lower()
 
 
+def norm_val(x):
+    if isinstance(x, list):
+        x = x[0] if x else ""
+    return str(x).strip()
+
 # compute per-category metrics using semantic similarity
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
@@ -177,13 +182,11 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("p_dict: ", p_dict, flush=True)
             print("r_dict: ", r_dict, flush=True)
 
-            p_val = p_dict.get(cat, "").strip()
-            r_val = r_dict.get(cat, "").strip()
+            # p_val = p_dict.get(cat, "").strip()
+            # r_val = r_dict.get(cat, "").strip()
 
-            print("--------------------")
-            print("category: ", cat, flush=True)
-            print("pred val: ", p_val, flush=True)
-            print("ref val: ", r_val, flush=True)
+            p_val = norm_val(p_dict.get(cat, ""))
+            r_val = norm_val(r_dict.get(cat, ""))
 
             # p_val = ""
             # for key, val in p_dict.items():
@@ -195,6 +198,11 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             #     if cat in key:
             #         r_val = val.strip()
             #         break
+
+            print("--------------------")
+            print("category: ", cat, flush=True)
+            print("pred val: ", p_val, flush=True)
+            print("ref val: ", r_val, flush=True)
 
             # nan or empty references
             #if ref is nan
@@ -236,7 +244,7 @@ def compute_metrics(eval_preds: EvalPrediction):
     gen_ids, label_ids = eval_preds.predictions, eval_preds.label_ids
     decoded_preds = tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
     decoded_labels = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
-    cat_metrics = compute_categorical_metrics(decoded_preds, decoded_labels, model_base.config.categories)
+    cat_metrics = compute_categorical_metrics(decoded_preds, decoded_labels, categories)
     return {f"eval_{k}": v for k,v in cat_metrics.items()}
 
 
@@ -358,7 +366,8 @@ class MyTrainer(Trainer):
             preds.append(raw)
             refs.append(expected)
 
-        cat_metrics = compute_categorical_metrics(preds, refs, self.model.config.categories)
+        cat_metrics = compute_categorical_metrics(preds, refs, categories)
+
         for k, v in cat_metrics.items():
             key = f"{metric_key_prefix}_{k}"
             self.log({key: v})
@@ -384,13 +393,24 @@ df_val_final = df_val
 
 print(f"Training set size: {len(df_train_final)}, Validation set size: {len(df_val_final)}, Test set size: {len(df_test)}", flush=True)
 
+# all_cats = set()
+# for out in df_train_final["output"].fillna("").tolist():
+#     for line in out.splitlines():
+#         if ":" in line:
+#             all_cats.add(line.split(":", 1)[0].strip())
+# categories = sorted(all_cats)
+# model_base.config.categories = categories
+
 all_cats = set()
-for out in df_train_final["output"].fillna("").tolist():
-    for line in out.splitlines():
-        if ":" in line:
-            all_cats.add(line.split(":", 1)[0].strip())
+for out in df_train_final["output"].dropna():
+    try:
+        obj = json.loads(out)
+        all_cats.update(obj.keys())
+    except json.JSONDecodeError:
+        continue
 categories = sorted(all_cats)
-model_base.config.categories = categories
+print("Detected categories:", categories)
+
 
 metric_names = [f"eval_accuracy_{c.lower()}" for c in categories]
 
@@ -435,15 +455,15 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     learning_rate=5e-6,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=6,
     weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='no',
-    logging_steps=250,
+    logging_steps=500,
     fp16=True,
-    gradient_accumulation_steps=2,
+    gradient_accumulation_steps=1,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,

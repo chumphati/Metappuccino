@@ -17,7 +17,7 @@ parser.add_argument("--input_metadata_path", type=str, required=True)
 parser.add_argument("--error_file_path", type=str, required=True)
 parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
-parser.add_argument("--initial_n_ctx", type=int, default=2500)
+parser.add_argument("--initial_n_ctx", type=int, default=3000)
 parser.add_argument("--model", type=str, required=True)
 args = parser.parse_args()
 
@@ -101,6 +101,16 @@ def get_token_spans(text, tokens):
 ##########################################################################################
 #MAIN
 process = psutil.Process(os.getpid())
+
+use_gpu = torch.cuda.is_available()
+gpu_count = torch.cuda.device_count() if use_gpu else 0
+
+if use_gpu and gpu_count > 0:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
+    print(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
+else:
+    print("No GPU detected → using CPU only")
+
 llm = get_llama_model(model_path, initial_n_ctx)
 
 with open(input_metadata_path) as mf:
@@ -215,23 +225,42 @@ for idx, line in enumerate(metadata_lines):
         skipped_runs.append(run)
         continue
 
+    # category_token_patterns = {
+    #     "library_selection": ['library', '_', 'selection', '":', ' "'],
+    #     "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
+    #     "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
+    #     "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
+    #     "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
+    #     "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
+    #     "organ": [' "', 'organ', '":', ' "'],
+    #     "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
+    #     "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
+    #     "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
+    #     "response": [' "', 'response', '":', ' "'],
+    #     "age": [' "', 'age', '":', ' "'],
+    #     "sex": [' "', 'sex', '":', ' "'],
+    #     "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
+    #     "localization": [' "', 'local', 'ization', '":', ' "'],
+    #     "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
+    # }
+
     category_token_patterns = {
-        "library_selection": ['library', '_', 'selection', '":', ' "'],
-        "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
-        "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
-        "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
-        "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
-        "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
+        "library_selection": ['{"', 'library', '_selection', '":', ' "'],
+        "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
+        "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
+        "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
+        "cell_line": [' "', 'cell', '_line', '":', ' "'],
+        "cell_type": [' "', 'cell', '_type', '":', ' "'],
         "organ": [' "', 'organ', '":', ' "'],
-        "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
-        "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
-        "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
+        "disease": [' "', 'd', 'isease', '":', ' "'],
+        "treatment": [' "', 't', 'reatment', '":', ' "'],
+        "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
         "response": [' "', 'response', '":', ' "'],
         "age": [' "', 'age', '":', ' "'],
         "sex": [' "', 'sex', '":', ' "'],
-        "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
+        "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
         "localization": [' "', 'local', 'ization', '":', ' "'],
-        "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
+        "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
     }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]
@@ -263,6 +292,7 @@ for idx, line in enumerate(metadata_lines):
         segment_text = ''.join(segment_token_ids)
         segment_logits = logprobs[start:end]
         print(f"-- Key «{key}»:")
+        print(f"    All tokens : \t{tokens}")
         print(f"   Tokens ids : {segment_token_ids}")
         print(f"   Tokens text: {segment_text!r}")
         print(f"   Logits     : {segment_logits}")

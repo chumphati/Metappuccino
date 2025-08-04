@@ -91,13 +91,14 @@ def execute_bash_download_metadata():
                     echo "{METADATA_DIR} already downloaded."
                 else
                     /usr/bin/mkdir -p "{METADATA_DIR}"
-                    /usr/bin/tail "{RUNS_TSV}" | grep -v '^\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
+                    /usr/bin/cat "{RUNS_TSV}" | grep -v '^\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
                         RUN_ACCESSION=$(echo "$RUN_ACCESSION" | tr -d '\r' | tr -d '\n' | tr -d ' ')
                         OUTPUT_FILE="{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml"
                         if [ ! -f "$OUTPUT_FILE" ]; then
                             echo "Download metadata for $RUN_ACCESSION"
                             /usr/bin/curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=text" \
                                  -o "$OUTPUT_FILE"
+                            sleep 1
                         fi
                     done
                 fi
@@ -149,7 +150,25 @@ def extract_and_save_metadata(run_accession):
     except subprocess.SubprocessError as e:
         print(f"Error: Subprocess execution failed {e}")
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        print(f"Unexpected error {run_accession}: {e}")
+
+        try:
+            with open(xml_file, 'r', encoding='utf-8') as xf:
+                xml_raw = xf.read().replace('\n', ' ')
+        except FileNotFoundError:
+            xml_raw = ""
+
+        curl_command = [
+            "/usr/bin/curl", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
+            "https://www.ebi.ac.uk/ena/portal/api/search"
+        ]
+        proc = subprocess.run(curl_command, capture_output=True, text=True)
+        ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
+        ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
+
+        with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
+            f_out.write(f"{ena_data}\t{xml_raw}\traw\n")
 
 ########################################################################################################################
 #MAIN FUNCTION
