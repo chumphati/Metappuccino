@@ -245,7 +245,7 @@ for idx, line in enumerate(metadata_lines):
     # }
 
     category_token_patterns = {
-        "library_selection": ['{"', 'library', '_selection', '":', ' "'],
+        "library_selection": [' {"', 'library', '_selection', '":', ' "'],
         "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
         "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
         "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],

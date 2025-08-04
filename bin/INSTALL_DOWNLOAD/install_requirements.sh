@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #PBS -N install_requirements_pbs
-#PBS -l walltime=500:00:00
+#PBS -l walltime=01:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
 #SBATCH --job-name=install_requirements_slurm
 #SBATCH --partition=alphafold
-#SBATCH --time=500:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
@@ -17,14 +17,15 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
-#METAPPUCCINO=${1:-$METAPPUCCINO}
-#ENV_REQUIREMENT=${2:-$ENV_REQUIREMENT}
-#PATH_CUDA=${3:-$PATH_CUDA}
+METAPPUCCINO=${1:-$METAPPUCCINO}
+RES=${2:-RES}
+ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+PATH_CUDA=${4:-$PATH_CUDA}
 
-METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="results_riboprof"
-ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-PATH_CUDA="/usr/local/cuda"
+#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+#RES="results_riboprof"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+#PATH_CUDA="/usr/local/cuda"
 
 LOG_DIR=$METAPPUCCINO/$RES/logs
 SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"

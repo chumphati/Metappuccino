@@ -81,14 +81,14 @@ print("Config LoRA", flush=True)
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=2500)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=3000)["input_ids"]
     output_ids = tokenizer(output, truncation=True, max_length=250)["input_ids"]
 
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
 
-    max_length = 2500
+    max_length = 3000
     padding_length = max_length - len(input_ids)
     input_ids += [tokenizer.pad_token_id] * padding_length
     attention_mask += [0] * padding_length
@@ -141,7 +141,7 @@ def parse_pred_block(raw_pred):
 
 
 normal_accuracy_categories = {
-    'cell_line', 'library_selection', 'treatment_time', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
+    'cell_line', 'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
 }
 
 
@@ -224,7 +224,14 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
                 emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                 cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
-                acc = cos > threshold
+                if cat == 'cell_type':
+                    acc = cos > 0.35
+                elif cat == 'ethnicity':
+                    acc = cos > 0.3
+                elif cat == 'localization':
+                    acc = cos > 0.35
+                else:
+                    acc = cos > threshold
             accs.append(acc)
 
             print("match: ", acc, flush=True)
@@ -271,7 +278,7 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
 ##########################################################################################
 #CUSTOMED TRAINER WITH SEMANTIC LOSS
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.1, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, **kwargs):
         super().__init__(*args, **kwargs)
         #freeze semantic model
         self.sem_model = sem_model.eval()
@@ -346,7 +353,7 @@ class MyTrainer(Trainer):
         for example in ds:
             prompt = example['prompt']
             expected = example['output']
-            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2500).to(self.model.device)
+            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(self.model.device)
 
             with torch.no_grad():
                 out_ids = self.model.generate(
@@ -455,15 +462,15 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     learning_rate=5e-6,
-    per_device_train_batch_size=1,
-    per_device_eval_batch_size=1,
+    per_device_train_batch_size=6,
+    per_device_eval_batch_size=2,
     num_train_epochs=6,
     weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='no',
     logging_steps=500,
     fp16=True,
-    gradient_accumulation_steps=1,
+    gradient_accumulation_steps=2,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
     load_best_model_at_end=True,
@@ -477,7 +484,7 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.1,
+    label_smoothing=0.2,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[

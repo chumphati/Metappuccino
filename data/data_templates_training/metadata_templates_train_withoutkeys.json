@@ -1,6 +1,6 @@
 [
   [
-    "wk16-Cor, replicate 1, scRNAseq, wk16-Cor, replicate 1, scRNAseq,  sequencing: GSM6594441: wk16-Cor, replicate 1, scRNAseq  , Aberrant layer development of  organoids developed from , SRS15177105SAMN30937118GSM16 Cor replicate 1 scRNAseq  bioproject882459PRJNA882459source nameiPSC      ",
+    "wk16-Cor, replicate 1, , wk16-Cor, replicate 1, ,  sequencing: GSM6594441: wk16-Cor, replicate 1,   , Aberrant layer development of  organoids developed from , SRS15177105SAMN30937118GSM16 Cor replicate 1   bioproject882459PRJNA882459source nameiPSC      ",
     2
   ],
   [
@@ -8,7 +8,7 @@
     2
   ],
   [
-    ", ,  sequencing: GSM7870848:   RNA-Seq,  responses in  with sustained or declined antibody titer, SRS19339258SAMN38041201GSM7870848 8 13 15 bioproject1033588PRJNA1033588source name      ",
+    ", ,  sequencing: GSM7870848:  responses in  with sustained or declined antibody titer, SRS19339258SAMN38041201GSM7870848 8 13 15 bioproject1033588PRJNA1033588source name      ",
     1
   ],
   [
@@ -16,11 +16,11 @@
     1
   ],
   [
-    "SRR8060776, Cells were harvest, and total RNA was extracted and  s were added according to kit guidelines (Thermo 4456740). Libraries were constructed using  LTSample Prep Kit () according to the manufacturer's instructions., SRP165924PRJNA496574GSE121273Gene expression profiles of  treated with  and  respectivelyBy screening an epigenetic related compound library we identified  a covalent inhibitor as a promising candidate Multiple long established and patient derived  were used to validate the efficacy of  in vitro In addition patient derived  were utilized for examining  efficacy in vivo  Furthermore RNA Seq based Super Enhancers SEs analyses were performed to reveal the molecular mechanism of          ",
+    "SRR8060776, Cells were harvest, and was extracted and  s were added according to kit guidelines (Thermo 4456740). Libraries were constructed using  LTSample Prep Kit () according to the manufacturer's instructions., SRP165924PRJNA496574GSE121273Gene expression profiles of  treated with  and  respectivelyBy screening an epigenetic related compound library we identified  a covalent inhibitor as a promising candidate Multiple long established and patient derived  were used to validate the efficacy of  in vitro In addition patient derived  were utilized for examining  efficacy in vivo  Furthermore based Super Enhancers SEs analyses were performed to reveal the molecular mechanism of          ",
     1
   ],
   [
-    "SRR18656216,SRR18656149,  were purified from 0.5-1 mL serum using the exoRNeasy Midi kit (Qiagen Cat#77144) according to the manufacturer's instructions. For  extraction,  were lysed on column with 1 mL Trizol reagent (Invitrogen Cat#15596026) and the pellet was dissolved in 11 \u03bcL of deionized water treated with .  long libraries were constructed using ) independent extracellular RNA sequencing . Briefly, 1 ng RNA was reverse transcribed with random primer by SMART technology. cDNA was purified twice using Ampure XP beads (Beckman Coulter, Cat# A63881) and amplified with indexed primers. 200\u2013500 base-paired PCR products were size-selected using Ampure XP beads., SRP367846PRJNA824000GSE200288Extracellular vesicle long RNA markers of early stage  The serum EV genes has great diagnostic value for   patients with  size smaller than 2cm which may serve as an important supplement to   screening Overall design Extracellular vesicle long RNA profiles of human serum by next generation sequencingGSE200288pubmed36451312pubmed38409480        ",
+    "SRR18656216,SRR18656149,  were purified from 0.5-1 mL serum using the exoRNeasy Midi kit (Qiagen Cat#77144) according to the manufacturer's instructions. For  extraction,  were lysed on column with 1 mL Trizol reagent (Invitrogen Cat#15596026) and the pellet was dissolved in 11 \u03bcL of deionized water treated with .  long libraries were constructed using ) independent extracellular sequencing . Briefly, 1 ng was reverse transcribed with random primer by SMART technology. cDNA was purified twice using Ampure XP beads (Beckman Coulter, Cat# A63881) and amplified with indexed primers. 200\u2013500 base-paired PCR products were size-selected using Ampure XP beads., SRP367846PRJNA824000GSE200288Extracellular vesicle long markers of early stage  The serum EV genes has great diagnostic value for   patients with  size smaller than 2cm which may serve as an important supplement to   screening Overall design Extracellular vesicle long profiles of  serum by next generation sequencingGSE200288pubmed36451312pubmed38409480        ",
     1
   ],
   [
@@ -28,7 +28,7 @@
     1
   ],
   [
-    ", ,  sequencing: GSM6185790:  RNA-Seq, Multi-omic profiling of the developing  at the  level, SRS13155877SAMN28632874GSM6185790bioproject841957PRJNA841957source name     ",
+    ", ,  sequencing: GSM6185790:  -, Multi-omic profiling of the developing  at the  level, SRS13155877SAMN28632874GSM6185790bioproject841957PRJNA841957source name     ",
     1
   ],
   [
@@ -40,15 +40,15 @@
     1
   ],
   [
-    "SRR27386938, RNA was extracted from , ), following the manufacturer's instructions., SRP480717PRJNA1059238GSE252280  profiling of patients with recurrent implantation failure during hormone replacement therapy  mechanisms underlying window of  displacement in patients with recurrent  failure remain unclear This study aims to explore the  signatures of  with normal and displaced  and to identify the causes of  receptivity in  patients  were recruited and underwent personalized  transfer by the predicted results of  receptivity diagnosis  Transcriptome analysis of  from patients with clinical  after was performed to identify differentially expressed genes associated with  The results indicated that 67 5 of patients 27 40 were  The clinical  rate in  Among the 26 patients with clinical  the gene expression profiles were     ",
+    "SRR27386938,  was extracted from , ), following the manufacturer's instructions., SRP480717PRJNA1059238GSE252280  profiling of patients with recurrent implantation failure during hormone replacement therapy  mechanisms underlying window of  displacement in patients with recurrent  failure remain unclear This study aims to explore the  signatures of  with normal and displaced  and to identify the causes of  receptivity in  patients  were recruited and underwent personalized  transfer by the predicted results of  receptivity diagnosis  Transcriptome analysis of  from patients with clinical  after was performed to identify differentially expressed genes associated with  The results indicated that 67 5 of patients 27 40 were  The clinical  rate in  Among the 26 patients with clinical  the gene expression profiles were     ",
     1
   ],
   [
-    " o.e   (KAS20000456),  o.e   (KAS20000456),  paired end sequencing:  paired-end Sequencing of KAS20000456 (KAE20000180), Optimization of epigenome data analysis system and development of  (KAP200011), DRS427546SAMD00834926Luminal1  e  RNA KAS20000456 bioproject1193870PRJDB19218sample nameKAS20000456 Luminal1  o e  RNAagenot applicablebiomaterial provider isolate  patient with project idKAP200011kobic registration  idKASG103908kobic sample idKAS20000456kobic submission    ",
+    " o.e   (KAS20000456),  o.e   (KAS20000456),  paired end sequencing:  paired-end Sequencing of KAS20000456 (KAE20000180), Optimization of epigenome data analysis system and development of  (KAP200011), DRS427546SAMD00834926Luminal1  e   KAS20000456 bioproject1193870PRJDB19218sample nameKAS20000456 Luminal1  o e  agenot applicablebiomaterial provider isolate  patient with project idKAP200011kobic registration  idKASG103908kobic sample idKAS20000456kobic submission    ",
     1
   ],
   [
-    "SRRxxxxxx,  was extracted from  cells using the  kit (Cat# R2051) and  quality assessed using the . The  scores for all samples were > 7.0. Total  libraries were generated using  Kit , SRP382047PRJNA849921GSE206263 accessibility in peripheral  underlies  RNA Seq  triggers profound and variable  in human  has been observed in individuals severely ill or convalescing with  but  early in disease   has not been defined We performed the Assay for  on peripheral  cells s from outpatients with mild or moderate symptom severity at different stages of clinical illness Early in the disease course prior to  modifications associated with mild or moderate symptoms were already robust and included  Furthermore  analyses revealed evolution of the  accessibility landscape and factor motif accessibility for individual    ",
+    "SRRxxxxxx,  was extracted from  cells using the  kit (Cat# R2051) and  quality assessed using the . The  scores for all samples were > 7.0. Total  libraries were generated using  Kit , SRP382047PRJNA849921GSE206263 accessibility in peripheral  underlies     triggers profound and variable  in   has been observed in individuals severely ill or convalescing with  but  early in disease   has not been defined We performed the Assay for  on peripheral  cells s from outpatients with mild or moderate symptom severity at different stages of clinical illness Early in the disease course prior to  modifications associated with mild or moderate symptoms were already robust and included  Furthermore  analyses revealed evolution of the  accessibility landscape and factor motif accessibility for individual    ",
     1
   ],
   [
@@ -56,39 +56,39 @@
     1
   ],
   [
-    "SRR28604739, Cryopreserved  biopsies were homogenized using  basic.  was extracted according to the Rneasy Micro Kit ().  integrity was determined using a 2100 Bioanalyzer and RNA 6000 Nano LabChip kits (). QuantSeq 3'protocol () according to manufacturers's recommendations, SRP500638PRJNA1098409GSE263614Gene expression profiling of  normothermic machine perfusionNormothermic machine perfusion NMP has been successfully implemented in clinical routine of  transplantation over  However little is known about the mechanisms how it impacts on the  of a donor  We herein examined gene expression  in transplanted and non transplanted  after a maximum of  perfusion while 15 were discarded due to poor performance Biopsies were collected before  and after reperfusion Next generation sequencing was applied in  biopsies to assess differential gene expression over perfusion time samples were collected regularly to monitor  function Comparison in differential gene expression between  NMP showed      ",
+    "SRR28604739, Cryopreserved  biopsies were homogenized using  basic.  was extracted according to the Rneasy Micro Kit ().  integrity was determined using a 2100 Bioanalyzer and  6000 Nano LabChip kits ().  3'protocol () according to manufacturers's recommendations, SRP500638PRJNA1098409GSE263614Gene expression profiling of  normothermic machine perfusionNormothermic machine perfusion NMP has been successfully implemented in clinical routine of  transplantation over  However little is known about the mechanisms how it impacts on the  of a donor  We herein examined gene expression  in transplanted and non transplanted  after a maximum of  perfusion while 15 were discarded due to poor performance Biopsies were collected before  and after reperfusion Next generation sequencing was applied in  biopsies to assess differential gene expression over perfusion time samples were collected regularly to monitor  function Comparison in differential gene expression between  NMP showed      ",
     1
   ],
   [
-    "SRR11561998,  RNA samples were converted into cDNA libraries using the   sample preparation kit ( # RS-122-2103). Libraries were prepared for sequencing using the  kit for sequencing on , SRP256921PRJNA625957GSE148849Gene Expression Analysis of the response to . BACKGROUND AIMS  is a chronic  disease characterized by  alteration, inflammation and progressive fibrosis.  regulates lipid metabolism and function in s.  reduces  content and markers of  in  patients, however the effect of  on  fibrosis has not been reported. METHODS A direct role for  in fibrosis was evaluated by measuring molecular processes and gene expression in s in the absence or presence of .  was evaluated in  models of  induced by environmental or chemical exposure. Fibrosis and  alterations were evaluated by histological and biochemical assessments. RESULTS In stimulated s,  reduced activation and expression of fibrosis markers independent of mitochondrial pathways by blocking metabolic processes.  prevented a metabolic switch necessary for cellular activation. Consistent with this mechanism in s,  reduced  fibrosis in a  model and in response to chronic  induced  injury that lacked lipid accumulation. CONCLUSIONS In addition to reducing lipid accumulation in s,  also directly impairs pro-fibrogenic activity of s.  may reduce  fibrosis by both reducing toxicity in s and directly reducing  activation, providing a mechanistic rationale for its use in . Samples were derived from  and processed via  for sequencing.",
+    "SRR11561998,   samples were converted into cDNA libraries using the   sample preparation kit ( # RS-122-2103). Libraries were prepared for sequencing using the  kit for sequencing on , SRP256921PRJNA625957GSE148849Gene Expression Analysis of the response to . BACKGROUND AIMS  is a chronic  disease characterized by  alteration, inflammation and progressive fibrosis.  regulates lipid metabolism and function in s.  reduces  content and markers of  in  patients, however the effect of  on  fibrosis has not been reported. METHODS A direct role for  in fibrosis was evaluated by measuring molecular processes and gene expression in s in the absence or presence of .  was evaluated in  models of  induced by environmental or chemical exposure. Fibrosis and  alterations were evaluated by histological and biochemical assessments. RESULTS In stimulated s,  reduced activation and expression of fibrosis markers independent of mitochondrial pathways by blocking metabolic processes.  prevented a metabolic switch necessary for cellular activation. Consistent with this mechanism in s,  reduced  fibrosis in a  model and in response to chronic  induced  injury that lacked lipid accumulation. CONCLUSIONS In addition to reducing lipid accumulation in s,  also directly impairs pro-fibrogenic activity of s.  may reduce  fibrosis by both reducing toxicity in s and directly reducing  activation, providing a mechanistic rationale for its use in . Samples were derived from  and processed via  for sequencing.",
     1
   ],
   [
-    "SRR26846530,  was selected for  samples and all the other samples were selected  +RNA isolation, cDNA synthesis, end-repair, A-base addition, and ligation of the  indexed adapters were performed according to the  protocol (). Libraries were size selected for 250\u2013300 bp cDNA fragments on a 3% gel, recovered using standard reagents, and PCR amplified using DNA polymerase. Library quality was measured on a bioanalyzer for product size and concentration. Paired-end libraries were sequenced with the  X (2\u00d7100 nucleotide read length) with sequence coverage to 15\u201320M paired reads., SRP472276PRJNA1040955GSE247949 Targeting chromatin remodeling complexes in -dependent  malignancies. RNA-seq profiling revealed that the chromatin remodeling complex plays a significant role in igenesis, unveiling therapeutic prospects in specific  models. This investigation highlighted the targeting of chromatin remodeling complexes in -driven  in  and other  malignancies. Functional screening and pharmacological validation identified a dependency of s on chromatin remodeling complexes. In vivo studies exhibited significant  in  xenografts with a . Furthermore, similar  to the chromatin complex targeting  was observed in  models, suggesting shared therapeutic potential. Samples were collected from  and processed using  methods across various . Analyses were performed on  material across all experimental conditions.",
+    "SRR26846530,  was selected for  samples and all the other samples were selected  + isolation, cDNA synthesis, end-repair, A-base addition, and ligation of the  indexed adapters were performed according to the  protocol (). Libraries were size selected for 250\u2013300 bp cDNA fragments on a 3% gel, recovered using standard reagents, and PCR amplified using DNA polymerase. Library quality was measured on a bioanalyzer for product size and concentration. Paired-end libraries were sequenced with the  X (2\u00d7100 nucleotide read length) with sequence coverage to 15\u201320M paired reads., SRP472276PRJNA1040955GSE247949 Targeting chromatin remodeling complexes in -dependent  malignancies. - profiling revealed that the chromatin remodeling complex plays a significant role in igenesis, unveiling therapeutic prospects in specific  models. This investigation highlighted the targeting of chromatin remodeling complexes in -driven  in  and other  malignancies. Functional screening and pharmacological validation identified a dependency of s on chromatin remodeling complexes. In vivo studies exhibited significant  in  xenografts with a . Furthermore, similar  to the chromatin complex targeting  was observed in  models, suggesting shared therapeutic potential. Samples were collected from  and processed using  methods across various . Analyses were performed on  material across all experimental conditions.",
     1
   ],
   [
-    "PACE_085, PACE_085,   sequencing: GSM7310460: PACE RNA-Seq,  Score Predicts Risk in , SRS17593287SAMN35006477GSM7310460PACE bioproject970668PRJNA970668source namewhole blood       ",
+    "PACE_085, PACE_085,   sequencing: GSM7310460: PACE -,  Score Predicts Risk in , SRS17593287SAMN35006477GSM7310460PACE bioproject970668PRJNA970668source namewhole blood       ",
     1
   ],
   [
-    "SRR19443109, SRP377571PRJNA843486RNA seq of  in  cells RNA seq of  knockdown  cells           ",
+    "SRR19443109, SRP377571PRJNA843486  of  in  cells   of  knockdown  cells           ",
     1
   ],
   [
-    " sample from , Human sample from ,   sequencing: ,  of Human Primary s Under , SRS6691028SAMN149884454     ",
+    " sample from ,  sample from ,   sequencing: ,  of  Primary s Under , SRS6691028SAMN149884454     ",
     1
   ],
   [
-    "WJC1, WJC1,   2500 sequencing: GSM3211551: WJC RNA-Seq, RNA-seq profiling of -derived xenograft models in , SRS3447668SAMN09470181GSM3211551WJCbioproject477510PRJNA477510source name xenograft host model nameWJC type        ",
+    "WJC1, WJC1,   2500 sequencing: GSM3211551: WJC -, - profiling of -derived xenograft models in , SRS3447668SAMN09470181GSM3211551WJCbioproject477510PRJNA477510source name xenograft host model nameWJC type        ",
     1
   ],
   [
-    "SRR7231919, RNA was extracted using  kit. Library for RNA-Seq was prepared according to  selected kit with 300bp insert size using 250 ng total RNAs as input. Final library quality and quantity was analyzed by standard instruments. 150 bp paired end reads were sequenced on  HighSeq 4000. SRP149285PRJNA473582GSE115058 Differential gene expression in  and  populations of  cells.  cells were sorted into two subpopulations using markers. Cells negative for markers were  in morphology, while positive cells were . We performed RNA sequencing and expression of several  and -associated proteins. In addition to  genes, the two populations expressed a unique gene set. Overall design:  and  populations of  cells.       ",
+    "SRR7231919,  was extracted using  kit. Library for - was prepared according to  selected kit with 300bp insert size using 250 ng total s as input. Final library quality and quantity was analyzed by standard instruments. 150 bp paired end reads were sequenced on   4000. SRP149285PRJNA473582GSE115058 Differential gene expression in  and  populations of  cells.  cells were sorted into two subpopulations using markers. Cells negative for markers were  in morphology, while positive cells were . We performed  sequencing and expression of several  and -associated proteins. In addition to  genes, the two populations expressed a unique gene set. Overall design:  and  populations of  cells.       ",
     1
   ],
   [
-    "CTR18d80, CTR18d80,  sequencing: GSM2945904: CTR18d RNA-Seq,  iPSC-derived cortical s display altered transcriptomics, morphology and electrophysiological maturation, SRS2861283SAMN08388588GSM2945904CTR18dbioproject431312PRJNA431312source name differentiation protocol for  day  disease status  number repeats  individual identifier     ",
+    "CTR18d80, CTR18d80,  sequencing: GSM2945904: CTR18d -,  iPSC-derived cortical s display altered transcriptomics, morphology and electrophysiological maturation, SRS2861283SAMN08388588GSM2945904CTR18dbioproject431312PRJNA431312source name differentiation protocol for  day  disease status  number repeats  individual identifier     ",
     1
   ],
   [
@@ -96,31 +96,31 @@
     1
   ],
   [
-    "CCI-002_Sx, CCI-002_Sx,  sequencing: GSM4146320: CCI-002_Sx  RNA-Seq, , a Possible Answer to the  Paradox, SRS5598063SAMN13174057GSM4146320CCI 002 Sxbioproject586892PRJNA586892source name       ",
+    "CCI-002_Sx, CCI-002_Sx,  sequencing: GSM4146320: CCI-002_Sx  -, , a Possible Answer to the  Paradox, SRS5598063SAMN13174057GSM4146320CCI 002 Sxbioproject586892PRJNA586892source name       ",
     1
   ],
   [
-    "COVIRS_91_V0_21-01979, COVIRS_91_V0_21-01979,  sequencing: GSM6194189: COVIRS_91_V0_21- RNA-Seq,    Study, SRS13180657SAMN28662232GSM6194189COVIRS 91 V0 21 bioproject821445PRJNA821445source name subject id  Sex  timepoint V0  sample number     ",
+    "COVIRS_91_V0_21-01979, COVIRS_91_V0_21-01979,  sequencing: GSM6194189: COVIRS_91_V0_21- -,    Study, SRS13180657SAMN28662232GSM6194189COVIRS 91 V0 21 bioproject821445PRJNA821445source name subject id  Sex  timepoint V0  sample number     ",
     1
   ],
   [
-    "GEO accession GSM5625601 is currently private and is scheduled to be released ., GEO accession GSM5625601 is currently private and is scheduled to be released on Oct 12, 2024.,   4000 sequencing: GSM5625601:  RNAseq  RNA-Seq,  Unmasks Silent  Risk Variants for  [RNA-seq], SRS10572464SAMN22304825GSM5625601 RNAseqbioproject771341PRJNA771341source name       ",
+    "GEO accession GSM5625601 is currently private and is scheduled to be released ., GEO accession GSM5625601 is currently private and is scheduled to be released on Oct 12, 2024.,   4000 sequencing: GSM5625601:    -,  Unmasks Silent  Risk Variants for  [-], SRS10572464SAMN22304825GSM5625601 seqbioproject771341PRJNA771341source name       ",
     1
   ],
   [
-    "TM00186_LG0481F231P0000P1000P2140P3, Protocols: models were generated using subcutaneous  implantation in  host mice. s were grown, collected, and fragmented for serial passage in model organisms.  samples at described passage numbers were taken for expression analysis. , including the optional DNase digest step. RNA quality and concentration were assessed using standard instruments. Non-stranded libraries were constructed using  Prep Kit ().  containing mRNA was isolated using oligo-dT magnetic beads, followed by RNA fragmentation, cDNA synthesis, adapter ligation with -specific barcodes, and PCR amplification. Libraries were quality-checked and quantified using standard protocols.  paired end sequencing: RNA-seq expression analysis of -derived  models. TM00186 LG0481F231P0000P1000P2140P.     ",
+    "TM00186_LG0481F231P0000P1000P2140P3, Protocols: models were generated using subcutaneous  implantation in  host mice. s were grown, collected, and fragmented for serial passage in model organisms.  samples at described passage numbers were taken for expression analysis. , including the optional DNase digest step.  quality and concentration were assessed using standard instruments. Non-stranded libraries were constructed using  Prep Kit ().  containing m was isolated using oligo-dT magnetic beads, followed by  fragmentation, cDNA synthesis, adapter ligation with -specific barcodes, and PCR amplification. Libraries were quality-checked and quantified using standard protocols.  paired end sequencing: - expression analysis of -derived  models. TM00186 LG0481F231P0000P1000P2140P.     ",
     1
   ],
   [
-    "MT10, MT10,   sequencing: GSM5425583: MT RNA-Seq, A factor suppresses pathway activity in   through modulation of molecular signaling, SRS9415271SAMN20090787GSM5425583MTbioproject744471PRJNA744471source name       ",
+    "MT10, MT10,   sequencing: GSM5425583: MT -, A factor suppresses pathway activity in   through modulation of molecular signaling, SRS9415271SAMN20090787GSM5425583MTbioproject744471PRJNA744471source name       ",
     1
   ],
   [
-    "SRR12150556, Total RNA was extracted using standard kits. Library preparation was performed using the  Sample Prep Kit and protocol. SRP270250PRJNA644324GSE153830 GEO accession GSE153830 is currently private and is scheduled to be released. If GSE has been cited, please notify to initiate release. GSE153830.           ",
+    "SRR12150556, Total  was extracted using standard kits. Library preparation was performed using the  Sample Prep Kit and protocol. SRP270250PRJNA644324GSE153830 GEO accession GSE153830 is currently private and is scheduled to be released. If GSE has been cited, please notify to initiate release. GSE153830.           ",
     1
   ],
   [
-    "SRR30786060,  library preparation was performed using  reagent kits. The cell suspensions were loaded on the  chip for GEM generation and barcoding.  library was generated on a droplet-based platform. Reverse transcription,  cleanup, amplification, and quantification were performed. The libraries were sequenced on . SRP534475PRJNA1164738GSE277905 Exploring immune microenvironment of   patients after treatment.  RNA-seq analysis was performed from several  and adjacent normal  tissues. Fresh  was used for transcriptomic profiling.        ",
+    "SRR30786060,  library preparation was performed using  reagent kits. The cell suspensions were loaded on the  chip for GEM generation and barcoding.  library was generated on a droplet-based platform. Reverse transcription,  cleanup, amplification, and quantification were performed. The libraries were sequenced on . SRP534475PRJNA1164738GSE277905 Exploring immune microenvironment of   patients after treatment.  - analysis was performed from several  and adjacent normal  tissues. Fresh  was used for transcriptomic profiling.        ",
     1
   ],
   [
@@ -128,11 +128,11 @@
     1
   ],
   [
-    "SRR14668465,SRR14668541, Total RNA was extracted from stably transduced  cultures using a standard RNA extraction kit according to the manufacturer\u2019s protocol. The RNA samples were quantified, and quality led using an RNA analysis kit on a bioanalyzer system. Samples with low RNA Integrity Number (RIN) were discarded. RNA samples were transformed into barcoded DNA libraries using  preparation kits (), which were then paired-end sequenced, generating 2x100bp reads, using an  2000 sequencer. SRP321655PRJNA733187GSE175685 Transcriptomic profiling of  overexpressing genes associated with . The study aimed to uncover the role of genes expressed in  by overexpressing them in the . An empty vector was used as . Biological replicates were performed. The impact on the transcriptome was analyzed via  sequencing and followed by  analysis. Functional enrichment was done using an external tool. Overall design mRNA profile of  overexpressing  genes.     ",
+    "SRR14668465,SRR14668541, Total  was extracted from stably transduced  cultures using a standard  extraction kit according to the manufacturer\u2019s protocol. The  samples were quantified, and quality led using an  analysis kit on a bioanalyzer system. Samples with low  Integrity Number (RIN) were discarded.  samples were transformed into barcoded DNA libraries using  preparation kits (), which were then paired-end sequenced, generating 2x100bp reads, using an  2000 sequencer. SRP321655PRJNA733187GSE175685 Transcriptomic profiling of  overexpressing genes associated with . The study aimed to uncover the role of genes expressed in  by overexpressing them in the . An empty vector was used as . Biological replicates were performed. The impact on the transcriptome was analyzed via  sequencing and followed by  analysis. Functional enrichment was done using an extel tool. Overall design m profile of  overexpressing  genes.     ",
     1
   ],
   [
-    "4Y ileum  , 4Y ileum  ,   2500 sequencing: GSM2212703: 4Y ileum     RNA-Seq, A functional genomics predictive network model identifies regulators of  Population Specimen Collection and Profiling. SRS1523957SAMN05291477GSM22127034Y ileum     bioproject326727PRJNA326727source name gender clinical condition        ",
+    "4Y ileum  , 4Y ileum  ,   2500 sequencing: GSM2212703: 4Y ileum     -, A functional genomics predictive network model identifies regulators of  Population Specimen Collection and Profiling. SRS1523957SAMN05291477GSM22127034Y ileum     bioproject326727PRJNA326727source name gender clinical condition        ",
     1
   ],
   [
@@ -140,111 +140,111 @@
     1
   ],
   [
-    "egfp_pseudo_1, egfp_pseudo_1,  550 sequencing: GSM3130437: egfp_pseudo  RNA-Seq, Human 5' UTR design and variant effect prediction from a massively parallel translation assay, SRS3253919SAMN09045426GSM3130437 egfp_pseudo   bioproject454863PRJNA454863source name         ",
+    "egfp_pseudo_1, egfp_pseudo_1,  550 sequencing: GSM3130437: egfp_pseudo  -,  5' UTR design and variant effect prediction from a massively parallel translation assay, SRS3253919SAMN09045426GSM3130437 egfp_pseudo   bioproject454863PRJNA454863source name         ",
     1
   ],
   [
-    "sample.kidney_17_1year, sample.kidney_17_1year,   3000 sequencing: GSM3613702: sample. Homo sapiens RNA-Seq, Transcriptional trajectories of human  injury progression, SRS4383279SAMN10974029GSM3613702 sample    bioproject523370PRJNA523370 source name  biopsy patient  time point        ",
+    "sample.kidney_17_1year, sample.kidney_17_1year,   3000 sequencing: GSM3613702: sample. Homo sapiens -, Transcriptional trajectories of   injury progression, SRS4383279SAMN10974029GSM3613702 sample    bioproject523370PRJNA523370 source name  biopsy patient  time point        ",
     1
   ],
   [
-    "ERR5353963,  embryos were obtained with ethical approval. Embryos were dissociated and cultured under controlled conditions. Cells were lysed, and  libraries were generated using Smart-seq2 as previously described. Library quality was assessed with a bioanalyzer. ERP127249PRJEB43297E MTAB 10096  Multi-omics study demonstrates susceptibility to excess  exposure.  sequencing and bisulfite sequencing were used to study effects on embryos. Small RNA analysis was also performed. Parallel sequencing approaches revealed transcriptional and epigenetic  in early .       ",
+    "ERR5353963,  embryos were obtained with ethical approval. Embryos were dissociated and cultured under controlled conditions. Cells were lysed, and  libraries were generated using Smart-seq2 as previously described. Library quality was assessed with a bioanalyzer. ERP127249PRJEB43297E MTAB 10096  Multi-omics study demonstrates susceptibility to excess  exposure.  sequencing and bisulfite sequencing were used to study effects on embryos. Small  analysis was also performed. Parallel sequencing approaches revealed transcriptional and epigenetic  in early .       ",
     1
   ],
   [
-    "K562_sgNTC-1_NA_NA_rep1, K562_sgNTC-1_NA_NA_rep1,   6000 sequencing: GSM6448755: K562_sgNTC-1_NA_NA_rep RNA-Seq, A  maturation program initiated by  during S phase, SRS14620179SAMN30266524GSM6448755 K562 sgNTC-1   bioproject722986PRJNA722986 source name human  cells with sgRNA targeting  under , sequenced from  using .    ",
+    "K562_sgNTC-1_NA_NA_rep1, K562_sgNTC-1_NA_NA_rep1,   6000 sequencing: GSM6448755: K562_sgNTC-1_NA_NA_rep -, A  maturation program initiated by  during S phase, SRS14620179SAMN30266524GSM6448755 K562 sgNTC-1   bioproject722986PRJNA722986 source name   cells with sg targeting  under , sequenced from  using .    ",
     1
   ],
   [
-    "NYU1428-N (RNA-seq), NYU1428-N (RNA-seq),   6000 sequencing: GSM7173516: NYU1428-N (RNA-seq)  RNA-Seq, -adjacent  transcriptome as a predictor of  in early-stage  , SRS17310973SAMN34179215GSM7173516 NYU1428-N RNA-seq   bioproject955664PRJNA955664 source name  from patient , sequenced using  and prepared with  from -enriched samples.  ",
+    "NYU1428-N (-), NYU1428-N (-),   6000 sequencing: GSM7173516: NYU1428-N (-)  -, -adjacent  transcriptome as a predictor of  in early-stage  , SRS17310973SAMN34179215GSM7173516 NYU1428-N -   bioproject955664PRJNA955664 source name  from patient , sequenced using  and prepared with  from -enriched samples.  ",
     1
   ],
   [
-    " BOB11738_2,  BOB11738_2,   6000 sequencing: GSM7677835:  BOB11738  RNA-Seq, Peripheral  TCR clonotype diversity as a marker of  in  progression, SRS18485167SAMN36812449GSM7677835  BOB11738   bioproject1001503PRJNA1001503 source name , isolated from  in  context and processed with  and  under  .",
+    " BOB11738_2,  BOB11738_2,   6000 sequencing: GSM7677835:  BOB11738  -, Peripheral  TCR clonotype diversity as a marker of  in  progression, SRS18485167SAMN36812449GSM7677835  BOB11738   bioproject1001503PRJNA1001503 source name , isolated from  in  context and processed with  and  under  .",
     1
   ],
   [
-    "SRR25544692, SRP453636PRJNA1002810  RNA sequencing of clinical malignant and benign . Whole  samples were collected from patients with different clinical  profiles. The samples were processed within  hours, and platelets were preserved before sequencing. s were isolated, and libraries prepared with  protocols. Sequencing was performed on an  platform, and samples were annotated with  and associated  models. Tissue analysis included  from relevant  individuals. ",
+    "SRR25544692, SRP453636PRJNA1002810   sequencing of clinical malignant and benign . Whole  samples were collected from patients with different clinical  profiles. The samples were processed within  hours, and platelets were preserved before sequencing. s were isolated, and libraries prepared with  protocols. Sequencing was performed on an  platform, and samples were annotated with  and associated  models. Tissue analysis included  from relevant  individuals. ",
     1
   ],
   [
-    " GEX library for Patient 29,  GEX library for Patient 29,   6000 sequencing: GSM4995436:  GEX library for Patient   RNA-Seq, Global immune  profiling in the context of , SRS7945868SAMN17184508GSM4995436  GEX Patient   bioproject688684PRJNA688684 source name  drawn from whole blood, collected from , processed with  from a  model derived from s, associated with  involvement under  conditions.",
+    " GEX library for Patient 29,  GEX library for Patient 29,   6000 sequencing: GSM4995436:  GEX library for Patient   -, Global immune  profiling in the context of , SRS7945868SAMN17184508GSM4995436  GEX Patient   bioproject688684PRJNA688684 source name  drawn from whole blood, collected from , processed with  from a  model derived from s, associated with  involvement under  conditions.",
     1
   ],
   [
-    "SRR11825722, SRP262616PRJNA634332Ribosome Profiling of Human Primary s Under  and  of human primary s at three time points           ",
+    "SRR11825722, SRP262616PRJNA634332Ribosome Profiling of  Primary s Under  and  of  primary s at three time points           ",
     1
   ],
   [
-    ", ,  4000 sequencing: GSM5340995:   RNA-Seq, Revisiting the Hayflick Limit: Insights from an Integrated Analysis of Changing Transcripts, Proteins, Metabolites, and Chromatin, SRS9064341SAMN19337007GSM5340995RS PDL50 TP8 Aomo sapiensbioproject732700PRJNA732700source nameWI 38 38time courseRS timecoursepopulation doublings50time point dayTP8extract protocolCells were lysed on the       ",
+    ", ,  4000 sequencing: GSM5340995:   -, Revisiting the Hayflick Limit: Insights from an Integrated Analysis of Changing Transcripts, Proteins, Metabolites, and Chromatin, SRS9064341SAMN19337007GSM5340995RS PDL50 TP8 Aomo sapiensbioproject732700PRJNA732700source nameWI 38 38time courseRS timecoursepopulation doublings50time point dayTP8extract protocolCells were lysed on the       ",
     1
   ],
   [
-    "Human sample from , Duplicate sample3,   sequencing: RNA-seq of  cell:, RNAsequencing samples of breast  cells with  treatment, SRS20133892SAMN39433644Tomo sapiensDuplicate sample3bioproject1064464PRJNA1064464isolatenot applicableagemissingbiomaterial provider using  and  with response from  in  and  and ",
+    " sample from , Duplicate sample3,   sequencing: - of  cell:, sequencing samples of breast  cells with  treatment, SRS20133892SAMN39433644Tomo sapiensDuplicate sample3bioproject1064464PRJNA1064464isolatenot applicableagemissingbiomaterial provider using  and  with response from  in  and  and ",
     1
   ],
   [
-    "SRRXXXXXXXX, Total RNA was isolated using TRI-REAGENT (MRC) followed by a column-based Total RNA Zol-Out\u2122 D kit (A&A Biotechnology) following the manufacturer's protocol RNA-seq libraries were prepared in two biological replicates from 1ug of total RNA using NEBNext\u00ae Ultra\u2122 II RNA Library Prep Kit for \u00ae (NEB) together with NEBNext ) mRNA Magnetic Isolation Module (NEB) and NEBNext\u00ae Multiplex Oligos for \u00ae (NEB) according to manufacturer's protocol, SRP414924PRJNA916231GSE221804Time dependent recruitment and composite genes shapes  activated transcriptional responses and explains functional overlap  Although the core  signaling pathways are distinct their expression profiles show considerable overlap and are difficult to discern Using a genome wide  integrative approach our results identify a novel class of responsive genes that use composite sites to recruit like complexes and for optimal expression Moreover they support the existence of an analogous transcriptional regulatory mechanism of inducible genes in which STAT1 and STAT2 containing like complexes and are recruited to individual or combined composite sites and time dependent manner In addition we present proof for the involvement of an composite dependent regulatory system in activated positive feedback regulation of genes and long term response which depends on phosphorylation and expression of like components These findings provide further insight in the existence of a novel intracellular amplifier circuit that offer an explanation for the existing molecular and functional overlap between expression Overall design Comparative gene expression profiling analysis of RNA seq data for the human   and variants treated with alpha and gamma GSE221804pubmed37347298pubmed38139463parent bioprojectPRJNA922988 with results from , , , , , , , , ",
+    "SRRXXXXXXXX, Total  was isolated using TRI-REAGENT (MRC) followed by a column-based Total  Zol-Out\u2122 D kit (A&A Biotechnology) following the manufacturer's protocol - libraries were prepared in two biological replicates from 1ug of total  using NEBNext\u00ae Ultra\u2122 II  Library Prep Kit for \u00ae (NEB) together with NEBNext ) m Magnetic Isolation Module (NEB) and NEBNext\u00ae Multiplex Oligos for \u00ae (NEB) according to manufacturer's protocol, SRP414924PRJNA916231GSE221804Time dependent recruitment and composite genes shapes  activated transcriptional responses and explains functional overlap  Although the core  signaling pathways are distinct their expression profiles show considerable overlap and are difficult to discern Using a genome wide  integrative approach our results identify a novel class of responsive genes that use composite sites to recruit like complexes and for optimal expression Moreover they support the existence of an analogous transcriptional regulatory mechanism of inducible genes in which STAT1 and STAT2 containing like complexes and are recruited to individual or combined composite sites and time dependent manner In addition we present proof for the involvement of an composite dependent regulatory system in activated positive feedback regulation of genes and long term response which depends on phosphorylation and expression of like components These findings provide further insight in the existence of a novel intracellular amplifier circuit that offer an explanation for the existing molecular and functional overlap between expression Overall design Comparative gene expression profiling analysis of   data for the    and variants treated with alpha and gamma GSE221804pubmed37347298pubmed38139463parent bioprojectPRJNA922988 with results from , , , , , , , , ",
     1
   ],
   [
-    "cyto_RMC4745_3, cyto_RMC4745_3,   sequencing: GSM4107753: cyto_RM02 RNA-Seq, Selective Inhibitors of  Activate  and Suppress  Growth, SRS5477656SAMN12911261GSM4107753cyto  bioproject575792PRJNA575792source name  typeCytosolic      ",
+    "cyto_RMC4745_3, cyto_RMC4745_3,   sequencing: GSM4107753: cyto_RM02 -, Selective Inhibitors of  Activate  and Suppress  Growth, SRS5477656SAMN12911261GSM4107753cyto  bioproject575792PRJNA575792source name  typeCytosolic      ",
     1
   ],
   [
-    "RNA-seq from Luminal1, ,   sequencing: GSM4201653: RNA-seq from  RNA-Seq, Epigenomic analyses of -mediated enhancer reprogramming to   subtype plasticity through  signalling feedback between  [RNA-seq], SRS5757990SAMN13471377GSM4201653 from Luminalbioproject593203PRJNA593203source name  organoidsubtypeluminal   ",
+    "- from Luminal1, ,   sequencing: GSM4201653: - from  -, Epigenomic analyses of -mediated enhancer reprogramming to   subtype plasticity through  signalling feedback between  [-], SRS5757990SAMN13471377GSM4201653 from Luminalbioproject593203PRJNA593203source name  organoidsubtypeluminal   ",
     1
   ],
   [
-    " from  donor , Neutrophils from  donor ,  sequencing: GSM4715411:  from  donor HD RNA-Seq, Immunological Biomarkers of Fatal : A Study of , SRS7167585SAMN15762467GSM4715411 from healthy donor HDsbioproject655952PRJNA655952source nameNeutrophils from individualhealthy donor  status donorgenderNohaematological     ",
+    " from  donor , Neutrophils from  donor ,  sequencing: GSM4715411:  from  donor HD -, Immunological Biomarkers of Fatal : A Study of , SRS7167585SAMN15762467GSM4715411 from healthy donor HDsbioproject655952PRJNA655952source nameNeutrophils from individualhealthy donor  status donorgenderNohaematological     ",
     1
   ],
   [
-    ", ,  sequencing: GSM4388166: sgZFP36L2_sg1_rep RNA-Seq, post-transcriptionally acute  differentiation (), SRS6269251SAMN14316076GSM4388166sgZFP36L2 sg1 repbioproject610798PRJNA610798source name       ",
+    ", ,  sequencing: GSM4388166: sgZFP36L2_sg1_rep -, post-transcriptionally acute  differentiation (), SRS6269251SAMN14316076GSM4388166sgZFP36L2 sg1 repbioproject610798PRJNA610798source name       ",
     1
   ],
   [
-    "SRR18856557, SRP338085PRJNA765009Integrated  seq CyTOF and CITE seq analysis of  immune microenvironmentAs part of the MMRF immune atlas pilot project we compared  of   samples from  assessed by scRNA seq CyTOF and CITE seq to understand the concordance of measurements among  techniques       ",
+    "SRR18856557, SRP338085PRJNA765009Integrated   CyTOF and CITE  analysis of  immune microenvironmentAs part of the MMRF immune atlas pilot project we compared  of   samples from  assessed by sc  CyTOF and CITE  to understand the concordance of measurements among  techniques       ",
     1
   ],
   [
-    "SRR17296854,  Genomcis   preparation, SRP351944PRJNA791326GSE192391 transcriptomics of s during severe  RNA seq analysis of s during  Overall design s were isolated at the stated days into  study enrollment and hospitalizaiton for  RNA sequencingGSE192391pubmed35169146bioprojectPRJEB40771         ",
+    "SRR17296854,  Genomcis   preparation, SRP351944PRJNA791326GSE192391 transcriptomics of s during severe    analysis of s during  Overall design s were isolated at the stated days into  study enrollment and hospitalizaiton for   sequencingGSE192391pubmed35169146bioprojectPRJEB40771         ",
     1
   ],
   [
-    "SRR30689098, Total RNA was extracted from pediatric  cells following coculture with pediatric  using standard RNA isolation techniques. RNA was prepared for downstream  analysis to assess transcriptional changes due to coculture conditions. Quality of sequencing was assessed using FastQC version 0.11.5 (Andrews, 2010), and sequences were trimmed using TrimGalore version 0.4.4_dev (Krueger, 2015) with 3' end trimming and paired parameters, using a quality score threshold of 20. The  was obtained via Ensembl () reads were aligned to the genome using hisat2 (Kim et al. 2015)., SRP533167PRJNA1162081GSE277382Paediatric  support acute myeloid  cell survival and enhance  via contact independent mechanismPediatric  within the  marrow BM niche play a crucial role in regulating pediatric acute  survival and therapy  In this study we isolated  from   samples and characterized their phenotype and differentiation potential We performed coculture experiments with  cells in both autologous and allogenic settings with and without direct contact RNA sequencing and multiplex immunoassays revealed that  promote  survival through changes in gene expression  secretion and extracellular matrix components specifically enhancing chemoprotection from  Inhibition of the pathways using  abrogated the  induced chemoprotection suggesting a contact independent mechanism These findings provide new insights into how the BM microenvironment contributes to therapy  in pediatric  and highlights the potential for targeting  induced signaling pathways in      ",
+    "SRR30689098, Total  was extracted from pediatric  cells following coculture with pediatric  using standard  isolation techniques.  was prepared for downstream  analysis to assess transcriptional changes due to coculture conditions. Quality of sequencing was assessed using FastQC version 0.11.5 (Andrews, 2010), and sequences were trimmed using TrimGalore version 0.4.4_dev (Krueger, 2015) with 3' end trimming and paired parameters, using a quality score threshold of 20. The  was obtained via Ensembl () reads were aligned to the genome using hisat2 (Kim et al. 2015)., SRP533167PRJNA1162081GSE277382Paediatric  support acute myeloid  cell survival and enhance  via contact independent mechanismPediatric  within the  marrow BM niche play a crucial role in regulating pediatric acute  survival and therapy  In this study we isolated  from   samples and characterized their phenotype and differentiation potential We performed coculture experiments with  cells in both autologous and allogenic settings with and without direct contact  sequencing and multiplex immunoassays revealed that  promote  survival through changes in gene expression  secretion and extracellular matrix components specifically enhancing chemoprotection from  Inhibition of the pathways using  abrogated the  induced chemoprotection suggesting a contact independent mechanism These findings provide new insights into how the BM microenvironment contributes to therapy  in pediatric  and highlights the potential for targeting  induced signaling pathways in      ",
     1
   ],
   [
-    " sgRNA#2,  sgRNA#2,   sequencing: GSM2829443:  sgRNA# RNA-Seq,  Inhibition Synergizes with  in  Cells, SRS2622071SAMN07829582GSM2829443 bioproject415591PRJNA415591source namemantle cell   and induced with  for       ",
+    " sg#2,  sg#2,   sequencing: GSM2829443:  sg# -,  Inhibition Synergizes with  in  Cells, SRS2622071SAMN07829582GSM2829443 bioproject415591PRJNA415591source namemantle cell   and induced with  for       ",
     1
   ],
   [
-    ", ,   sequencing: GSM6793236:  RNA-Seq, Severe  is associated with molecular signatures of aging in the human , SRS15979448SAMN32071507GSM6793236COVIDbioproject780522PRJNA780522source name of matching groupJgroup      ",
+    ", ,   sequencing: GSM6793236:  -, Severe  is associated with molecular signatures of aging in the  , SRS15979448SAMN32071507GSM6793236COVIDbioproject780522PRJNA780522source name of matching groupJgroup      ",
     1
   ],
   [
-    "SRR2959445, Total RNA isolated using the standard  protocol.  libraries were prepared using  Magnetic Gold Kit (epicenter) and NEBNext Ultra RNA Library Prep Kit (NEB) and run on a , SRP066619PRJNA304002GSE75354A   model reveals emergence of neural crest identity during  initiation  We report gene expression data for human  using RNAseq Overall design RNAseq was performed on  and one normal  done as single replicates except for two biological replicates of  GSE75354pubmed26823433parent bioprojectPRJNA303997      ",
+    "SRR2959445, Total  isolated using the standard  protocol.  libraries were prepared using  Magnetic Gold Kit (epicenter) and NEBNext Ultra  Library Prep Kit (NEB) and run on a , SRP066619PRJNA304002GSE75354A   model reveals emergence of neural crest identity during  initiation  We report gene expression data for   using  Overall design  was performed on  and one normal  done as single replicates except for two biological replicates of  GSE75354pubmed26823433parent bioprojectPRJNA303997      ",
     1
   ],
   [
-    "226x4, 226x4,   sequencing: GSM3123650: 226x RNA-Seq, Cell cycle plasticity driven by MTOR signaling: integral mechanism for  to  inhibition, SRS3239481SAMN09007107GSM3123650226xbioproject454470PRJNA454470source namePatient derived        ",
+    "226x4, 226x4,   sequencing: GSM3123650: 226x -, Cell cycle plasticity driven by MTOR signaling: integral mechanism for  to  inhibition, SRS3239481SAMN09007107GSM3123650226xbioproject454470PRJNA454470source namePatient derived        ",
     1
   ],
   [
-    ", ,   sequencing:  of : , Shifts in Serum Acid Profiles Associated with  and Stages of Progression to  , SRS20099729SAMN39328775RNASeq Human biomaterial provider     ",
+    ", ,   sequencing:  of : , Shifts in Serum Acid Profiles Associated with  and Stages of Progression to  ,   biomaterial provider     ",
     1
   ],
   [
-    "SRR12617989, RNA was extracted using RNeasy plus Mini Kit (Qiagen) according to manufacturer's guidelines and the quality of the isolated RNA was evaluated by BIOanalyzer 2100 (Agilent) using the Agilent RNA 6000 Nano Kit. Library preparation was performed with  TruSeq Stranded mRNA Library Prep Kit High Throughput (Catalog ID: RS-122-2103), according to manufacturer's protocol, SRP281874PRJNA662582GSE157729Secretory pathway differences between  and  enable rescue of difficult to express human proteinsBiologics have emerged as leading blockbuster therapeutics but many advanced recombinant protein moieties remain difficult to produce Here we identify bottlenecks limiting expression of challenging recombinant human proteins through a systems biology analysis of the transcriptomes of  and  Surprisingly one third of the challenging human proteins displayed an improved secretion upon host  swapping from  to  While most components of the secretory machinery showed comparable expression levels in both expression hosts a key set of genes with extreme expression variation was identified Among were validated as general productivity boosters in  Further we found that more heavily glycosylated products benefit more from the elevated activities of the N and O glycosyltransferases found in  cells Collectively our results demonstrate the utilization of  cells for expression rescue of human proteins and suggest a strategy for identification of secretory pathway components improving yield and quality in  and  Overall design Expression profiling and comparative analysis of  and  cells producing a panel of recombinant proteins GSE157729pubmed35301123          ",
+    "SRR12617989,  was extracted using RNeasy plus Mini Kit (Qiagen) according to manufacturer's guidelines and the quality of the isolated  was evaluated by BIOanalyzer 2100 (Agilent) using the Agilent  6000 Nano Kit. Library preparation was performed with   Stranded m Library Prep Kit High Throughput (Catalog ID: RS-122-2103), according to manufacturer's protocol, SRP281874PRJNA662582GSE157729Secretory pathway differences between  and  enable rescue of difficult to express  proteinsBiologics have emerged as leading blockbuster therapeutics but many advanced recombinant protein moieties remain difficult to produce Here we identify bottlenecks limiting expression of challenging recombinant  proteins through a systems biology analysis of the transcriptomes of  and  Surprisingly one third of the challenging  proteins displayed an improved secretion upon host  swapping from  to  While most components of the secretory machinery showed comparable expression levels in both expression hosts a key set of genes with extreme expression variation was identified Among were validated as general productivity boosters in  Further we found that more heavily glycosylated products benefit more from the elevated activities of the N and O glycosyltransferases found in  cells Collectively our results demonstrate the utilization of  cells for expression rescue of  proteins and suggest a strategy for identification of secretory pathway components improving yield and quality in  and  Overall design Expression profiling and comparative analysis of  and  cells producing a panel of recombinant proteins GSE157729pubmed35301123          ",
     1
   ],
   [
-    "SRR18154497, Frozen on dry ice and RNA was harvested using .  TruSeq RNA Sample Prep Kit (Cat#FC-122-1001) was used with 1 ug of total RNA for the construction of sequencing libraries. RNA libraries were prepared for sequencing using standard  protocols, SRP361640PRJNA810728GSE197514RNA sequencing of  educated  reveals a three gene diagnostic signature in  squamous cell We aimed to investigate the diagnostic potential of  educated  in  In this study  ESCC patients and  healthy individuals were enrolled and divided into training cohort  and  and validation cohort  and  Next generation RNA sequencing was performed on  isolated from peripheral  of all participants and a support vector machine leave one out cross validation approach was used for binary classification A diagnostic signature composed of  discriminated  patients from healthy individuals with 91 3  and 85 2 specificity in the training cohort and 87 5  and 81 1 specificity in the validation cohort The AUC was 0 924 95 CI 0 845\u20130 956 and 0 893 95 CI 0 821\u20130 966 respectively in the training cohort and validation cohort This 3 gene platelet RNA signature could effectively discriminate  from healthy  Our data highlighted the potential of  educated  for the noninvasive diagnosis of  Moreover we found keratin and collagen protein families and ECM related pathways might be involved in  progression and metastasis of  which might provide insights to understand  pathobiology and advance novel therapeutics Overall design RNA sequencing of periphral   in    patients and  s GSE197514     ",
+    "SRR18154497, Frozen on dry ice and  was harvested using .    Sample Prep Kit (Cat#FC-122-1001) was used with 1 ug of total  for the construction of sequencing libraries.  libraries were prepared for sequencing using standard  protocols, SRP361640PRJNA810728GSE197514 sequencing of  educated  reveals a three gene diagnostic signature in  squamous cell We aimed to investigate the diagnostic potential of  educated  in  In this study  ESCC patients and  healthy individuals were enrolled and divided into training cohort  and  and validation cohort  and  Next generation  sequencing was performed on  isolated from peripheral  of all participants and a support vector machine leave one out cross validation approach was used for binary classification A diagnostic signature composed of  discriminated  patients from healthy individuals with 91 3  and 85 2 specificity in the training cohort and 87 5  and 81 1 specificity in the validation cohort The AUC was 0 924 95 CI 0 845\u20130 956 and 0 893 95 CI 0 821\u20130 966 respectively in the training cohort and validation cohort This 3 gene platelet  signature could effectively discriminate  from healthy  Our data highlighted the potential of  educated  for the noninvasive diagnosis of  Moreover we found keratin and collagen protein families and ECM related pathways might be involved in  progression and metastasis of  which might provide insights to understand  pathobiology and advance novel therapeutics Overall design  sequencing of periphral   in    patients and  s GSE197514     ",
     1
   ],
   [
-    "S1433, S1433,  sequencing, TestSITE: an Integrated Gene-to-Outcome Data Commons for Precision Medicine Research, ERS14371623SAMEA112260766S nameEDSubmitter IdS1433common namehumannash crn  stsample nameS1433scientific name         ",
+    "S1433, S1433,  sequencing, TestSITE: an Integrated Gene-to-Outcome Data Commons for Precision Medicine Research, ERS14371623SAMEA112260766S nameEDSubmitter IdS1433common namenash crn  stsample nameS1433scientific name         ",
     1
   ]
 ]

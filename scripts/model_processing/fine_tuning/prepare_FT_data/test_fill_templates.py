@@ -5,8 +5,8 @@ import pandas as pd
 import re
 
 DATA_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_test_withoutkeys.json'
-EXPANDED_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/metadata_templates_test_expanded.json'
-OUTPUT_CSV  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/test_metadata_replaced_table.csv'
+EXPANDED_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_test_expanded.json'
+OUTPUT_CSV  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test_metadata_replaced_table.csv'
 
 CATEGORIES = [
     "library_selection", "sequencing_source",
@@ -299,8 +299,6 @@ SYNONYMS = {
         "ATDC5",
     ],
     "esophagus": [
-        "gullet",
-        "food pipe",
         "oesophagus",
         "esophageal organ",
         "esophagus",
@@ -496,14 +494,14 @@ SYNONYMS = {
     "6 months":               ["half year", "26 weeks", "semiannual", "six-month", "6 months"],
     "relapse":                ["recurrence", "disease recurrence", "recurrent disease", "relapsing", "relapse"],
     "adverse event":          ["AE", "side effect", "unwanted reaction", "treatment-related event", "adverse event"],
-    "female":                 ["F", "woman", "adult female", "female donor", "female"],
+    "female":                 ["F", "woman", "female donor", "female"],
     "Mediterranean":          ["Med descent", "Southern European", "Med Sea region", "Mediterranean origin", "Mediterranean"],
     "normal":                 ["healthy", "control", "baseline", "reference", "normal"],
     "39 years":               ["39 y.o.", "age 39", "39-year-old", "39yrs", "39 years"],
     "American Indian":        ["Native American", "Indigenous American", "American Indigenous", "Native Amer", "American Indian"],
     "Pacific Islander":       ["Polynesian", "Micronesian", "Melanesian", "Pacific descent", "Pacific Islander"],
     "36 years":               ["36 y.o.", "age 36", "36-year-old", "36yrs", "36 years"],
-    "male":                   ["M", "man", "adult male", "male donor", "male"],
+    "male":                   ["M", "man", "male donor", "male"],
     "unknown":                ["NA", "not available", "unspecified", "missing data", "unknown"],
     "metastasis": ["metastasis", "Metastasis", "MET", "secondary tumor"],
     "blood": ["blood", "Blood sample", "peripheral blood", "venous blood"],
@@ -625,6 +623,18 @@ SEM = {
                 "Leydig cells", "Sertoli cells", "retinal ganglion cells"
             ]
         }
+    },
+    "sex": {
+        "disease": {
+            "polycystic ovary syndrome": ["female"],
+            "endometriosis": ["female"],
+            "testicular germ cell tumor": ["male"]
+        },
+        "organ": {
+            "ovaries": ["female"],
+            "uterus": ["female"],
+            "testes": ["male"]
+        }
     }
 }
 
@@ -660,32 +670,54 @@ CATEGORY_LISTS = {
 
 CTX_WRAP = {
     'biopsy_site': [
-        'a biopsy was collected from the {val}',
-        'RNA was extracted directly from the {val}',
-        'tissue sampling targeted the {val}',
-        'specimens originated in the {val} region',
-        'molecular data were obtained from the {val}',
-        'genomic material was sourced from the {val}',
-        'RNA libraries were generated from {val} tissue',
-        'profiling was performed on samples from the {val}',
-        'the {val} served as the primary sampling location',
-        'material was harvested from the {val}',
-        'collection involved the {val} compartment',
-        'biological sample was retrieved from the {val}'
+        'histological samples were retrieved from the {val} for downstream analysis',
+        'prior to RNA extraction, tissue fragments were isolated from the {val}',
+        'the biopsy procedure targeted the {val} using minimally invasive techniques',
+        'material harvested during surgery included sections of the {val}',
+        'molecular profiling was initiated after collecting {val}-specific biopsies',
+        'local anesthesia was applied before obtaining samples from the {val}',
+        'fine-needle aspiration from the {val} yielded sufficient RNA',
+        'the patient’s {val} was selected as the anatomical site for sample retrieval',
+        'transcriptomic libraries were derived from biopsies of the {val}',
+        'sectioning of the {val} was performed to isolate cellular components',
+        'RNA was stabilized immediately following {val}-directed sampling',
+        'genetic material from the {val} was considered representative of the pathology'
     ],
     'organ': [
-        'transcriptomic signatures were mapped in the {val}',
-        'the {val} was the main organ of interest',
-        'focus was placed on the {val}-related pathways',
-        'observations were specific to the {val}',
-        'molecular events were prominent in the {val}',
-        'the experimental model targeted the {val}',
-        'the study emphasized {val}-associated processes',
-        'data were collected from a {val} context',
-        'gene expression reflected {val} physiology',
-        'the condition affected the {val} system',
-        'anomalies were linked to {val} function',
-        'results highlighted the role of the {val}'
+        'gene dysregulation was prominently noted in pathways related to the {val}',
+        'pathophysiological changes were concentrated in the {val}',
+        'the {val} presented abnormal transcriptomic signatures compared to controls',
+        'expression profiles implicated the {val} in disease progression',
+        'differential analysis revealed organ-specific shifts in the {val}',
+        'samples were enriched for genes characteristic of {val}-associated function',
+        'inflammatory markers in the {val} were found to be upregulated',
+        'focus was placed on the {val} due to its known involvement in similar conditions',
+        'mutations affecting {val} integrity were cataloged',
+        'transcriptional disruptions were mapped onto the {val} regulatory network',
+        'several {val}-related genes were identified as differentially expressed',
+        'analysis emphasized cellular pathways inherent to the {val}'
+    ],
+    'response': [
+        'post-treatment evaluation indicated {val}',
+        'follow-up imaging demonstrated {val}',
+        'the clinical course was characterized by {val}',
+        'physician assessment at follow-up documented {val}',
+        'outcome monitoring recorded {val}',
+        'safety surveillance noted {val}',
+        'the patient trajectory showed evidence of {val}',
+        'on-treatment review highlighted {val}',
+        'end-of-cycle assessment reported {val}',
+        'study visit documentation referenced {val}',
+        'chart review confirmed {val} following intervention',
+        'adjudication of outcomes concluded {val}',
+        'longitudinal tracking revealed {val} after therapy',
+        'the recorded endpoint was consistent with {val}',
+        'patient-reported outcome logs captured {val}',
+        'the adverse event log included {val}',
+        'discharge summary listed {val} as the observed response',
+        'clinical narrative described {val} during follow-up',
+        'the response profile was summarized as {val}',
+        'progress notes explicitly mentioned {val}'
     ]
 }
 
@@ -742,7 +774,13 @@ for template, _ in expanded:
             disease = chosen.get('disease')
             valid_treatments = [t for t, diseases in SEM['treatment']['disease'].items() if disease in diseases]
             raw = random.choice(valid_treatments) if valid_treatments else "no treatment"
-
+        elif cat == 'sex':
+            org = chosen.get('organ')
+            disease = chosen.get('disease')
+            opts_from_org = SEM["sex"]["organ"].get(org, [])
+            opts_from_disease = SEM["sex"]["disease"].get(disease, [])
+            candidates = list(set(opts_from_org) & set(opts_from_disease)) or opts_from_org or opts_from_disease or SEX
+            raw = random.choice(candidates)
 
         else:
             raw = random.choice(CATEGORY_LISTS[cat])

@@ -5,8 +5,8 @@ import pandas as pd
 import re
 
 DATA_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_train_withoutkeys.json'
-EXPANDED_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/metadata_templates_train_expanded.json'
-OUTPUT_CSV  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/train_metadata_replaced_table.csv'
+EXPANDED_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_train_expanded.json'
+OUTPUT_CSV  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/train_metadata_replaced_table.csv'
 
 CATEGORIES = [
     "library_selection", "sequencing_source",
@@ -320,32 +320,53 @@ CATEGORY_LISTS = {
 
 CTX_WRAP = {
     'biopsy_site': [
-        'sample taken from {val}',
-        '{val}-derived specimen',
-        'specimen obtained via {val}',
-        'collected from {val}',
-        'biopsy performed on {val}',
-        'tissue extracted from {val}',
-        '{val} sample was analyzed',
-        'analysis of specimen from {val}',
-        '{val} was sampled',
-        'taken from {val}',
-        'RNA isolated from {val}',
-        'sequenced material from {val}'
+        "targeted dissection of the {val} was performed to isolate transcript-rich zones",
+        "the biopsy was scheduled based on abnormal imaging in the {val}",
+        "samples were surgically obtained from the {val} following preoperative consent",
+        "was extracted from tissue blocks originating in the {val}",
+        "initial diagnosis prompted a biopsy of the {val}",
+        "needle-guided retrieval was performed on the {val}",
+        "sections from the {val} were fixed and preserved for sequencing",
+        "collection involved multiple regions including the {val}",
+        "sampling included perilesional and core areas of the {val}",
+        "a sample from the {val} was included due to lesion proximity",
+        "frozen sections from the {val} were used for nucleic acid extraction",
+        "microdissection targeted specific compartments of the {val}"
     ],
     'organ': [
-        'affecting the {val}',
-        'observed in the {val}',
-        '{val} tissue',
-        '{val} involvement',
-        'changes noted in the {val}',
-        'perturbations in the {val}',
-        'signal detected in {val}',
-        '{val} under investigation',
-        'focused on {val}',
-        'concerning the {val}',
-        'originating in the {val}',
-        'data linked to the {val}'
+        "transcriptional profiles were enriched for genes expressed in the {val}",
+        "the {val} appeared frequently altered in affected individuals",
+        "molecular patterns in the {val} were compared across conditions",
+        "analysis revealed cell-type heterogeneity in the {val}",
+        "the functional role of the {val} was explored using expression datasets",
+        "disease impact was localized predominantly to the {val}",
+        "the {val} contributed significantly to overall expression variance",
+        "inferred cellular dynamics suggested activation within the {val}",
+        "inter-organ comparisons confirmed changes centered in the {val}",
+        "sequencing highlighted regulatory elements active in the {val}",
+        "the {val} exhibited distinct signatures relative to baseline tissue",
+        "the experimental paradigm focused on perturbations within the {val}"
+    ],
+    'response': [
+        'assessment concluded {val}',
+        'biomarker trends were consistent with {val}',
+        'status was updated to {val}',
+        'board classification recorded {val}',
+        'best overall response was adjudicated as {val}',
+        'investigator assessment documented {val}',
+        'progress notes annotated {val}',
+        'case report form captured {val}',
+        'report finalized with {val}',
+        'treatment summary denoted {val}',
+        'care plan was adjusted in light of {val}',
+        'sponsor review logged {val} as outcome',
+        'trial database entry reflected {val}',
+        'protocol-defined endpoint corresponded to {val}',
+        'safety review committee noted {val}',
+        'assessment resulted in {val}',
+        'follow-up consultation stated {val}',
+        'clinical monitoring cycle reported {val}',
+        'health record update listed {val}'
     ]
 }
 
