@@ -18,6 +18,7 @@
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+LOGAN_PATH=${4:-$LOGAN_PATH}
 
 LOG_DIR=$METAPPUCCINO/$RES/logs
 TMP_DIR=$METAPPUCCINO/$RES/tmp
@@ -29,7 +30,8 @@ cd "$SCRATCH_DIR"
 exec > "$LOG_DIR/extract_preprocess.out" 2> "$LOG_DIR/extract_preprocess.err"
 
 cleanup() {
-    cp "$SCRATCH_DIR/database_metadata_curated.csv" "$TMP_DIR/" 2>/dev/null || echo "Output file not found, skipping."
+    cp "$SCRATCH_DIR/database_metadata_curated.csv" "$TMP_DIR/" 2>/dev/null || echo "database_metadata_curated file not found, skipping."
+    cp "$SCRATCH_DIR/logan_comp.csv" "$TMP_DIR/" 2>/dev/null || echo "logan_comp file not found, skipping."
     cp "$SCRATCH_DIR/STEP2_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
@@ -42,9 +44,13 @@ cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp -r "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata" $SCRATCH_DIR/
 cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/fetch_existing_cat.py" $SCRATCH_DIR/
+cp "$METAPPUCCINO/scripts/get_clean_metadata/logan_add_search.py" $SCRATCH_DIR/
 
 source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
 python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR"
+if [[ -n "$LOGAN_PATH" ]]; then
+    python3 -u logan_add_search.py --base_path "$SCRATCH_DIR" --input_logan_path $LOGAN_PATH
+fi

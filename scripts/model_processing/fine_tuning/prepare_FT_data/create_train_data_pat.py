@@ -2,6 +2,7 @@
 #IMPORT
 import pandas as pd
 import random
+import json
 
 ##########################################################################################
 #PATHS
@@ -23,9 +24,9 @@ Categories and definitions:
 - biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
 - biopsy_type: state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION
 - cell_line: exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text
-- cell_type: extract cell type: if known, specify it (e.g., 'T cell'); otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering “primary tissue”.
+- cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering “primary tissue”.
 - organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
-- disease: report associated disease or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
+- disease: report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
 - treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, infer from the context
 - treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data)
 - response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to infer from context the stage of the disease after treatment if possible
@@ -40,6 +41,8 @@ For each category below:
 - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
 - If one value is impossible to infer, return "unknown", applicable for all categories
 
+BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+
 Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys.
 
 Here is the output:
@@ -48,16 +51,22 @@ Here is the output:
 def process_file(input_csv, output_csv):
     df = pd.read_csv(input_csv)
     records = []
+    fields = [
+        "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
+        "cell_line", "cell_type", "organ", "disease", "treatment",
+        "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
+    ]
     for _, row in df.iterrows():
         run_acc = f"TRR{random.randint(100000,999999)}"
         prompt = static_prompt.format(run_accession=run_acc, context=row['phrase'])
-        fields = [
-            "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
-            "cell_line", "cell_type", "organ", "disease", "treatment",
-            "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
-        ]
-        output = '\n'.join(f"{field}: {row[field]}" for field in fields)
-        records.append({'prompt': prompt, 'output': output})
+        output_dict = {}
+        for field in fields:
+            val = row[field]
+            if field == "is_cancer":
+                val = str(val)
+            output_dict[field] = val
+        output_json = json.dumps(output_dict, ensure_ascii=False)
+        records.append({'prompt': prompt, 'output': output_json})
     pd.DataFrame(records).to_csv(output_csv, index=False)
 
 if __name__ == "__main__":

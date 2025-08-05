@@ -4,7 +4,7 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=45gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 #SBATCH --job-name=ft_complete_cv_slurm
 #SBATCH --partition=alphafold
@@ -14,8 +14,8 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:1
-#SBATCH --mem=45G
+#SBATCH --gres=gpu:2
+#SBATCH --mem=80G
 
 METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
 ENV="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"

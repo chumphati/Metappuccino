@@ -28,6 +28,8 @@ def main():
                         help="Path to the venv build with requirement.txt")
     parser.add_argument("--model", type=str, required=True,
                         help="LLM model used for inference. Default = mistral 7B ft.")
+    parser.add_argument("--logan_path", type=str, default="",
+                        help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")
     parser.add_argument("--requirements", action="store_true",
                         help="Install requirements.txt and CUDA configuration for GPU. Warning: It is assumed that a venv was created and the path correctly given in --env_requirement. In the case a CUDA configuration is needed, please specify cuda path in --cuda_path if it is different from /usr/local/cuda.")
     parser.add_argument("--cuda", type=str, default="/usr/local/cuda",
@@ -49,6 +51,7 @@ def main():
     env_dir = args.env_requirement
     cuda_path = args.cuda
     model_path = args.model
+    logan_path = args.logan_path
     iteration_limit = args.iteration_limit
     tmp_dir = os.path.join(metappuccino_dir+"/"+res_dir, "tmp")
 
@@ -108,9 +111,9 @@ def main():
             #clean metadata output table for xml config
             if not os.path.isfile(step2_flag):
                 if shutil.which("qsub"):
-                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, extract_preprocess], check=True)
+                    subprocess.run(["qsub", "-q", "alphafold", "-v", "METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"LOGAN_PATH="+logan_path, extract_preprocess], check=True)
                 elif shutil.which("sbatch"):
-                    subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir, extract_preprocess], check=True)
+                    subprocess.run(["sbatch", "--export=METAPPUCCINO="+metappuccino_dir+","+"RES="+res_dir+","+"ENV_REQUIREMENT="+env_dir+","+"LOGAN_PATH="+logan_path, extract_preprocess], check=True)
             wait_for_flag_file(step2_flag)
             print("✔ Preprocessing completed successfully!")
 

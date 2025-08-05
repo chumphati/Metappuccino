@@ -161,6 +161,18 @@ for c in ['base_count', 'library_strategy', 'instrument_platform', 'study_access
 
 df['is_cancer'] = ''
 
+for i, row in df.iterrows():
+    if not row['biopsy_type']:
+        ctx_path = os.path.join(xml_dir, f"{row['run_accession']}_metadata.xml")
+        if not os.path.exists(ctx_path):
+            continue
+        ctx = open(ctx_path, "r", encoding="utf-8", errors="ignore").read()
+
+        if re.search(r"\bmeta(?:stasis|static|stases|)\b", ctx, re.IGNORECASE):
+            df.at[i, 'biopsy_type'] = 'metastasis'
+        elif re.search(r"\bblood|plasma|serum|buffy coat|venous|capillary|whole[-\s]?blood\b", ctx, re.IGNORECASE):
+            df.at[i, 'biopsy_type'] = 'blood'
+
 df.to_csv(output_file_df, sep="\t", index=False)
 
 open(FLAG_FILE, 'w').close()
