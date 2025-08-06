@@ -17,15 +17,15 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
-METAPPUCCINO=${1:-$METAPPUCCINO}
-RES=${2:-RES}
-ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
-PATH_CUDA=${4:-$PATH_CUDA}
+#METAPPUCCINO=${1:-$METAPPUCCINO}
+#RES=${2:-RES}
+#ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+#PATH_CUDA=${4:-$PATH_CUDA}
 
-#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-#RES="results_riboprof"
-#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-#PATH_CUDA="/usr/local/cuda"
+METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+RES="results_tests"
+ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+PATH_CUDA="/usr/local/cuda"
 
 LOG_DIR=$METAPPUCCINO/$RES/logs
 SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"

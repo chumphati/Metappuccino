@@ -21,13 +21,6 @@ UBERON_FILE = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
 CSV_OUTPUT = os.path.join(base_path, "completed_metadata.csv")
 FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
 
-# CSV_INPUT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/database_metadata_curated.csv"
-# INFERENCE_DIR = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/SPECIFIC_RUN_ANALYSIS/METADATA_LLM_INFERENCE"
-# CELLOSAURUS = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/CELLOSAURUS_CLEAN.csv"
-# DOT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/DOT_TABLE_CLEAN.csv"
-# UBERON_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/UBERON_TABLE_CLEAN.csv"
-# CSV_OUTPUT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/tmp/metadata_augmented_with_entropy.csv"
-
 INVALID_ENTRIES = {"unknown", "missing", "n/a", "na", "none", ""}
 STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "an", "by"}
 
@@ -37,25 +30,45 @@ def load_syn(csv, sc, nc, cc):
     with open(csv, "r", encoding="utf-8") as f:
         sep = "\t" if "\t" in f.readline() else ","
     df = pd.read_csv(csv, sep=sep, dtype=str, on_bad_lines='skip').fillna('')
-    sd, cd = {}, {}
+    sd, cd, names = {}, {}, set()
     for _, r in df.iterrows():
         name = r[nc].strip()
-        if not name: continue
+        if not name:
+            continue
+        names.add(name.lower())
         syns = [s.strip() for s in r[sc].split(';')] if r[sc] else []
-        for s in syns + [name]:
+        for s in syns:
             sd[s.lower()] = name
         if cc and r[cc].strip():
             cd[name] = r[cc].strip()
-    return sd, cd
+    return names, sd, cd
 
-def fuzzy_lookup(v, mapping_dict):
-    v = v.lower()
-    if v in mapping_dict:
-        return mapping_dict[v]
-    for key in mapping_dict:
-        if key in v:
-            return mapping_dict[key]
-    return v
+def normalize_term(raw_value, names_set, syn_dict):
+    to_remove = [
+        r"\bcell line\b", r"\bcells?\b", r"\bspecimen\b", r"\bsample\b",
+        r"\btype\b", r"\btissue\b", r"\bderived from\b", r"\bunknown\b",
+        r"\ba\b", r"\ban\b", r"\bthe\b"
+    ]
+
+    def clean(val):
+        original = val.strip()
+        val = original.lower()
+        for expr in to_remove:
+            val = re.sub(expr, "", val, flags=re.IGNORECASE)
+        val = re.sub(r"^[\s\-\–\—\:\.\,;]+", "", val)  # début
+        val = re.sub(r"[\s\-\–\—\:\.\,;]+$", "", val)  # fin
+        return val.strip(), original.strip()
+
+    results = []
+    for part in re.split(r';|,', raw_value):
+        cleaned, original = clean(part)
+        if cleaned in names_set:
+            results.append(cleaned)
+        elif cleaned in syn_dict:
+            results.append(syn_dict[cleaned])
+        else:
+            results.append(original)
+    return results
 
 def fmt_codes(x):
     if not isinstance(x, str) or not x:
@@ -71,19 +84,14 @@ def infer_from_cell_line(cell_line, cell_df):
             output[f] = val.strip()
     return output
 
-def fuzzy_lookup_strict(value, mapping_dict):
-    value = value.lower().strip()
-    if not value:
-        return value
-    if value in mapping_dict:
-        return mapping_dict[value]
-    words = re.findall(r'\b[a-zA-Z]+\b', value)
-    for word in words:
-        if word in STOPWORDS:
-            continue
-        if word in mapping_dict:
-            return mapping_dict[word]
-    return value
+def clean_cell_line_name(raw):
+    if not isinstance(raw, str):
+        return ""
+    cleaned = raw.lower()
+    cleaned = re.sub(r'\bcells?\b', '', cleaned)
+    cleaned = re.sub(r'[\.\,\-\_\;\:\(\)\[\]\'\"]', ' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned.strip()
 
 ##########################################################################################
 #MAIN
@@ -91,13 +99,14 @@ df = pd.read_csv(CSV_INPUT, sep='\t', dtype=str, on_bad_lines='skip').fillna('')
 df.columns = df.columns.str.strip()
 assert "run_accession" in df.columns, "Colonne 'run_accession' manquante"
 
-disease_syn, disease_code = load_syn(DOT_FILE, "synonym", "name", "code_dot")
-organ_syn, organ_code = load_syn(UBERON_FILE, "synonym", "name", "code_uberon")
+disease_names, disease_syn, disease_code = load_syn(DOT_FILE, "synonym", "name", "code_dot")
+organ_names, organ_syn, organ_code = load_syn(UBERON_FILE, "synonym", "name", "code_uberon")
 cell_df = pd.read_csv(CELLOSAURUS, dtype=str, on_bad_lines='skip').fillna('')
 cell_syn = {}
 for _, r in cell_df.iterrows():
     name = r["name"].strip()
-    if not name: continue
+    if not name:
+        continue
     syns = [s.strip() for s in r["synonym"].split(";")] if r["synonym"] else []
     for s in syns + [name]:
         cell_syn[s.lower()] = name
@@ -119,7 +128,6 @@ augmented_data = []
 for _, row in df.iterrows():
     run = row["run_accession"]
 
-    #initial values prio
     entry = {}
     locked_fields = set()
     for f in fields:
@@ -134,7 +142,6 @@ for _, row in df.iterrows():
             if f != "run_accession" and f not in no_entropy_fields:
                 entry[f"confidence_entropy_{f}"] = "0"
 
-    #search in inference json
     json_file = os.path.join(INFERENCE_DIR, f"{run}.json")
     if os.path.exists(json_file):
         with open(json_file) as jf:
@@ -149,33 +156,40 @@ for _, row in df.iterrows():
                         entry[k] = val if val else "unknown"
                         entry[f"confidence_entropy_{k}"] = str(js.get("entropy", {}).get(k, "unknown"))
 
-    #search cellosaurus
     if "cell_line" not in locked_fields and entry["cell_line"].lower() not in INVALID_ENTRIES:
-        canonical = cell_syn.get(entry["cell_line"].lower(), entry["cell_line"])
-        entry["cell_line"] = canonical
-        if canonical in cell_df["name"].values:
-            inferred = infer_from_cell_line(canonical, cell_df)
-            for k, v in inferred.items():
-                if k not in locked_fields:
-                    if k == "uberon_code":
-                        entry["bs_uberon_code"] = v
-                        entry["confidence_entropy_bs_uberon_code"] = "0"
-                    else:
-                        entry[k] = v
-                        ent_k = f"confidence_entropy_{k}"
-                        if ent_k in entry:
-                            entry[ent_k] = "0"
+        cleaned = clean_cell_line_name(entry["cell_line"])
+        canonical = cell_syn.get(cleaned, None)
+        if canonical:
+            entry["cell_line"] = canonical
+            if canonical in cell_df["name"].values:
+                inferred = infer_from_cell_line(canonical, cell_df)
+                for k, v in inferred.items():
+                    if k not in locked_fields:
+                        if k == "uberon_code":
+                            entry["bs_uberon_code"] = v
+                            entry["confidence_entropy_bs_uberon_code"] = "0"
+                        else:
+                            entry[k] = v
+                            ent_k = f"confidence_entropy_{k}"
+                            if ent_k in entry:
+                                entry[ent_k] = "0"
+        else:
+            entry["cell_line"] = cleaned
 
-    #norm DOT/UBERON
     if "disease" not in locked_fields:
-        entry["disease"] = fuzzy_lookup_strict(entry["disease"], disease_syn)
-        entry["do_code"] = disease_code.get(entry["disease"], "") or "unknown"
+        norm = normalize_term(entry["disease"], disease_names, disease_syn)
+        entry["disease"] = "; ".join(norm)
+        entry["do_code"] = "; ".join([disease_code.get(x, "unknown") for x in norm])
+
     if "organ" not in locked_fields:
-        entry["organ"] = fuzzy_lookup_strict(entry["organ"], organ_syn)
-        entry["organ_uberon_code"] = organ_code.get(entry["organ"], "") or "unknown"
+        norm = normalize_term(entry["organ"], organ_names, organ_syn)
+        entry["organ"] = "; ".join(norm)
+        entry["organ_uberon_code"] = "; ".join([organ_code.get(x, "unknown") for x in norm])
+
     if "biopsy_site" not in locked_fields:
-        entry["biopsy_site"] = fuzzy_lookup_strict(entry["biopsy_site"], organ_syn)
-        entry["bs_uberon_code"] = organ_code.get(entry["biopsy_site"], entry["bs_uberon_code"]) or "unknown"
+        norm = normalize_term(entry["biopsy_site"], organ_names, organ_syn)
+        entry["biopsy_site"] = "; ".join(norm)
+        entry["bs_uberon_code"] = "; ".join([organ_code.get(x, "unknown") for x in norm])
 
     entry["bs_uberon_code"] = fmt_codes(entry["bs_uberon_code"])
     entry["organ_uberon_code"] = fmt_codes(entry["organ_uberon_code"])
@@ -197,6 +211,24 @@ for col in out_df.columns:
         continue
     out_df[col] = out_df[col].replace("not applicable", "unknown")
 
+##########################################################################################
+#SAVE
+#.csv
 out_df.to_csv(CSV_OUTPUT, index=False)
+#.xlsx
+excel_output = CSV_OUTPUT.replace('.csv', '.xlsx')
+out_df.to_excel(excel_output, index=False)
+#.parquet
+parquet_output = CSV_OUTPUT.replace('.csv', '.parquet')
+out_df.to_parquet(parquet_output, index=False)
+#.json
+json_output = CSV_OUTPUT.replace('.csv', '.json')
+out_df.to_json(json_output, orient='records', lines=True, force_ascii=False)
+#.tsv
+tsv_output = CSV_OUTPUT.replace('.csv', '.tsv')
+out_df.to_csv(tsv_output, sep='\t', index=False)
+#.feather
+feather_output = CSV_OUTPUT.replace('.csv', '.feather')
+out_df.reset_index(drop=True).to_feather(feather_output)
 
 open(FLAG_FILE, 'w').close()

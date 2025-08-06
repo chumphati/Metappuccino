@@ -2,6 +2,7 @@
 #IMPORT
 import csv
 import argparse
+import os
 
 ########################################################################################################################
 #PATHS
@@ -12,12 +13,12 @@ args = parser.parse_args()
 
 base_path = args.base_path
 rpl27a_path = args.input_logan_path
-metadata_sra_path = os.path.join(base_path, "metadata_sra.txt")
-output_path = os.path.join(base_path, "logan_comp.csv")
+metadata_sra_path = os.path.join(base_path, "cleaned_metadata_sra.txt")
+metadata_sra_out_path = os.path.join(base_path, "metadata_sra_with_logan.txt")
 
 # rpl27a_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/RPL27A_Seq3.csv"
 # metadata_sra_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_mistral7B_Q4M/ORIGINAL_METADATA/metadata_sra.txt"
-# output_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_mistral7B_Q4M/ORIGINAL_METADATA/logan_comp.csv"
+# metadata_sra_out_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_mistral7B_Q4M/ORIGINAL_METADATA/metadata_sra_with_logan.txt"
 
 ########################################################################################################################
 #MAIN
@@ -35,7 +36,7 @@ with open(metadata_sra_path, newline='') as tsvfile:
     reader = csv.DictReader(tsvfile, delimiter='\t')
     for row in reader:
         run_accession = row['run_accession']
-        print(run_accession)
+        # print(run_accession)
         if run_accession in sample_accs:
             info = []
             for k in row:
@@ -44,8 +45,21 @@ with open(metadata_sra_path, newline='') as tsvfile:
             runs.append(run_accession)
             infos.append('\t'.join(info))
 
-with open(output_path, 'w', newline='') as outfile:
-    writer = csv.writer(outfile)
-    writer.writerow(['run_accession', 'logan_info'])
-    for r, i in zip(runs, infos):
-        writer.writerow([r, i])
+logan_map = {}
+with open(rpl27a_path, newline='') as loganfile:
+    reader = csv.DictReader(loganfile)
+    for row in reader:
+        run_acc = row['sample_acc']
+        info = ';'.join([str(row[k]) for k in row if k != 'sample_acc'])
+        logan_map[run_acc] = info
+
+
+with open(metadata_sra_path, newline='') as infile, open(metadata_sra_out_path, 'w', newline='') as outfile:
+    reader = csv.DictReader(infile, delimiter='\t')
+    fieldnames = reader.fieldnames + ['logan_info']
+    writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter='\t')
+    writer.writeheader()
+    for row in reader:
+        run_acc = row['run_accession']
+        row['logan_info'] = logan_map.get(run_acc, '')
+        writer.writerow(row)

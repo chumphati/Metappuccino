@@ -42,6 +42,7 @@ For each category below:
 - If one value is impossible to infer, return "unknown", applicable for all categories
 
 BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL
 
 Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys.
 

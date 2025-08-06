@@ -16,7 +16,7 @@
 #SBATCH --mem=8G
 
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="results_riboprof"
+RES="results_tests"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Llama-3.1-70B-Instruct-Q4_K_M.gguf"
 
@@ -57,6 +57,7 @@ source "$ENV_REQUIREMENT/bin/activate"
 python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --metappuccino_dir "$METAPPUCCINO_DIR" \
     --res_dir "$RES" \
+    --tmp_keep \
     --env_requirement "$ENV_REQUIREMENT" \
     --model "$MODEL" \
     --getmetadata --fillmetadata --associateinformation --visualisation \

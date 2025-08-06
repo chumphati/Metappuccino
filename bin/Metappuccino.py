@@ -24,6 +24,8 @@ def main():
                         help="Path to the Metappuccino directory")
     parser.add_argument("--res_dir", type=str, required=True,
                         help="Path to the results directory")
+    parser.add_argument("--tmp_keep", action="store_true",
+                        help="Keep final temporary file. Default = deleted.")
     parser.add_argument("--env_requirement", type=str, required=True,
                         help="Path to the venv build with requirement.txt")
     parser.add_argument("--model", type=str, required=True,
@@ -48,6 +50,7 @@ def main():
     #scripts to execute and flags
     metappuccino_dir = args.metappuccino_dir
     res_dir = args.res_dir
+    tmp_keep = args.tmp_keep
     env_dir = args.env_requirement
     cuda_path = args.cuda
     model_path = args.model
@@ -63,6 +66,7 @@ def main():
     step5_flag = os.path.join(tmp_dir, "STEP3_2.flag")
     step6_flag = os.path.join(tmp_dir, "STEP4_1.flag")
     step7_flag = os.path.join(tmp_dir, "STEP4_2.flag")
+    step8_flag = os.path.join(tmp_dir, "STEP4_3.flag")
 
     install_requirements = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "install_requirements.sh")
     download_metadata = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "download_metadata.sh")
@@ -171,6 +175,14 @@ def main():
                                     visualisation], check=True)
             wait_for_flag_file(step7_flag)
             print("✔ Graphs build successfully!")
+
+        if not args.tmp_del:
+            tmp_dir = os.path.join(metappuccino_dir, res_dir, "tmp")
+            if os.path.isdir(tmp_dir):
+                shutil.rmtree(tmp_dir)
+                print(f"✔ Temporary files deleted successfully!")
+            else:
+                print(f"Temporary directory '{tmp_dir}' does not exist or was already deleted.")
 
     except subprocess.CalledProcessError as e:
         print(f"Error in subprocess: {e.cmd} returned non-zero exit status {e.returncode}", file=sys.stderr)
