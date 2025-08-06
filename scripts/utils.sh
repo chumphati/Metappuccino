@@ -34,3 +34,5 @@ tail -n +2 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_metappucci
 tail -n +2 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_metappuccino/FINE_TUNING/study_finetune_data.csv >> /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_metappuccino/FINE_TUNING/finetune_data.csv
 
 sed -E 's/[Rr][Nn][Aa]//g; s/[Hh][Uu][Mm][Aa][Nn]//g; s/\b[[:alnum:]_]*[Ss][Ee][Qq]\b//g' /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_train_withoutkeys.json > /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_train_cleaned.json
+
+tail -n +2 /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_train2_corrected.csv >> /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_train_corrected.csv

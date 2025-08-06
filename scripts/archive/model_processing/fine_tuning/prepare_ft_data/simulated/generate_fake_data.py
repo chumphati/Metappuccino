@@ -1,9 +1,6 @@
 import pandas as pd
 import random
 
-# ---------------------------
-# 1. Reference dictionaries
-# ---------------------------
 cell_types_by_organ_disease = {
     ('colon', 'colorectal cancer'): 'Colonocyte',
     ('lungs', 'lung cancer'): 'monocyte',
@@ -37,7 +34,6 @@ cell_types_context = {
     'B cell':       ['B cell', 'antibody-producing cell', 'humoral lymphocyte'],
     'astrocyte':    ['astrocyte', 'glial cell'],
     'epithelial':   ['epithelial cell', 'ductal epithelial'],
-    # Added mapping for primary tissue samples:
     'Primary tissue': ['primary tissue', 'fresh tissue sample', 'uncultured primary cells'],
 }
 
@@ -128,10 +124,6 @@ noisy_sentences = [
     "pH adjusted to 7.4 before sequencing.",
 ]
 
-# ---------------------------
-# 2. Context generator
-# ---------------------------
-
 def _ensure_present(context_parts, value, synonyms=None):
     if value in ('nan', '', None):
         return
@@ -147,13 +139,8 @@ def _ensure_present(context_parts, value, synonyms=None):
 
 
 def generate_context(columns, donor_label, explicit_cell_line):
-    """
-    Build context with at least one cue per non-nan column,
-    omitting cues for columns set to 'nan'.
-    """
     context_parts = []
 
-    # Insert only for non-nan columns
     if columns['library_source'] != 'nan':
         context_parts.append(random.choice(library_sources_context[columns['library_source']]))
     if columns['cell_type'] != 'nan':
@@ -170,13 +157,10 @@ def generate_context(columns, donor_label, explicit_cell_line):
         context_parts.append(random.choice(library_selections_context[columns['library_selection']]))
     if columns['treatment'] != 'no treatment':
         context_parts.append(columns['treatment'])
-    # donor info always
     context_parts.append(donor_label)
-    # explicit cell line if provided
     if explicit_cell_line:
         context_parts.append(explicit_cell_line)
 
-    # Ensure each non-nan column covered
     for key in ['cell_type', 'tissue_type', 'organ', 'disease', 'library_selection', 'library_source', 'treatment']:
         _ensure_present(context_parts, columns[key], {
             'cell_type': cell_types_context.get(columns[key], []),
@@ -184,21 +168,15 @@ def generate_context(columns, donor_label, explicit_cell_line):
             'library_source': library_sources_context.get(columns[key], [])
         }.get(key, None))
 
-    # Add random noise
     context_parts += random.sample(noisy_sentences, k=random.randint(2, 4))
     random.shuffle(context_parts)
 
-    # Mix separators
     separators = [', ', '; ', ' | ', ' ']
     context = ''
     for i, part in enumerate(context_parts):
         sep = random.choice(separators) if i < len(context_parts) - 1 else ''
         context += part + sep
     return context.strip()
-
-# ---------------------------
-# 3. Dataset generation
-# ---------------------------
 
 data = []
 for i in range(5000):
@@ -208,7 +186,6 @@ for i in range(5000):
     explicit_cell_line = default_cell_line if default_cell_line != 'Primary tissue' and random.random() < 0.5 else None
     cell_line = default_cell_line if explicit_cell_line else 'Primary tissue'
 
-    # Ensure cell_type matches cell_line when Primary tissue
     if cell_line == 'Primary tissue':
         cell_type = 'Primary tissue'
     else:
@@ -216,11 +193,9 @@ for i in range(5000):
 
     tissue_type = tissue_types_by_organ[organ]
 
-    # Randomized nan introduction
     library_selection = random.choice(list(library_selections_context.keys()) + ['nan', 'nan'])
     library_source = random.choice(list(library_sources_context.keys()) + ['nan', 'nan'])
 
-    # Treatment & phenotype
     if disease == 'normal':
         treatment = 'no treatment'
         host_phenotype = 'parental'
@@ -267,7 +242,6 @@ for i in range(5000):
         'donor_information': donor_info
     })
 
-# save
 df = pd.DataFrame(data)
 output_path = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetaMap/results/simulated_metadata.csv'
 df.to_csv(output_path, index=False)
