@@ -5,6 +5,8 @@ import re
 import glob
 import os
 import argparse
+import spacy
+from spacy.matcher import PhraseMatcher
 
 ########################################################################################################################
 #PATHS
@@ -27,6 +29,12 @@ FLAG_FILE = os.path.join(base_path, "STEP2_1.flag")
 # output_file_df = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/store/Metappuccino_store/results_ft_final_templates/output_metadata_curated.tsv"
 
 invalid_entries = {"unknown", "not applicable", "missing", "n/a", "na", "none", ""}
+
+download('en_core_sci_sm')
+download('en_core_web_sm')
+nlp_ner = spacy.load("en_core_sci_sm")
+nlp_match = spacy.load("en_core_web_sm")
+matcher = PhraseMatcher(nlp_match.vocab, attr="LOWER")
 
 ########################################################################################################################
 
@@ -63,6 +71,19 @@ def extract_src(ctx):
     if re.search(r"bulk(\s*rna)?(\s*-?\s*seq)?|conventional rna[\s\-]?seq|whole[\s\-]?transcriptome|wta|standard rna[\s\-]?seq|total rna[\s\-]?seq|rna[\s\-]?seq",ctx,re.IGNORECASE):return"bulk"
     return""
 
+def enrich_from_cell_df(record: dict, mapped: str):
+    if mapped in cell_df["name"].values:
+        row = cell_df[cell_df["name"] == mapped].iloc[0]
+        for f in [
+            "disease", "age", "sex", "ethnicity", "localization",
+            "biopsy_type", "biopsy_site", "uberon_code", "cell_type",
+        ]:
+            v = row.get(f, "")
+            if v and v.strip():
+                if f == "uberon_code":
+                    record["bs_uberon_code"] = v.strip()
+                else:
+                    record[f] = v.strip()
 
 disease_syn, disease_code = load_syn(
     dot_file,
@@ -92,25 +113,67 @@ cols = [
 
 stopwords = r"\b(?:for|to|and|in|with|via|on|of|the)\b"
 
+#create cell line dict
+#include names at least with one letter
+cell_options = set()
+for name in cell_syn.values():
+    if re.search(r"[A-Za-z]", name):
+        cell_options.add(name)
+for syn in cell_syn.keys():
+    if re.search(r"[A-Za-z]", syn):
+        cell_options.add(syn)
+patterns = [nlp_match.make_doc(opt) for opt in sorted(cell_options)]
+matcher.add("CELL_LINE_DICT", patterns)
+
+#regex fallback: letters+digits
+regex_pattern = re.compile(r"\b[A-Za-z]{2,}\d+\b")
+
 out = []
 for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     run = os.path.basename(path).split("_metadata.xml")[0]
     ctx = open(path, "r", encoding="utf-8", errors="ignore").read()
     o = {c: "" for c in cols}
     o["run_accession"] = run
+    found = False
+
+    #tag based extraction
     raw_cl = extract_tag(ctx, "cell_line")
     if raw_cl and raw_cl.lower() not in invalid_entries:
         mapped = cell_syn.get(raw_cl.lower(), raw_cl)
         o["cell_line"] = mapped
-        if mapped in cell_df["name"].values:
-            row = cell_df[cell_df["name"] == mapped].iloc[0]
-            for f in ["disease", "age", "sex", "ethnicity", "localization", "biopsy_type", "biopsy_site", "uberon_code", "cell_type"]:
-                v = row.get(f, "")
-                if v and v.strip():
-                    if f == "uberon_code":
-                        o["bs_uberon_code"] = v.strip()
-                    else:
-                        o[f] = v.strip()
+        enrich_from_cell_df(o, mapped)
+    else:
+        #cell line NER
+        found = False
+        for ent in nlp_ner(ctx).ents:
+            if ent.label_ == "CELL_LINE":
+                mapped = cell_syn.get(ent.text.lower().strip(), ent.text.strip())
+                o["cell_line"] = mapped
+                enrich_from_cell_df(o, mapped)
+                found = True
+                break
+
+        #PhraseMatcher with dict
+        if not found:
+            doc_m = nlp_match(ctx)
+            matches = matcher(doc_m)
+            if matches:
+                _, start, end = matches[0]
+                candidate = doc_m[start:end].text
+                mapped = cell_syn.get(candidate.lower(), candidate)
+                o["cell_line"] = mapped
+                enrich_from_cell_df(o, mapped)
+                found = True
+
+        #regex fallback
+        if not found:
+            for cand in set(regex_pattern.findall(ctx)):
+                if cand.lower() in cell_syn:
+                    mapped = cell_syn[cand.lower()]
+                    o["cell_line"] = mapped
+                    enrich_from_cell_df(o, mapped)
+                    break
+
     for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "localization", "biopsy_site", "biopsy_type", "organ", "disease"]:
         if o[tag]: continue
         val = extract_tag(ctx, tag)

@@ -4,7 +4,7 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
 
 #SBATCH --job-name=reload_context_llm_slurm
 #SBATCH --partition=alphafold
@@ -14,7 +14,7 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --mem=80G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
@@ -72,7 +72,7 @@ for (( i=0; i<$iteration_limit; i++ )); do
           --error_file_path $SCRATCH_DIR/reload_model_bio_info_bis.txt \
           --log_file_path $SCRATCH_DIR/llm_log_reload.txt \
           --flag_file $SCRATCH_DIR/STEP3_2.flag \
-          --initial_n_ctx 3000 \
+          --initial_n_ctx 3500 \
           --model "$SCRATCH_DIR/$(basename "$MODEL")"
     fi
 

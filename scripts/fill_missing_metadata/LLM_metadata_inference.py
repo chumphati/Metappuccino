@@ -17,7 +17,7 @@ parser.add_argument("--input_metadata_path", type=str, required=True)
 parser.add_argument("--error_file_path", type=str, required=True)
 parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
-parser.add_argument("--initial_n_ctx", type=int, default=3000)
+parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
 args = parser.parse_args()
 
@@ -136,12 +136,12 @@ definitions = {
     "library_selection": "one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'",
     "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context",
     "biopsy_site": "organ, body part or fluid WHERE TISSUE WAS SAMPLED",
-    "biopsy_type": "state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION",
+    "biopsy_type": "state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES",
     "cell_line": "exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text",
     "cell_type": "extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.",
     "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site)",
     "disease": "report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)",
-    "treatment": "treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, infer from the context",
+    "treatment": "treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, infer from the context. DON'T STATE the disease, get info just from treatment",
     "treatment_time": "time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)",
     "response": "treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to infer from context the stage of the disease after treatment if possible",
     "age": "sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)",
@@ -198,7 +198,7 @@ for idx, line in enumerate(metadata_lines):
             BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
             FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
             
-            Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys.
+            Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
             
             Here is the output:
             """
@@ -273,20 +273,27 @@ for idx, line in enumerate(metadata_lines):
     ordered_keys = list(parsed_json.keys())
     entropy_dict = {}
 
-    for i, key in enumerate(ordered_keys):
-        pat = category_token_patterns[key]
+    for key in ordered_keys:
+        pat = category_token_patterns.get(key)
+        if pat is None:
+            continue
+
         idx = find_subsequence(tokens, pat)
         start = idx + len(pat) if idx >= 0 else None
         if start is None:
             entropy_dict[key] = None
             continue
 
-        if i + 1 < len(ordered_keys):
-            next_pat = category_token_patterns[ordered_keys[i + 1]]
-            next_idx = find_subsequence(tokens, next_pat)
-            end = next_idx if next_idx >= 0 else len(tokens)
-        else:
-            end = len(tokens)
+        end = len(tokens)
+        next_idx = ordered_keys.index(key) + 1
+        while next_idx < len(ordered_keys):
+            next_pat = category_token_patterns.get(ordered_keys[next_idx])
+            if next_pat is not None:
+                ni = find_subsequence(tokens, next_pat)
+                if ni >= 0:
+                    end = ni
+                break
+            next_idx += 1
 
         if end <= start:
             entropy_dict[key] = None
@@ -301,8 +308,39 @@ for idx, line in enumerate(metadata_lines):
         print(f"   Tokens text: {segment_text!r}")
         print(f"   Logits     : {segment_logits}")
 
-        segment = logprobs[start:end]
-        entropy_dict[key] = calculate_entropy_optimized(segment)
+        segment_logits = logprobs[start:end]
+        entropy_dict[key] = calculate_entropy_optimized(segment_logits)
+
+    # for i, key in enumerate(ordered_keys):
+    #     pat = category_token_patterns[key]
+    #     idx = find_subsequence(tokens, pat)
+    #     start = idx + len(pat) if idx >= 0 else None
+    #     if start is None:
+    #         entropy_dict[key] = None
+    #         continue
+    #
+    #     if i + 1 < len(ordered_keys):
+    #         next_pat = category_token_patterns[ordered_keys[i + 1]]
+    #         next_idx = find_subsequence(tokens, next_pat)
+    #         end = next_idx if next_idx >= 0 else len(tokens)
+    #     else:
+    #         end = len(tokens)
+    #
+    #     if end <= start:
+    #         entropy_dict[key] = None
+    #         continue
+    #
+    #     segment_token_ids = tokens[start:end]
+    #     segment_text = ''.join(segment_token_ids)
+    #     segment_logits = logprobs[start:end]
+    #     print(f"-- Key «{key}»:")
+    #     print(f"    All tokens : \t{tokens}")
+    #     print(f"   Tokens ids : {segment_token_ids}")
+    #     print(f"   Tokens text: {segment_text!r}")
+    #     print(f"   Logits     : {segment_logits}")
+    #
+    #     segment = logprobs[start:end]
+    #     entropy_dict[key] = calculate_entropy_optimized(segment)
 
     output = {run: parsed_json, "entropy": entropy_dict}
     print("Final output:", flush=True)
