@@ -16,9 +16,9 @@
 #SBATCH --mem=8G
 
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="results_all_rpf"
+RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_rpl25a"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Llama-3.1-70B-Instruct-Q8_0.gguf"
+MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/models/Mistral7B-Instruct-ft16-t3.gguf"
 
 exec > "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.out" 2> "$METAPPUCCINO_DIR/$RES/logs/Metappuccino.err"
 

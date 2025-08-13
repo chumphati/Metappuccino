@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#PBS -N llm_inference_pbs
+#PBS -N llm_inference
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=2:mem=80gb
+#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
 
-#SBATCH --job-name=llm_inference_slurm
+#SBATCH --job-name=llm_inference
 #SBATCH --partition=alphafold
 #SBATCH --time=500:00:00
 #SBATCH --output=/dev/null
@@ -14,7 +14,7 @@
 #SBATCH --nodes=1
 #SBATCH --nodelist=node49
 #SBATCH --cpus-per-task=30
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 #SBATCH --mem=80G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
@@ -22,7 +22,7 @@ RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
 
-RESULTS_DIR=$METAPPUCCINO/$RES
+RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 
@@ -46,7 +46,7 @@ cleanup() {
 trap cleanup EXIT
 
 cp "$MODEL"                                 $SCRATCH_DIR/
-cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra_summarized.txt"          $SCRATCH_DIR/
+cp "$RES/ORIGINAL_METADATA/metadata_sra_summarized.txt"          $SCRATCH_DIR/
 cp "$TMP_DIR/database_metadata_curated.csv"      $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py"  $SCRATCH_DIR/
 

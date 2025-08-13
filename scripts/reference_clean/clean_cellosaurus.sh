@@ -1,7 +1,7 @@
 #!/bin/bash
 
 input_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/raw/cellosaurus.txt"
-output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/or_CELLOSAURUS_CLEAN.csv"
+output_file="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/CELLOSAURUS_HUMANS_CLEAN.csv"
 
 echo "id_cell,name,synonym,disease,age,sex,ethnicity,localization,biopsy_type,biopsy_site,uberon_code,cell_type,ct_code" > "$output_file"
 
@@ -10,7 +10,15 @@ while IFS= read -r line || [ -n "$line" ]; do
     if [[ $line == "//" ]]; then
         id_cell="" name="" synonyms="" disease="" age="" sex="" ethnicity="" localization="" biopsy_type="" biopsy_site="" uberon_code="" cell_type="" ct_code=""
         population_val=""
+        is_human=0
         while IFS= read -r block_line || [ -n "$block_line" ]; do
+            if [[ $block_line =~ ^OX[[:space:]]+NCBI_TaxID=([0-9]+) ]]; then
+                if [[ "${BASH_REMATCH[1]}" == "9606" ]]; then
+                    is_human=1
+                else
+                    is_human=0
+                fi
+            fi
             [[ -z $block_line ]] && continue
             if [[ $block_line =~ ^AC[[:space:]]+(CVCL_[A-Z0-9]+) ]]; then
                 id_cell="${BASH_REMATCH[1]}"
@@ -83,7 +91,9 @@ while IFS= read -r line || [ -n "$line" ]; do
         if [[ -z $ethnicity && -n $population_val ]]; then
             ethnicity="$population_val"
         fi
-        echo "$id_cell,$name,\"$synonyms\",\"$disease\",\"$age\",\"$sex\",\"$ethnicity\",\"$localization\",\"$biopsy_type\",\"$biopsy_site\",\"$uberon_code\",\"$cell_type\",\"$ct_code\"" >> "$output_file"
+        if [[ $is_human -eq 1 ]]; then
+            echo "$id_cell,$name,\"$synonyms\",\"$disease\",\"$age\",\"$sex\",\"$ethnicity\",\"$localization\",\"$biopsy_type\",\"$biopsy_site\",\"$uberon_code\",\"$cell_type\",\"$ct_code\"" >> "$output_file"
+        fi
         block=""
     else
         block+="$line"$'\n'

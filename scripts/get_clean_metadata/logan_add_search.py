@@ -16,18 +16,15 @@ rpl27a_path = args.input_logan_path
 metadata_sra_path = os.path.join(base_path, "cleaned_metadata_sra.txt")
 metadata_sra_out_path = os.path.join(base_path, "metadata_sra_with_logan.txt")
 
-# rpl27a_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/RPL27A_Seq3.csv"
-# metadata_sra_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_mistral7B_Q4M/ORIGINAL_METADATA/metadata_sra.txt"
-# metadata_sra_out_path = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_mistral7B_Q4M/ORIGINAL_METADATA/metadata_sra_with_logan.txt"
-
 ########################################################################################################################
 #MAIN
+print("Logan seach analysis", flush=True)
 with open(rpl27a_path, newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     sample_accs = []
     for row in reader:
-        # print(row['sample_acc'])
-        sample_accs.append(row['sample_acc'])
+        # print(row['ID'])
+        sample_accs.append(row['ID'])
 
 runs = []
 infos = []
@@ -49,8 +46,8 @@ logan_map = {}
 with open(rpl27a_path, newline='') as loganfile:
     reader = csv.DictReader(loganfile)
     for row in reader:
-        run_acc = row['sample_acc']
-        info = ';'.join([str(row[k]) for k in row if k != 'sample_acc'])
+        run_acc = row['ID']
+        info = ';'.join([str(row[k]) for k in row if k != 'ID'])
         logan_map[run_acc] = info
 
 

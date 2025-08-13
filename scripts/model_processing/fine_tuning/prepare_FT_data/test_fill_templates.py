@@ -505,7 +505,7 @@ SYNONYMS = {
     "unknown":                ["NA", "not available", "unspecified", "missing data", "unknown"],
     "metastasis": ["metastasis", "Metastasis", "MET", "secondary tumor"],
     "blood": ["blood", "Blood sample", "peripheral blood", "venous blood"],
-    "spatial": ["spatial", "spatial‑seq", "spatial RNA‑seq", "Visium"]
+    "spatial": ["spatial", "spatial-seq", "spatial RNA-seq", "Visium"]
 }
 
 SEM = {
@@ -737,70 +737,178 @@ CANCER_DISEASES = {
     "testicular germ cell tumor"
 }
 
-rows = []
-for template, _ in expanded:
-    phrase = template
-    record, chosen = {}, {}
+def pick_organ_from_disease(d):
+    return random.choice(SEM["disease"]["organ"].get(d, ORGAN))
+
+def pick_cell_type_from_organ(org):
+    cands = [ct for ct, orgs in SEM["cell_type"]["organ"].items() if org in orgs]
+    return random.choice(cands) if cands else random.choice(CELL_TYPE)
+
+def pick_cell_line_from_organ(org):
+    cands = [cl for cl, orgs in SEM["cell_line"]["organ"].items() if org in orgs]
+    return random.choice(cands) if cands else random.choice(CELL_LINE)
+
+def pick_seq_source_from_cell_type(ct):
+    ls = SEM["library_source"]["cell_type"]
+    if ct in ls["single-cell"] and ct not in ls["bulk"] and ct not in ls["spatial"]:
+        return "single-cell"
+    if ct in ls["bulk"] and ct not in ls["single-cell"] and ct not in ls["spatial"]:
+        return "bulk"
+    if ct in ls["spatial"] and ct not in ls["single-cell"] and ct not in ls["bulk"]:
+        return "spatial"
+    valids = []
+    for src in ["single-cell","bulk","spatial"]:
+        if ct in ls[src]:
+            valids.append(src)
+    return random.choice(valids) if valids else random.choice(SEQ_SRC)
+
+def pick_treatment_from_disease(d):
+    cands = [t for t, ds in SEM["treatment"]["disease"].items() if d in ds]
+    return random.choice(cands) if cands else random.choice(TREATMENT)
+
+def pick_timing_and_response(tr):
+    tt = random.choice(SEM["treatment_time"]["treatment"].get(tr, TREAT_TIME))
+    rr = random.choice(SEM["response"]["treatment"].get(tr, RESPONSE))
+    return tt, rr
+
+def pick_biopsy_site(org):
+    sites = [site for site, organs in SEM.get("biopsy_site", {}).get("organ", {}).items() if org in organs]
+    return random.choice(sites) if sites else random.choice(BIOPSY_SITE)
+
+def decide_biopsy_type(site, organ, disease, is_cancer):
+    if site == "blood":
+        return "blood"
+    if is_cancer == "true":
+        return "metastasis" if site != organ else "primary"
+    return "primary"
+
+def normalize_is_cancer(d):
+    return "true" if d in CANCER_DISEASES else "false"
+
+def pick_sex(organ, disease):
+    org_opts = SEM["sex"]["organ"].get(organ, [])
+    dis_opts = SEM["sex"]["disease"].get(disease, [])
+    intr = list(set(org_opts) & set(dis_opts))
+    if intr:
+        return random.choice(intr)
+    if org_opts:
+        return random.choice(org_opts)
+    if dis_opts:
+        return random.choice(dis_opts)
+    return random.choice(SEX)
+
+def validate(rec):
+    if rec["organ"] not in SEM["disease"]["organ"].get(rec["disease"], []):
+        return False
+    if rec["organ"] not in SEM["cell_type"]["organ"].get(rec["cell_type"], []):
+        return False
+    if rec["organ"] not in SEM["cell_line"]["organ"].get(rec["cell_line"], []):
+        return False
+    src = rec["sequencing_source"]
+    if rec["cell_type"] not in SEM["library_source"]["cell_type"].get(src, []):
+        return False
+    if rec["disease"] not in SEM["treatment"]["disease"].get(rec["treatment"], []):
+        return False
+    if rec["treatment_time"] not in SEM["treatment_time"]["treatment"].get(rec["treatment"], TREAT_TIME):
+        return False
+    if rec["response"] not in SEM["response"]["treatment"].get(rec["treatment"], RESPONSE):
+        return False
+    sites_valids = [site for site, organs in SEM.get("biopsy_site", {}).get("organ", {}).items()
+                    if rec["organ"] in organs]
+    if rec["biopsy_site"] not in (sites_valids or BIOPSY_SITE):
+        return False
+    if rec["biopsy_site"] == "blood" and rec["biopsy_type"] != "blood":
+        return False
+    if rec["biopsy_site"] != "blood" and rec["biopsy_type"] == "blood":
+        return False
+    if rec["is_cancer"] != normalize_is_cancer(rec["disease"]):
+        return False
+    expected_org = SEM["sex"]["organ"].get(rec["organ"], [])
+    expected_dis = SEM["sex"]["disease"].get(rec["disease"], [])
+    if expected_org and rec["sex"] not in expected_org:
+        return False
+    if expected_dis and rec["sex"] not in expected_dis:
+        return False
+    return True
+
+def phrase_with_context(phrase, rec):
     for cat in CATEGORIES:
-        if cat == 'organ':
-            ct = chosen.get('cell_type')
-            cl = chosen.get('cell_line')
-            opts_ct = SEM['cell_type']['organ'].get(ct, [])
-            opts_cl = SEM['cell_line']['organ'].get(cl, [])
-            candidates = list(set(opts_ct) & set(opts_cl)) or opts_ct or opts_cl or ORGAN
-            raw = random.choice(candidates)
-        elif cat == 'cell_type':
-            organ = chosen.get('organ')
-            valid_ct = [ct for ct, organs in SEM['cell_type']['organ'].items() if organ in organs]
-            raw = random.choice(valid_ct) if valid_ct else random.choice(CELL_TYPE)
-        elif cat == 'disease':
-            org = chosen.get('organ')
-            valid = [d for d in DISEASE if org in SEM['disease']['organ'].get(d, [])]
-            raw = random.choice(valid) if valid else random.choice(DISEASE)
-        elif cat == 'treatment_time':
-            tr = chosen.get('treatment')
-            raw = random.choice(SEM['treatment_time']['treatment'].get(tr, TREAT_TIME))
-        elif cat == 'response':
-            tr = chosen.get('treatment')
-            raw = random.choice(SEM['response']['treatment'].get(tr, RESPONSE))
-        elif cat == 'biopsy_site':
-            org = chosen.get('organ')
-            valid_sites = [site for site, organs in SEM.get("biopsy_site", {}).get("organ", {}).items() if
-                           org in organs]
-            raw = random.choice(valid_sites) if valid_sites else random.choice(BIOPSY_SITE)
-        elif cat == 'is_cancer':
-            raw = 'true' if chosen.get('disease') in CANCER_DISEASES else 'false'
-        elif cat == 'treatment':
-            disease = chosen.get('disease')
-            valid_treatments = [t for t, diseases in SEM['treatment']['disease'].items() if disease in diseases]
-            raw = random.choice(valid_treatments) if valid_treatments else "no treatment"
-        elif cat == 'sex':
-            org = chosen.get('organ')
-            disease = chosen.get('disease')
-            opts_from_org = SEM["sex"]["organ"].get(org, [])
-            opts_from_disease = SEM["sex"]["disease"].get(disease, [])
-            candidates = list(set(opts_from_org) & set(opts_from_disease)) or opts_from_org or opts_from_disease or SEX
-            raw = random.choice(candidates)
+        if cat == "is_cancer":
+            continue
+        val = rec[cat]
+        alt = random.choice(SYNONYMS.get(val, [val])) if random.random() < 0.8 else val
+        if cat in CTX_WRAP:
+            alt = random.choice(CTX_WRAP[cat]).format(val=alt)
+        phrase = inject_value(phrase, alt)
+    return phrase
 
-        else:
-            raw = random.choice(CATEGORY_LISTS[cat])
+rows = []
+target_n = 5000
+attempts_cap = 200000
+attempts = 0
 
-        chosen[cat] = raw
+for template, _ in expanded:
+    if len(rows) >= target_n:
+        break
 
-        if cat != 'is_cancer':
-            alt_options = SYNONYMS.get(raw, [raw])
-            alt = random.choice(alt_options) if random.random() < 0.8 else raw
-            if cat in CTX_WRAP:
-                wrapper = random.choice(CTX_WRAP[cat])
-                alt_phrase = wrapper.format(val=alt)
-            else:
-                alt_phrase = alt
+while len(rows) < target_n and attempts < attempts_cap:
+    attempts += 1
+    template, _ = random.choice(expanded)
+    phrase = template
+    anchor = random.random()
+    if anchor < 0.4:
+        disease = random.choice(DISEASE)
+        organ = pick_organ_from_disease(disease)
+    elif anchor < 0.8:
+        organ = random.choice(ORGAN)
+        disease = random.choice([d for d in DISEASE if organ in SEM["disease"]["organ"].get(d, [])] or DISEASE)
+    else:
+        cell_line = random.choice(CELL_LINE)
+        organ = random.choice(SEM["cell_line"]["organ"].get(cell_line, ORGAN))
+        disease = random.choice([d for d in DISEASE if organ in SEM["disease"]["organ"].get(d, [])] or DISEASE)
 
-            phrase = inject_value(phrase, alt_phrase)
+    cell_type = pick_cell_type_from_organ(organ)
+    if anchor < 0.8:
+        cell_line = pick_cell_line_from_organ(organ)
 
-        record[cat] = raw
+    sequencing_source = pick_seq_source_from_cell_type(cell_type)
+    library_selection = random.choice(LIB_SEL)
 
-    record['phrase'] = phrase
+    treatment = pick_treatment_from_disease(disease)
+    treatment_time, response = pick_timing_and_response(treatment)
+
+    biopsy_site = pick_biopsy_site(organ)
+    is_cancer = normalize_is_cancer(disease)
+    biopsy_type = decide_biopsy_type(biopsy_site, organ, disease, is_cancer)
+
+    age = random.choice(AGE)
+    sex = pick_sex(organ, disease)
+    ethnicity = random.choice(ETHNICITY)
+    localization = random.choice(LOCALIZATION)
+
+    record = {
+        "library_selection": library_selection,
+        "sequencing_source": sequencing_source,
+        "organ": organ,
+        "biopsy_site": biopsy_site,
+        "biopsy_type": biopsy_type,
+        "cell_line": cell_line,
+        "cell_type": cell_type,
+        "disease": disease,
+        "treatment": treatment,
+        "treatment_time": treatment_time,
+        "response": response,
+        "age": age,
+        "sex": sex,
+        "ethnicity": ethnicity,
+        "localization": localization,
+        "is_cancer": is_cancer
+    }
+
+    if not validate(record):
+        continue
+
+    record["phrase"] = phrase_with_context(phrase, record)
     rows.append(record)
 
-pd.DataFrame(rows).to_csv(OUTPUT_CSV, index=False)
+pd.DataFrame(rows, columns=CATEGORIES+["phrase"]).to_csv(OUTPUT_CSV, index=False)

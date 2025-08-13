@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#PBS -N extract_preprocess_pbs
+#PBS -N extract_preprocess
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=10:mem=16gb
 
-#SBATCH --job-name=extract_preprocess_slurm
+#SBATCH --job-name=extract_preprocess
 #SBATCH --partition=common
 #SBATCH --time=12:00:00
 #SBATCH --output=/dev/null
@@ -20,8 +20,8 @@ RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 LOGAN_PATH=${4:-$LOGAN_PATH}
 
-LOG_DIR=$METAPPUCCINO/$RES/logs
-TMP_DIR=$METAPPUCCINO/$RES/tmp
+LOG_DIR=$RES/logs
+TMP_DIR=$RES/tmp
 SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 
 mkdir -p "$SCRATCH_DIR"
@@ -31,6 +31,7 @@ exec > "$LOG_DIR/extract_preprocess.out" 2> "$LOG_DIR/extract_preprocess.err"
 
 cleanup() {
     cp "$SCRATCH_DIR/database_metadata_curated.csv" "$TMP_DIR/" 2>/dev/null || echo "database_metadata_curated file not found, skipping."
+    cp "$SCRATCH_DIR/ambiguous_cell_lines.csv" "$TMP_DIR/" 2>/dev/null || echo "ambiguous_cell_lines file not found, skipping."
     cp "$SCRATCH_DIR/cleaned_metadata_sra.txt" "$TMP_DIR/" 2>/dev/null || echo "logan_comp file not found, skipping."
     cp "$SCRATCH_DIR/STEP2_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
@@ -41,9 +42,9 @@ trap cleanup EXIT
 cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp -r "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata" $SCRATCH_DIR/
-cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
-cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/cleaned_metadata_sra.txt" $SCRATCH_DIR/
+cp -r "$RES/ORIGINAL_METADATA/metadata" $SCRATCH_DIR/
+cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
+cp "$TMP_DIR/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/fetch_existing_cat.py" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/logan_add_search.py" $SCRATCH_DIR/
 
@@ -52,6 +53,7 @@ source $ENV_REQUIREMENT/bin/activate
 echo "Start $(date)"
 
 python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR"
+
 if [[ -n "$LOGAN_PATH" ]]; then
     python3 -u logan_add_search.py --base_path "$SCRATCH_DIR" --input_logan_path $LOGAN_PATH
     mv "$SCRATCH_DIR/metadata_sra_with_logan.txt" "$SCRATCH_DIR/cleaned_metadata_sra.txt"

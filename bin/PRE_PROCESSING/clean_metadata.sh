@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#PBS -N clean_metadata_pbs
+#PBS -N clean_metadata
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1:ncpus=8:mem=16gb
 
-#SBATCH --job-name=clean_metadata_slurm
+#SBATCH --job-name=clean_metadata
 #SBATCH --partition=common
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
@@ -17,8 +17,9 @@
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
-LOG_DIR=$METAPPUCCINO/$RES/logs
-TMP_DIR=$METAPPUCCINO/$RES/tmp
+
+LOG_DIR=$RES/logs
+TMP_DIR=$RES/tmp
 
 SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 mkdir -p $SCRATCH_DIR
@@ -38,7 +39,7 @@ trap cleanup EXIT
 echo "Begin date: $(date)"
 
 #necessary files
-cp "$METAPPUCCINO/$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
+cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
 
 awk -F'\t' '{
   for (i=NF-1; i<=NF; i++) {

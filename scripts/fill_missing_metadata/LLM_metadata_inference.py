@@ -154,7 +154,19 @@ definitions = {
 skipped_runs = []
 
 for idx, line in enumerate(metadata_lines):
-    run, summary = line.strip().split("\t", 1)
+    if not line.strip():
+        write_reload_file(error_file_path, error_file_header, [f"LINE_{idx}", "empty line"])
+        skipped_runs.append(f"LINE_{idx}")
+        continue
+
+    parts = line.rstrip("\n").split("\t", 1)
+    if len(parts) < 2 or not parts[0].strip():
+        bad_run = parts[0].strip() if parts and parts[0].strip() else f"LINE_{idx}"
+        write_reload_file(error_file_path, error_file_header, [bad_run, "malformed: missing tab/summary"])
+        skipped_runs.append(bad_run)
+        continue
+
+    run, summary = parts[0].strip(), parts[1].strip()
     print(run)
 
     if run not in raw_data:
@@ -192,7 +204,7 @@ for idx, line in enumerate(metadata_lines):
             For each category below:
             - Infer from the summary if possible
             - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
-            - If one value is impossible to infer, return "unknown", applicable for all categories
+            - If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
             {extra_metadata_block} 
             
             BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
@@ -229,43 +241,43 @@ for idx, line in enumerate(metadata_lines):
         skipped_runs.append(run)
         continue
 
-    # category_token_patterns = {
-    #     "library_selection": ['library', '_', 'selection', '":', ' "'],
-    #     "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
-    #     "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
-    #     "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
-    #     "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
-    #     "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
-    #     "organ": [' "', 'organ', '":', ' "'],
-    #     "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
-    #     "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
-    #     "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
-    #     "response": [' "', 'response', '":', ' "'],
-    #     "age": [' "', 'age', '":', ' "'],
-    #     "sex": [' "', 'sex', '":', ' "'],
-    #     "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
-    #     "localization": [' "', 'local', 'ization', '":', ' "'],
-    #     "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
-    # }
-
     category_token_patterns = {
-        "library_selection": [' {"', 'library', '_selection', '":', ' "'],
-        "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
-        "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
-        "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
-        "cell_line": [' "', 'cell', '_line', '":', ' "'],
-        "cell_type": [' "', 'cell', '_type', '":', ' "'],
+        "library_selection": ['library', '_', 'selection', '":', ' "'],
+        "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
+        "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
+        "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
+        "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
+        "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
         "organ": [' "', 'organ', '":', ' "'],
-        "disease": [' "', 'd', 'isease', '":', ' "'],
-        "treatment": [' "', 't', 'reatment', '":', ' "'],
-        "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
+        "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
+        "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
+        "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
         "response": [' "', 'response', '":', ' "'],
         "age": [' "', 'age', '":', ' "'],
         "sex": [' "', 'sex', '":', ' "'],
-        "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
+        "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
         "localization": [' "', 'local', 'ization', '":', ' "'],
-        "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
+        "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
     }
+
+    # category_token_patterns = {
+    #     "library_selection": [' {"', 'library', '_selection', '":', ' "'],
+    #     "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
+    #     "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
+    #     "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
+    #     "cell_line": [' "', 'cell', '_line', '":', ' "'],
+    #     "cell_type": [' "', 'cell', '_type', '":', ' "'],
+    #     "organ": [' "', 'organ', '":', ' "'],
+    #     "disease": [' "', 'd', 'isease', '":', ' "'],
+    #     "treatment": [' "', 't', 'reatment', '":', ' "'],
+    #     "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
+    #     "response": [' "', 'response', '":', ' "'],
+    #     "age": [' "', 'age', '":', ' "'],
+    #     "sex": [' "', 'sex', '":', ' "'],
+    #     "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
+    #     "localization": [' "', 'local', 'ization', '":', ' "'],
+    #     "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
+    # }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]
     logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
