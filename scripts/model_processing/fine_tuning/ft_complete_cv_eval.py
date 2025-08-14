@@ -60,7 +60,7 @@ tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/result
 # parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
-threshold = 0.4
+threshold = 0.36
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -91,7 +91,7 @@ print("Config LoRA", flush=True)
 #FUNCTIONS
 
 IS_TRAINING = False
-LABEL_DROPOUT_PROB = 0.05
+LABEL_DROPOUT_PROB = 0.0
 
 def _normalize_text(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", str(s).lower())).strip()
@@ -310,38 +310,46 @@ def _parse_duration_days(s: str):
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
     print("List categories: ", categories, flush=True)
+    NA_EQUIV = {"not applicable", "not_applicable"}
+
     for cat in categories:
         accs = []
         for pred, ref in zip(pred_texts, ref_texts):
             print("--------------------")
             print("raw pred: ", pred, flush=True)
             print("raw ref: ", ref, flush=True)
+
             p_dict = parse_pred_block(pred)
             r_dict = json.loads(ref)
+
             print("--------------------")
             print("p_dict: ", p_dict, flush=True)
             print("r_dict: ", r_dict, flush=True)
+
             p_val = norm_val(p_dict.get(cat, ""))
             r_val = norm_val(r_dict.get(cat, ""))
+
             print("--------------------")
             print("category: ", cat, flush=True)
             print("pred val: ", p_val, flush=True)
             print("ref val: ", r_val, flush=True)
 
-            if r_val.lower() == 'nan':
-                acc = (p_val.lower() == 'nan')
-                accs.append(acc)
+            if str(r_val).lower() == 'nan':
+                accs.append(str(p_val).lower() == 'nan')
                 continue
+
             if not r_val:
                 continue
-            if not p_val or p_val.lower() == 'nan':
-                acc = False
-            elif cat in normal_accuracy_categories:
-                acc = normalize(p_val) == normalize(r_val)
-            elif cat in {"cell_line", "treatment_time", "response"} and normalize(r_val) == "unknown" and normalize(p_val) == "not applicable":
+            if (
+                cat in {"cell_line", "treatment_time", "response"}
+                and normalize(r_val) == "unknown"
+                and normalize(p_val) in NA_EQUIV
+            ):
                 accs.append(True)
                 print("match (NA vs unknown override): True", flush=True)
                 continue
+            if not p_val or str(p_val).lower() == 'nan':
+                acc = False
             elif cat == "treatment_time":
                 d_ref = _parse_duration_days(r_val)
                 d_pred = _parse_duration_days(p_val)
@@ -353,6 +361,9 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                     emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                     cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
                     acc = cos > threshold
+
+            elif cat in normal_accuracy_categories:
+                acc = (normalize(p_val) == normalize(r_val))
             else:
                 emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
                 emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
@@ -367,8 +378,12 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                 print(f"Predicted: {p_val}")
                 print(f"Expected: {r_val}")
 
-        metrics[f"accuracy_{cat.lower()}"] = sum(accs) / len(accs) if accs else 0.0
-    metrics["accuracy_overall"] = sum(metrics[f"accuracy_{cat.lower()}"] for cat in categories) / len(categories) if categories else 0.0
+        metrics[f"accuracy_{cat.lower()}"] = (sum(accs) / len(accs)) if accs else 0.0
+
+    metrics["accuracy_overall"] = (
+        sum(metrics[f"accuracy_{c.lower()}"] for c in categories) / len(categories)
+        if categories else 0.0
+    )
     return metrics
 
 def compute_metrics(eval_preds: EvalPrediction):
@@ -462,17 +477,56 @@ def _sanitize_value(text: str) -> str:
     return text
 
 QUOTE_CHARS = ['"', '”', '“']
-BAD_VALUE_CHARS_NO_QUOTE = [',', '}', '\n', '`', ':']
+BAD_VALUE_CHARS_NO_QUOTE = [',', '}', '\n', '`', ':', ';', '(', ')', '[', ']']
 _BAD_NOQUOTE_IDS = None
 _QUOTE_ANY_IDS = None
+_ALWAYS_BANNED_IDS = None
+_CAT_BANNED_IDS = {}
+_CAT_MAX_TOKENS = {
+    "sex": 2,
+    "is_cancer": 2,
+    "biopsy_type": 2,
+    "library_selection": 3,
+    "sequencing_source": 3,
+    "response": 3,
+    "age": 6,
+    "treatment_time": 6,
+    "organ": 4,
+    "biopsy_site": 4,
+    "cell_type": 6,
+    "disease": 6,
+    "ethnicity": 4,
+    "localization": 4,
+    "cell_line": 8,
+    "treatment": 8,
+}
+CURRENT_CATEGORY = None
 
 def _ensure_vocab_masks():
-    global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS
-    if _BAD_NOQUOTE_IDS is not None:
+    global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS, _ALWAYS_BANNED_IDS, _CAT_BANNED_IDS
+    if _BAD_NOQUOTE_IDS is not None and _ALWAYS_BANNED_IDS is not None:
         return
     bad_noquote = set()
     quote_any = set()
+    always_banned = set()
+    cat_banned = {k: set() for k in _CAT_MAX_TOKENS.keys()}
+
     vocab_size = getattr(tokenizer, 'vocab_size', None) or len(tokenizer)
+    acc_substrings = [
+        "SRS", "SRR", "SRX", "SRP", "SAMN", "SAMD", "SAME",
+        "GSM", "GSE", "GPL",
+        "PRJ", "ERP", "DRR", "ERR", "E-",
+    ]
+
+    def piece_has_accession(piece: str) -> bool:
+        if any(s in piece for s in acc_substrings):
+            return True
+        if re.search(r'[A-Z]{2,}\d{2,}', piece):
+            return True
+        if re.search(r'\d{5,}', piece):
+            return True
+        return False
+
     for tid in range(vocab_size):
         piece = tokenizer.decode([tid], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         if not piece:
@@ -481,43 +535,73 @@ def _ensure_vocab_masks():
             quote_any.add(tid)
         if any(ch in piece for ch in BAD_VALUE_CHARS_NO_QUOTE):
             bad_noquote.add(tid)
+
+        if piece_has_accession(piece):
+            always_banned.add(tid)
+
+        if re.search(r'\d', piece):
+            for k in ["sex","is_cancer","biopsy_type","library_selection","sequencing_source",
+                      "response","organ","biopsy_site","cell_type","disease","ethnicity","localization"]:
+                cat_banned[k].add(tid)
+
     _BAD_NOQUOTE_IDS = bad_noquote
     _QUOTE_ANY_IDS = quote_any
+    _ALWAYS_BANNED_IDS = always_banned
+    _CAT_BANNED_IDS = cat_banned
 
 @torch.no_grad()
-def gen_until_quote(model, tokenizer, input_ids, attention_mask, past, stop_token_ids, max_value_tokens=64, no_repeat_ngram_size=3):
+def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, no_repeat_ngram_size=3):
     _ensure_vocab_masks()
-    device = input_ids.device
+    device = context_ids.device
+    input_ids = context_ids
     gen_buf = []
     has_content = False
-    for _ in range(max_value_tokens):
-        out = model(input_ids=input_ids[:, -1:], attention_mask=attention_mask[:, -1:], past_key_values=past, use_cache=True)
+
+    cat = CURRENT_CATEGORY if CURRENT_CATEGORY is not None else ""
+    cat_max = _CAT_MAX_TOKENS.get(cat, max_value_tokens)
+    steps_limit = min(max_value_tokens, cat_max)
+
+    for _ in range(steps_limit):
+        out = model(
+            input_ids=input_ids,
+            attention_mask=torch.ones_like(input_ids, device=device),
+            use_cache=False
+        )
         logits = out.logits[:, -1, :]
+
         banned = set(_BAD_NOQUOTE_IDS)
         if not has_content:
             banned |= _QUOTE_ANY_IDS
+        banned |= _ALWAYS_BANNED_IDS
         banned |= _no_repeat_ngram_bans(gen_buf, no_repeat_ngram_size, logits.size(-1))
+        if cat in _CAT_BANNED_IDS:
+            banned |= _CAT_BANNED_IDS[cat]
         if banned:
             logits[:, list(banned)] = -float("inf")
+
+        if model.config.eos_token_id is not None:
+            logits[:, model.config.eos_token_id] = -float("inf")
+
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
         piece = tokenizer.decode([tid], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        if any(q in piece for q in QUOTE_CHARS):
-            past = out.past_key_values
+
+        if any(q in piece for q in QUOTE_CHARS) or any(ch in piece for ch in BAD_VALUE_CHARS_NO_QUOTE):
             break
-        if any(ch in piece for ch in BAD_VALUE_CHARS_NO_QUOTE):
-            past = out.past_key_values
+        if re.search(r'(SRS|SRR|SRX|SRP|SAMN|SAMD|SAME|GSM|GSE|GPL|PRJ|ERP|DRR|ERR|E-)[A-Za-z0-9_-]*', piece):
             break
+        if re.search(r'[A-Z]{2,}\d{2,}', piece):
+            break
+
         input_ids = torch.cat([input_ids, next_id], dim=1)
-        attention_mask = torch.ones_like(input_ids, device=device)
-        past = out.past_key_values
         gen_buf.append(tid)
         if any(c.isalnum() for c in piece):
             has_content = True
+
     value = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-    value = re.split(r'["\n`,}:]', value)[0]
-    value = re.sub(r'\s+', ' ', value).strip()
-    return value, input_ids, attention_mask, past
+    value = re.split(r'[";\n`,}:()\[\]]', value)[0]
+    value = re.sub(r'\s+', ' ', value).strip(' ,;.-').strip()
+    return value, input_ids
 
 def quote_token_id_set():
     s = set()
@@ -559,7 +643,7 @@ class MyTrainer(Trainer):
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
-        self.guard_lambda = 0.05
+        self.guard_lambda = 0.01
         self.guard_margin = 0.01
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
@@ -567,7 +651,7 @@ class MyTrainer(Trainer):
         self.accept_revert_tolerance = 0.000
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
-        self.max_cats_per_step = min(3, len(self.categories))
+        self.max_cats_per_step = min(5, len(self.categories))
 
     def log(self, logs):
         return super().log(logs)
@@ -615,7 +699,7 @@ class MyTrainer(Trainer):
         logits_shift = logits_shared[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
         loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 0.25 * loss_micro
+        total_loss = total_loss + 1.0 * loss_micro
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
@@ -677,95 +761,86 @@ class MyTrainer(Trainer):
 
     def _eval_per_category_generate(self, df_eval):
         device = self.model.device
-        stop_ids = stop_token_id_set()
+        _ = stop_token_id_set()
         comma_ids = tok_ids('", ')
         if len(comma_ids) == 0:
             comma_ids = tok_ids('",')
         brace_close_ids = tok_ids('"}')
         if len(brace_close_ids) == 0:
             brace_close_ids = tok_ids('" }')
-        max_value_tokens = 64
+
         preds_json_str, refs_json_str = [], []
         for _, row in df_eval.iterrows():
             prompt = row['prompt'].strip()
             expected = row['output'].strip()
             ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
-            input_ids = ids["input_ids"]; attention_mask = ids["attention_mask"]
-            with torch.no_grad():
-                out0 = self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                past = out0.past_key_values
+            context_ids = ids["input_ids"]
             ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
-            ks_t = torch.tensor([ks], device=device)
-            input_ids = torch.cat([input_ids, ks_t], dim=1)
-            attention_mask = torch.ones_like(input_ids, device=device)
-            past = prime_tokens(self.model, ks_t, past)
+            context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
             merged = {}
             for ci, cat in enumerate(self.categories):
-                prefix = f'"{cat}": "'
-                key_ids = tok_ids(prefix) or tok_ids(f'"{cat}": "')
-                kid = torch.tensor([key_ids], device=device)
-                input_ids = torch.cat([input_ids, kid], dim=1)
-                attention_mask = torch.ones_like(input_ids, device=device)
+                prefix_ids = tok_ids(f'"{cat}": "')
+                context_ids = torch.cat([context_ids, torch.tensor([prefix_ids], device=device)], dim=1)
                 set_active_adapter(self.model, f"cat_{cat}")
-                with torch.no_grad():
-                    out_cache = self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                    past = out_cache.past_key_values
-                text_val, input_ids, attention_mask, past = gen_until_quote(
-                    self.model, tokenizer, input_ids, attention_mask, past, stop_ids,
-                    max_value_tokens=max_value_tokens
+                global CURRENT_CATEGORY
+                CURRENT_CATEGORY = cat
+                text_val, context_ids = gen_until_quote_fullctx(
+                    self.model, tokenizer, context_ids, max_value_tokens=64
                 )
                 merged[cat] = text_val
+
                 if ci < len(self.categories) - 1:
-                    cid = torch.tensor([comma_ids], device=device)
-                    input_ids = torch.cat([input_ids, cid], dim=1)
-                    attention_mask = torch.ones_like(input_ids, device=device)
-                    with torch.no_grad():
-                        out_cache = self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                        past = out_cache.past_key_values
+                    context_ids = torch.cat([context_ids, torch.tensor([comma_ids], device=device)], dim=1)
                 else:
-                    bid = torch.tensor([brace_close_ids], device=device)
-                    input_ids = torch.cat([input_ids, bid], dim=1)
-                    attention_mask = torch.ones_like(input_ids, device=device)
-                    with torch.no_grad():
-                        out_cache = self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                        past = out_cache.past_key_values
+                    context_ids = torch.cat([context_ids, torch.tensor([brace_close_ids], device=device)], dim=1)
+
             preds_json_str.append(json.dumps(merged, ensure_ascii=False))
             refs_json_str.append(expected)
+
         return preds_json_str, refs_json_str
 
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval", **kwargs):
-        eval_dataloader = self.get_eval_dataloader(eval_dataset)
-        total_loss, count = 0.0, 0
-        for inputs in eval_dataloader:
-            inputs = self._prepare_inputs(inputs)
-            with torch.no_grad():
-                loss, outputs = self.compute_loss(self.model, inputs, return_outputs=True)
-            total_loss += outputs.loss_total.item()
-            count += 1
-        avg_total = total_loss / count if count else 0.0
-        results = {
-            f"{metric_key_prefix}_loss": avg_total
-        }
-        self.log(results)
-        preds, refs = self._eval_per_category_generate(df_val_final)
-        cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
-        for k, v in cat_metrics.items():
-            key = f"{metric_key_prefix}_{k}"
-            self.log({key: v})
-            results[key] = v
-        for cat in self.categories:
-            acc_key = f"accuracy_{cat.lower()}"
-            cur = cat_metrics.get(acc_key, 0.0)
-            best = self.best_cat_acc.get(cat, -1.0)
-            if cur > best + self.accept_revert_tolerance:
-                self.best_cat_acc[cat] = cur
-                sd = get_adapter_state_dict(self.model, self.cat2adapter[cat])
-                self.best_cat_adapter_sd[cat] = {k: v.detach().cpu().clone() for k, v in sd.items()}
-                print(f"debug/accept_adapter: {self.cat2adapter[cat]} new_best={cur:.4f}", flush=True)
-            elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None:
-                load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
-                print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}", flush=True)
-        return results
+        # --- important : figer le modèle en mode évaluation ---
+        was_training = self.model.training
+        self.model.eval()
+        try:
+            eval_dataloader = self.get_eval_dataloader(eval_dataset)
+            total_loss, count = 0.0, 0
+            for inputs in eval_dataloader:
+                inputs = self._prepare_inputs(inputs)
+                with torch.no_grad():
+                    loss, outputs = self.compute_loss(self.model, inputs, return_outputs=True)
+                total_loss += outputs.loss_total.item()
+                count += 1
+            avg_total = total_loss / count if count else 0.0
+            results = {f"{metric_key_prefix}_loss": avg_total}
+            self.log(results)
+
+            preds, refs = self._eval_per_category_generate(df_val_final)
+            cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
+            for k, v in cat_metrics.items():
+                key = f"{metric_key_prefix}_{k}"
+                self.log({key: v})
+                results[key] = v
+
+            for cat in self.categories:
+                acc_key = f"accuracy_{cat.lower()}"
+                cur = cat_metrics.get(acc_key, 0.0)
+                best = self.best_cat_acc.get(cat, -1.0)
+                if cur > best + self.accept_revert_tolerance:
+                    self.best_cat_acc[cat] = cur
+                    sd = get_adapter_state_dict(self.model, self.cat2adapter[cat])
+                    self.best_cat_adapter_sd[cat] = {k: v.detach().cpu().clone() for k, v in sd.items()}
+                    print(f"debug/accept_adapter: {self.cat2adapter[cat]} new_best={cur:.4f}", flush=True)
+                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None:
+                    load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
+                    print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
+                          flush=True)
+            return results
+        finally:
+            if was_training:
+                self.model.train()
+
 
 ##########################################################################################
 #MAIN
@@ -844,14 +919,14 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     eval_steps=100,
-    learning_rate=5e-5,
-    per_device_train_batch_size=1,
+    learning_rate=1e-5,
+    per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
     num_train_epochs=4,
     weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=100,
+    logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
     gradient_accumulation_steps=8,
@@ -871,7 +946,7 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.2,
+    label_smoothing=0.05,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
@@ -931,52 +1006,34 @@ for i, row in test_df.iterrows():
     merged = {}
     device = model_final.device
     ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
-    input_ids = ids["input_ids"]; attention_mask = ids["attention_mask"]
-    with torch.no_grad():
-        out0 = model_final(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-        past = out0.past_key_values
+    context_ids = ids["input_ids"]
+
     ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
-    ks_t = torch.tensor([ks], device=device)
-    input_ids = torch.cat([input_ids, ks_t], dim=1)
-    attention_mask = torch.ones_like(input_ids, device=device)
-    stop_ids = stop_token_id_set()
+    context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
+
     comma_ids = tok_ids('", ')
     if len(comma_ids) == 0:
         comma_ids = tok_ids('",')
     brace_close_ids = tok_ids('"}')
     if len(brace_close_ids) == 0:
         brace_close_ids = tok_ids('" }')
-    with torch.no_grad():
-        out_cache = model_final(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-        past = out_cache.past_key_values
+
     for ci, cat in enumerate(categories):
-        prefix = f'"{cat}": "'
-        key_ids = tok_ids(prefix) or tok_ids(f'"{cat}": "')
-        kid = torch.tensor([key_ids], device=device)
-        input_ids = torch.cat([input_ids, kid], dim=1)
-        attention_mask = torch.ones_like(input_ids, device=device)
+        prefix_ids = tok_ids(f'"{cat}": "')
+        context_ids = torch.cat([context_ids, torch.tensor([prefix_ids], device=device)], dim=1)
+
         set_active_adapter(model_final, f"cat_{cat}")
-        with torch.no_grad():
-            out_cache = model_final(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-            past = out_cache.past_key_values
-        text_val, input_ids, attention_mask, past = gen_until_quote(
-            model_final, tokenizer, input_ids, attention_mask, past, stop_ids, max_value_tokens=64
+        CURRENT_CATEGORY = cat
+        text_val, context_ids = gen_until_quote_fullctx(
+            model_final, tokenizer, context_ids, max_value_tokens=64
         )
         merged[cat] = text_val
+
         if ci < len(categories) - 1:
-            cid = torch.tensor([comma_ids], device=device)
-            input_ids = torch.cat([input_ids, cid], dim=1)
-            attention_mask = torch.ones_like(input_ids, device=device)
-            with torch.no_grad():
-                out_cache = model_final(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                past = out_cache.past_key_values
+            context_ids = torch.cat([context_ids, torch.tensor([comma_ids], device=device)], dim=1)
         else:
-            bid = torch.tensor([brace_close_ids], device=device)
-            input_ids = torch.cat([input_ids, bid], dim=1)
-            attention_mask = torch.ones_like(input_ids, device=device)
-            with torch.no_grad():
-                out_cache = model_final(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-                past = out_cache.past_key_values
+            context_ids = torch.cat([context_ids, torch.tensor([brace_close_ids], device=device)], dim=1)
+
     clean_prediction = json.dumps(remap_closed_sets(merged), ensure_ascii=False)
     print(f"--- Predicted output {i + 1}: {clean_prediction}", flush=True)
     print(f"--- Expected output  {i + 1}: {expected}", flush=True)

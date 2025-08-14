@@ -18,6 +18,7 @@
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+VERBOSE=${4:-${VERBOSE:-FALSE}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -43,4 +44,9 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
-python3 -u vizualisation_data.py --base_path "$SCRATCH_DIR" --input "$SCRATCH_DIR/completed_metadata.csv" --outdir "$SCRATCH_DIR/VISUALISATION"
+PY_VERBOSE=()
+if [[ "${VERBOSE^^}" == "TRUE" ]]; then
+  PY_VERBOSE+=(--verbose)
+fi
+
+python3 -u vizualisation_data.py --base_path "$SCRATCH_DIR" --input "$SCRATCH_DIR/completed_metadata.csv" --outdir "$SCRATCH_DIR/VISUALISATION" "${PY_VERBOSE[@]}"

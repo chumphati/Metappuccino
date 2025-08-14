@@ -8,6 +8,7 @@ import os
 #PATHS
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 parser.add_argument("--input_logan_path", type=str, required=True, help="Path to logan csv file, sample_acc = runs accessions")
 args = parser.parse_args()
 
@@ -16,14 +17,17 @@ rpl27a_path = args.input_logan_path
 metadata_sra_path = os.path.join(base_path, "cleaned_metadata_sra.txt")
 metadata_sra_out_path = os.path.join(base_path, "metadata_sra_with_logan.txt")
 
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
+
 ########################################################################################################################
 #MAIN
-print("Logan seach analysis", flush=True)
+vprint("Logan seach analysis", flush=True)
 with open(rpl27a_path, newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     sample_accs = []
     for row in reader:
-        # print(row['ID'])
+        # vprint(row['ID'])
         sample_accs.append(row['ID'])
 
 runs = []

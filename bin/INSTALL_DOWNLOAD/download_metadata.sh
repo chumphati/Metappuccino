@@ -18,6 +18,7 @@
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+VERBOSE=${4:-${VERBOSE:-FALSE}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -41,4 +42,10 @@ cp "$RES/runs.txt" $SCRATCH_DIR/
 
 source $ENV_REQUIREMENT/bin/activate
 echo "Start $(date)"
-python3 -u get_metadata_ncbi_ena.py --base_path $SCRATCH_DIR
+
+PY_VERBOSE=()
+if [[ "${VERBOSE^^}" == "TRUE" ]]; then
+  PY_VERBOSE+=(--verbose)
+fi
+
+python3 -u get_metadata_ncbi_ena.py --base_path $SCRATCH_DIR "${PY_VERBOSE[@]}"

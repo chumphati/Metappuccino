@@ -19,6 +19,7 @@ METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 LOGAN_PATH=${4:-$LOGAN_PATH}
+VERBOSE=${5:-${VERBOSE:-FALSE}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -52,9 +53,14 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
-python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR"
+PY_VERBOSE=()
+if [[ "${VERBOSE^^}" == "TRUE" ]]; then
+  PY_VERBOSE+=(--verbose)
+fi
+
+python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}"
 
 if [[ -n "$LOGAN_PATH" ]]; then
-    python3 -u logan_add_search.py --base_path "$SCRATCH_DIR" --input_logan_path $LOGAN_PATH
+    python3 -u logan_add_search.py --base_path "$SCRATCH_DIR" --input_logan_path $LOGAN_PATH "${PY_VERBOSE[@]}"
     mv "$SCRATCH_DIR/metadata_sra_with_logan.txt" "$SCRATCH_DIR/cleaned_metadata_sra.txt"
 fi

@@ -13,6 +13,7 @@ import time
 #PATHS
 parser = argparse.ArgumentParser(description="Download metadata from NCBI Ensembl")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -27,6 +28,9 @@ HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_acc
 
 # FIELDS = "study_accession,first_public,study_title,project_name,run_accession,sample_accession,sample_title,sample_description,library_name,library_selection,library_source,library_strategy,library_construction_protocol,library_layout,rna_integrity_num,instrument_platform,rt_prep_protocol,cell_line,cell_type,tissue_lib,tissue_type,host_phenotype,isolate,age,host_body_site,sampling_site,base_count,description,host_sex,sex,submitted_host_sex,disease,host_status"
 # HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_accession\tsample_accession\tsample_title\tsample_description\tlibrary_name\tlibrary_selection\tlibrary_source\tlibrary_strategy\tlibrary_construction_protocol\tlibrary_layout\trna_integrity_num\tinstrument_platform\trt_prep_protocol\tcell_line\tcell_type\ttissue_lib\ttissue_type\thost_phenotype\tisolate\tage\thost_body_site\tsampling_site\tbase_count\tdescription\thost_sex\tsex\tsubmitted_host_sex\tdisease\thost_status\tsample_metadata_ncbi\tstudy_metadata_ncbi\n"
+
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ########################################################################################################################
 #FUNCTIONS
@@ -127,30 +131,30 @@ def extract_and_save_metadata(run_accession):
         ]
 
         response = subprocess.run(curl_command, capture_output=True, text=True)
-        print("RUN: ", run_accession)
-        print("RAW ENA RESPONSE:", response.stdout)
+        vprint("RUN: ", run_accession)
+        vprint("RAW ENA RESPONSE:", response.stdout)
         ena_data = response.stdout.strip().split("\n")[-1]
-        print("ENA DATA: ", ena_data)
+        vprint("ENA DATA: ", ena_data)
 
         if not response.stdout.strip():
-            print(f"Warning: No data returned from ENA API for run accession {run_accession}.")
+            vprint(f"Warning: No data returned from ENA API for run accession {run_accession}.")
         if response.returncode != 0:
-            print(f"Error: curl command failed with return code {response.returncode}.")
-            print("stderr:", response.stderr)
+            vprint(f"Error: curl command failed with return code {response.returncode}.")
+            vprint("stderr:", response.stderr)
 
         #first line
         with open(OUTPUT_FILE, 'a') as f_out:
             f_out.write(f"{ena_data}\t{sample_metadata}\t{study_metadata}\n")
-            print("STUDY DATA: ", study_metadata)
+            vprint("STUDY DATA: ", study_metadata)
 
     except FileNotFoundError as e:
-        print(f"Error: XML file not found {e}")
+        vprint(f"Error: XML file not found {e}")
     except ET.ParseError as e:
-        print(f"Error: Failed to parse XML {e}")
+        vprint(f"Error: Failed to parse XML {e}")
     except subprocess.SubprocessError as e:
-        print(f"Error: Subprocess execution failed {e}")
+        vprint(f"Error: Subprocess execution failed {e}")
     except Exception as e:
-        print(f"Unexpected error {run_accession}: {e}")
+        vprint(f"Unexpected error {run_accession}: {e}")
 
         try:
             with open(xml_file, 'r', encoding='utf-8') as xf:
@@ -183,9 +187,9 @@ def main():
     with open(RUNS_TSV, 'r') as file:
         # next(file)
         run_accessions = [line.strip() for line in file if line.strip()]
-        print(run_accessions, flush=True)
+        vprint(run_accessions, flush=True)
         if not run_accessions:
-            print("Error: no run accessions found")
+            vprint("Error: no run accessions found")
             return
 
     # Execute Bash script to download metadata

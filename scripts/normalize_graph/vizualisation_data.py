@@ -185,12 +185,15 @@ def main():
     p.add_argument("--topn", type=int, default=10)
     p.add_argument("--html_max_rows", type=int, default=None)
     p.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+    p.add_argument("--verbose", action="store_true", help="Verbose output")
     args = p.parse_args()
 
     in_path  = Path(args.input)
     out_dir  = Path(args.outdir)
     base_path = args.base_path
     FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
+    VERBOSE = args.verbose
+    vprint = print if VERBOSE else (lambda *a, **k: None)
     for d in ("entropies", "categories", "tables", "stats"):
         ensure_dir(out_dir/d)
 

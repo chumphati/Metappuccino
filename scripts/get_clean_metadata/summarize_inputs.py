@@ -22,13 +22,17 @@ nlp = spacy.load('en_core_web_md')
 
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
 base_path = args.base_path
-INPUT_FILE = os.path.join(base_path, "cleaned_metadata_sra_logan.txt")
+INPUT_FILE = os.path.join(base_path, "cleaned_metadata_sra.txt")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
+
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
 
 MAX_TOKENS = 1200
 TOKEN_THRESHOLD = 1200
@@ -54,7 +58,7 @@ for mid in ["mistralai/Mistral-7B-Instruct-v0.3", "mistralai/Mistral-7B-Instruct
         continue
 if tok is None:
     raise RuntimeError("Cannot load Mistral tokenizer")
-print(f"Tokenizer loaded: {tok_id}", flush=True)
+vprint(f"Tokenizer loaded: {tok_id}", flush=True)
 
 category_docs = [nlp(cat) for cat in CATEGORY_KEYWORDS]
 
@@ -253,13 +257,13 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
         raw = ' '.join(f for f in row[1:] if not any(x in f.lower() for x in ['run accession', 'study accession', 'experiment accession', 'sample accession']))
         ctx = re.sub(r'\S+?\.fastq\.gz', '', raw).strip()
         orig_tokens = mistral_tokens(ctx)
-        print(f"{run_acc} original_tokens={orig_tokens}", flush=True)
+        vprint(f"{run_acc} original_tokens={orig_tokens}", flush=True)
         if orig_tokens > TOKEN_THRESHOLD:
             summ = summarize_by_clauses(ctx)
-            print(f"{run_acc} summarized_tokens={mistral_tokens(summ)}", flush=True)
+            vprint(f"{run_acc} summarized_tokens={mistral_tokens(summ)}", flush=True)
         else:
             summ = ctx
-            print(f"{run_acc} kept_tokens={mistral_tokens(summ)}", flush=True)
+            vprint(f"{run_acc} kept_tokens={mistral_tokens(summ)}", flush=True)
         if run_acc in ambiguous_map and ambiguous_map[run_acc]:
             cands = ambiguous_map[run_acc]
             chosen, method = _best_candidate_from_context(ctx if ctx else summ, cands)
@@ -273,9 +277,9 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
                 summ = (' '.join(sents)).strip()
             summ = (summ + " " + note).strip()
             updates[run_acc] = {"chosen": chosen, "note": note.strip()}
-            print(f"{run_acc} ambiguous_resolved={chosen} method={method}", flush=True)
+            vprint(f"{run_acc} ambiguous_resolved={chosen} method={method}", flush=True)
         wtr.writerow([run_acc, summ])
-        print(f"{run_acc} final_tokens={mistral_tokens(summ)}", flush=True)
+        vprint(f"{run_acc} final_tokens={mistral_tokens(summ)}", flush=True)
 
 if amb_rows:
     rows_by_run = {r.get("run_accession", "").strip(): r for r in amb_rows}

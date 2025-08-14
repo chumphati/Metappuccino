@@ -13,6 +13,7 @@ from spacy.cli import download
 #PATHS
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -26,6 +27,9 @@ FLAG_FILE = os.path.join(base_path, "STEP2_1.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
 
 invalid_entries = {"unknown", "not applicable", "missing", "n/a", "na", "none", ""}
+
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ########################################################################################################################
 
@@ -168,7 +172,7 @@ out = []
 
 for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     run = os.path.basename(path).split("_metadata.xml")[0]
-    print(run)
+    vprint(run)
     ctx = open(path, "r", encoding="utf-8", errors="ignore").read()
     o = {c: "" for c in cols}
     is_ambiguous = False
@@ -177,10 +181,10 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
 
     raw_cl = extract_tag(ctx, "cell_line")
     if raw_cl and raw_cl.lower() not in invalid_entries:
-        print("tag")
+        vprint("tag")
         mapped = resolve_cell_line(raw_cl.strip())
         o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
-        print(o["cell_line"])
+        vprint(o["cell_line"])
         enrich_from_cell_df(o, o["cell_line"])
         found = True
     if not found:
@@ -197,14 +201,14 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
                 if len(hits) >= 2:
                     ambiguous_rows.append({"run_accession": run, "candidates": ";".join(hits)})
                     is_ambiguous = True
-                    print(f"{origin}>=2")
+                    vprint(f"{origin}>=2")
                     found = True
                     break
                 else:
                     mapped = resolve_cell_line(hits[0].strip())
-                    print(origin)
+                    vprint(origin)
                     o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
-                    print(o["cell_line"])
+                    vprint(o["cell_line"])
                     enrich_from_cell_df(o, o["cell_line"])
                     found = True
                     break
@@ -225,7 +229,7 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             if cand_texts:
                 ambiguous_rows.append({"run_accession": run, "candidates": ";".join(cand_texts)})
                 is_ambiguous = True
-                print("PhraseMatcher")
+                vprint("PhraseMatcher")
                 found = True
 
     if not found:
@@ -235,7 +239,7 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
         if regex_cands:
             ambiguous_rows.append({"run_accession": run, "candidates": ";".join(regex_cands)})
             is_ambiguous = True
-            print("regex")
+            vprint("regex")
             found = True
 
     for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "localization", "biopsy_site",
@@ -272,10 +276,10 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     is_official = bool(o.get("cell_line")) and (o["cell_line"].strip().lower() in official_names_lower)
 
     if is_ambiguous:
-        print("ambiguous")
+        vprint("ambiguous")
     elif not is_official:
         ambiguous_rows.append({"run_accession": run, "candidates": o.get("cell_line", "")})
-        print("unresolved_or_not_official")
+        vprint("unresolved_or_not_official")
     else:
         out.append(o)
 

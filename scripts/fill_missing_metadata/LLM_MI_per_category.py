@@ -20,6 +20,7 @@ parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -40,6 +41,8 @@ error_file_header = "run_accession\tsummary"
 sys.stdout = open(log_file_path, "a")
 sys.stderr = sys.stdout
 
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ##########################################################################################
 #FUNCTIONS
@@ -107,9 +110,9 @@ gpu_count = torch.cuda.device_count() if use_gpu else 0
 
 if use_gpu and gpu_count > 0:
     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
-    print(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
+    vprint(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
 else:
-    print("No GPU detected → using CPU only")
+    vprint("No GPU detected → using CPU only")
 
 tokenizer = AutoTokenizer.from_pretrained(model_base_dir)
 if tokenizer.pad_token is None:
@@ -134,10 +137,10 @@ def load_all_category_adapters(base_model, peft_root, cats):
                 peft_model = PeftModel.from_pretrained(base_model, path, adapter_name=f"cat_{c}")
             else:
                 peft_model.load_adapter(path, adapter_name=f"cat_{c}")
-            print(f"loaded adapter: cat_{c}")
+            vprint(f"loaded adapter: cat_{c}")
     if peft_model is None:
         peft_model = PeftModel.from_pretrained(base_model, peft_root)
-        print(f"loaded single adapter from: {peft_root}")
+        vprint(f"loaded single adapter from: {peft_root}")
     return peft_model
 
 model = load_all_category_adapters(model_base, model_peft_dir, categories)
@@ -151,7 +154,7 @@ with open(raw_final_info_path) as rf:
     raw = rf.readlines()
     raw_headers = raw[0].strip().split("\t")
     raw_data = {r.split("\t")[0]: r.strip().split("\t") for r in raw[1:]}
-    print(raw_data)
+    vprint(raw_data)
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -201,14 +204,14 @@ for idx, line in enumerate(metadata_lines):
         continue
 
     run, summary = parts[0].strip(), parts[1].strip()
-    print(run)
+    vprint(run)
 
     if run not in raw_data:
         skipped_runs.append(run)
         continue
 
     na_columns = categories.copy()
-    print(na_columns)
+    vprint(na_columns)
 
     raw_vals = raw_data[run]
     extra_info = []
@@ -223,7 +226,7 @@ for idx, line in enumerate(metadata_lines):
                 + "\n".join(extra_info)
         )
 
-    print(f"\n[{idx + 1}/{len(metadata_lines)}] {run}", flush=True)
+    vprint(f"\n[{idx + 1}/{len(metadata_lines)}] {run}", flush=True)
 
     inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
     fmt_keys = ", ".join(f'"{c}": "<value>"' for c in na_columns)
@@ -248,8 +251,8 @@ for idx, line in enumerate(metadata_lines):
             Here is the output:
             """
 
-    print("PROMPT:", flush=True)
-    print(prompt, flush=True)
+    vprint("PROMPT:", flush=True)
+    vprint(prompt, flush=True)
 
     device = model.device
     with torch.no_grad():
@@ -314,11 +317,11 @@ for idx, line in enumerate(metadata_lines):
                 past = prime_tokens(model, bid, past)
 
     parsed_json = generated_map
-    print("Json good format: ", parsed_json)
+    vprint("Json good format: ", parsed_json)
 
     output = {run: parsed_json, "entropy": entropy_dict}
-    print("Final output:", flush=True)
-    print(output)
+    vprint("Final output:", flush=True)
+    vprint(output)
     out_fp = os.path.join(output_dir, f"{run}.json")
     with open(out_fp, "w") as of:
         json.dump(output, of, indent=2)

@@ -10,6 +10,7 @@ import argparse
 #PATHS
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -23,6 +24,9 @@ FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
 
 INVALID_ENTRIES = {"unknown", "missing", "n/a", "na", "none", ""}
 STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "an", "by"}
+
+VERBOSE = args.verbose
+vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ##########################################################################################
 #FUNCTIONS
@@ -210,6 +214,33 @@ for col in out_df.columns:
     if col in exclude_cols:
         continue
     out_df[col] = out_df[col].replace("not applicable", "unknown")
+    
+def _normalize_sex_value(x: str) -> str:
+    if not isinstance(x, str) or not x.strip():
+        return "unknown"
+    parts = re.split(r'[;,/|]', x)
+    mapped = []
+    for p in parts:
+        s = p.strip().lower()
+        if s in INVALID_ENTRIES or s == "unknown":
+            mapped.append("unknown")
+            continue
+        if re.fullmatch(r"m|male|masculin|mâle|man", s):
+            mapped.append("male")
+        elif re.fullmatch(r"f|female|féminin|femelle|woman", s):
+            mapped.append("female")
+        else:
+            mapped.append("unknown")
+    dedup = []
+    for val in mapped:
+        if val not in dedup:
+            dedup.append(val)
+    if all(v == "unknown" for v in dedup):
+        return "unknown"
+    return "; ".join(dedup)
+
+if "sex" in out_df.columns:
+    out_df["sex"] = out_df["sex"].apply(_normalize_sex_value)
 
 ##########################################################################################
 #SAVE

@@ -18,6 +18,7 @@
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+VERBOSE=${4:-${VERBOSE:-FALSE}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -36,11 +37,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cp "$TMP_DIR/cleaned_metadata_sra_logan.txt" $SCRATCH_DIR/
+cp "$TMP_DIR/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/summarize_inputs.py" $SCRATCH_DIR/
 
 source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
-python3 -u summarize_inputs.py --base_path "$SCRATCH_DIR"
+PY_VERBOSE=()
+if [[ "${VERBOSE^^}" == "TRUE" ]]; then
+  PY_VERBOSE+=(--verbose)
+fi
+
+python3 -u summarize_inputs.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}"
