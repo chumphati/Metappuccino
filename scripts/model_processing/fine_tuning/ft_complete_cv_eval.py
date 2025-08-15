@@ -57,7 +57,7 @@ merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/tensorboard"
 
-# parameters for semantic matching
+#parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 threshold = 0.36
@@ -643,15 +643,16 @@ class MyTrainer(Trainer):
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
-        self.guard_lambda = 0.01
+        self.guard_lambda = 0.005
         self.guard_margin = 0.01
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
-        self.accept_revert_tolerance = 0.000
+        self.accept_revert_tolerance = 0.002
+        self.min_revert_step = 500
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
-        self.max_cats_per_step = min(5, len(self.categories))
+        self.max_cats_per_step = min(8, len(self.categories))
 
     def log(self, logs):
         return super().log(logs)
@@ -703,8 +704,15 @@ class MyTrainer(Trainer):
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
-            start = (int(self.state.global_step) * self.max_cats_per_step) % C
-            active_idx = [(start + k) % C for k in range(self.max_cats_per_step)] if C > 0 else []
+            tok_counts = masks_shift_all.sum(dim=(0,2))  # [C]
+            present = (tok_counts > 0).nonzero(as_tuple=False).flatten()
+            k = min(self.max_cats_per_step, present.numel())
+            if k > 0:
+                vals, idx = torch.topk(tok_counts[present], k)
+                active_idx = present[idx].tolist()
+            else:
+                active_idx = []
+            per_step_scale = 0.5 / max(1, len(active_idx))
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
@@ -727,7 +735,7 @@ class MyTrainer(Trainer):
                     else:
                         self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (1 - self.guard_ema_beta) * loss_j.detach().float()
                     penalty = torch.relu(loss_j - (self.guard_ema[j].to(loss_j.device) + self.guard_margin))
-                    total_loss = total_loss + loss_j + self.guard_lambda * penalty
+                    total_loss = total_loss + per_step_scale * loss_j + self.guard_lambda * per_step_scale * penalty
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
@@ -800,7 +808,6 @@ class MyTrainer(Trainer):
         return preds_json_str, refs_json_str
 
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval", **kwargs):
-        # --- important : figer le modèle en mode évaluation ---
         was_training = self.model.training
         self.model.eval()
         try:
@@ -832,7 +839,7 @@ class MyTrainer(Trainer):
                     sd = get_adapter_state_dict(self.model, self.cat2adapter[cat])
                     self.best_cat_adapter_sd[cat] = {k: v.detach().cpu().clone() for k, v in sd.items()}
                     print(f"debug/accept_adapter: {self.cat2adapter[cat]} new_best={cur:.4f}", flush=True)
-                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None:
+                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None and self.state.global_step >= getattr(self, "min_revert_step", 0):
                     load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
                     print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
                           flush=True)
@@ -895,10 +902,10 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=8,
-    lora_alpha=16,
-    lora_dropout=0.4,
-    target_modules=['q_proj', 'v_proj']
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj']
 )
 
 model_final = get_peft_model(model_base, final_peft_config)
@@ -918,18 +925,18 @@ print("trainable_params_by_device_dtype:", by_dev_dtype, flush=True)
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
-    eval_steps=100,
-    learning_rate=1e-5,
+    eval_steps=250,
+    learning_rate=5e-6,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
     num_train_epochs=4,
-    weight_decay=0.01,
+    weight_decay=0.0,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=50,
+    logging_steps=100,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=8,
+    gradient_accumulation_steps=16,
     gradient_checkpointing=True,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
@@ -938,7 +945,8 @@ training_args_final = TrainingArguments(
     remove_unused_columns=False,
     greater_is_better=True,
     warmup_ratio=0.1,
-    lr_scheduler_type="cosine"
+    lr_scheduler_type="linear",
+    max_grad_norm=0.3
 )
 
 trainer_final = MyTrainer(
@@ -964,7 +972,7 @@ init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_p
 print("Initial val metrics - original model (step=0) →", init_val)
 
 for cat in categories:
-    final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"], 0)
+    final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else 0.0, 0)
 
 trainer_final.train()
 final_writer_training.close()
@@ -1055,5 +1063,5 @@ for cat in categories:
 
 final_test_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_test"))
 for cat in categories:
-    final_test_writer.add_scalar(f"test/{cat}", metrics_test[f"accuracy_{cat.lower()}"], 0)
+    final_test_writer.add_scalar(f"test/{cat}", metrics_test[f"accuracy_{cat.lower()}"] , 0)
 final_test_writer.close()

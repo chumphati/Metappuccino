@@ -18,7 +18,6 @@ def wait_for_flag_file(flag_path):
 ########################################################################################################################
 #MAIN FUNCTION
 def main():
-    #arg parse and help description
     parser = argparse.ArgumentParser(description="Automates metadata extraction and completion based on LLMs.")
     parser.add_argument("--metappuccino_dir", type=str, required=True,
                         help="Path to the Metappuccino directory")
@@ -60,7 +59,6 @@ def main():
                         help="Submit one scheduler job per GPU (creates N jobs with SHARD env).")
     args = parser.parse_args()
 
-    #scripts to execute and flags
     metappuccino_dir = args.metappuccino_dir
     res_dir = args.res_dir
     tmp_keep = args.tmp_keep
@@ -79,7 +77,6 @@ def main():
     queue_req = args.queue.strip()
     tmp_dir = os.path.join(metappuccino_dir, res_dir, "tmp")
 
-    # normalize node name (accept "51" -> "node51")
     if node_req_in and node_req_in.isdigit():
         node_req = f"node{node_req_in}"
     else:
