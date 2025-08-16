@@ -4,14 +4,11 @@
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=8:mem=16gb
+#PBS -l select=1
 
 #SBATCH --job-name=clean_metadata
-#SBATCH --partition=common
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=8
 #SBATCH --time=12:00:00
-#SBATCH --mem=16G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 

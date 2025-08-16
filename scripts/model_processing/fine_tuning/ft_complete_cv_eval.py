@@ -133,7 +133,7 @@ def find_subseq(seq, subseq):
             return i
     return -1
 
-def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=3000, mark_all_occurrences=True):
+def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=2048, mark_all_occurrences=True):
     masks = np.zeros((len(categories), max_len), dtype=np.float32)
     try:
         y = json.loads(output_text)
@@ -213,12 +213,12 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=3000, add_special_tokens=False)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=2048, add_special_tokens=False)["input_ids"]
     output_ids = tokenizer(output, truncation=True, max_length=350, add_special_tokens=False)["input_ids"]
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
-    max_length = 3000
+    max_length = 2048
     padding_length = max_length - len(input_ids)
     if padding_length < 0:
         input_ids = input_ids[:max_length]
@@ -700,7 +700,7 @@ class MyTrainer(Trainer):
         logits_shift = logits_shared[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
         loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 1.0 * loss_micro
+        total_loss = total_loss + 0.7 * loss_micro
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
@@ -750,7 +750,7 @@ class MyTrainer(Trainer):
 
     def _generate_with_adapter(self, adapter_name, prompt):
         set_active_adapter(self.model, adapter_name)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(self.model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(self.model.device)
         with torch.no_grad():
             out_ids = self.model.generate(
                 input_ids=inputs["input_ids"],
@@ -767,10 +767,12 @@ class MyTrainer(Trainer):
         raw = tokenizer.decode(out_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         return raw
 
-    def _eval_per_category_generate(self, df_eval):
+    def _eval_per_category_generate(self, df_eval, max_rows=None):
         device = self.model.device
         _ = stop_token_id_set()
         comma_ids = tok_ids('", ')
+        if max_rows is not None and len(df_eval) > max_rows:
+            df_eval = df_eval.sample(max_rows, random_state=SEED)
         if len(comma_ids) == 0:
             comma_ids = tok_ids('",')
         brace_close_ids = tok_ids('"}')
@@ -781,7 +783,7 @@ class MyTrainer(Trainer):
         for _, row in df_eval.iterrows():
             prompt = row['prompt'].strip()
             expected = row['output'].strip()
-            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
+            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
             context_ids = ids["input_ids"]
             ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
             context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
@@ -823,7 +825,10 @@ class MyTrainer(Trainer):
             results = {f"{metric_key_prefix}_loss": avg_total}
             self.log(results)
 
-            preds, refs = self._eval_per_category_generate(df_val_final)
+            DO_FULL = (self.state.global_step % 500 == 0) or (self.state.global_step == 0)
+            max_rows = None if DO_FULL else 64
+            preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
+            # preds, refs = self._eval_per_category_generate(df_val_final)
             cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
             for k, v in cat_metrics.items():
                 key = f"{metric_key_prefix}_{k}"
@@ -902,10 +907,10 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=16,
-    lora_alpha=32,
+    r=8,
+    lora_alpha=2*8,
     lora_dropout=0.05,
-    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj']
+    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj']
 )
 
 model_final = get_peft_model(model_base, final_peft_config)
@@ -925,15 +930,15 @@ print("trainable_params_by_device_dtype:", by_dev_dtype, flush=True)
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
-    eval_steps=250,
-    learning_rate=5e-6,
+    eval_steps=50,
+    learning_rate=1e-5,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
     num_train_epochs=4,
     weight_decay=0.0,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=100,
+    logging_steps=10,
     fp16=(not use_bf16),
     bf16=use_bf16,
     gradient_accumulation_steps=16,
@@ -1013,7 +1018,7 @@ for i, row in test_df.iterrows():
     expected = row["output"].strip()
     merged = {}
     device = model_final.device
-    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
+    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
     context_ids = ids["input_ids"]
 
     ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")

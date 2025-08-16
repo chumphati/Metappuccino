@@ -4,7 +4,7 @@
 #PBS -l walltime=01:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:host=node51:ncpus=30:ngpus=1:mem=80gb
+#PBS -l select=1:ngpus=1
 
 #SBATCH --job-name=install_requirements
 #SBATCH --partition=alphafold
@@ -12,10 +12,7 @@
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
-#SBATCH --nodelist=node49
-#SBATCH --cpus-per-task=30
 #SBATCH --gres=gpu:1
-#SBATCH --mem=80G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-RES}

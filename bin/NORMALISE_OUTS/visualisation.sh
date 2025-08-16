@@ -4,16 +4,13 @@
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=10:mem=16gb
+#PBS -l select=1
 
 #SBATCH --job-name=visualisation
-#SBATCH --partition=common
 #SBATCH --time=12:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=16G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}

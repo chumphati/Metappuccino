@@ -4,14 +4,11 @@
 #PBS -l walltime=12:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=10:mem=16gb
+#PBS -l select=1
 
 #SBATCH --job-name=download_metadata
-#SBATCH --partition=common
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
 #SBATCH --time=12:00:00
-#SBATCH --mem=16G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 

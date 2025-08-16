@@ -3,15 +3,13 @@
 #PBS -l walltime=500:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ncpus=30:mem=80gb
+#PBS -l select=1
 
 #SBATCH --job-name=llm_inference
 #SBATCH --time=500:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=30
-#SBATCH --mem=80G
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
