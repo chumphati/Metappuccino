@@ -60,8 +60,8 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --env_requirement "$ENV_REQUIREMENT" \
     --model "$MODEL" \
     --getmetadata --fillmetadata --associateinformation --visualisation \
-    --iteration_limit 1 --gpus 1 --per_gpu_jobs --verbose \
-    --node "node51" --partition "alphafold" \
+    --iteration_limit 2 --gpus 2 --per_gpu_jobs --verbose \
+    --node "node49" --partition "alphafold" \
     >> "$RES/logs/Metappuccino.out" 2>> "$RES/logs/Metappuccino.err"
 deactivate
 

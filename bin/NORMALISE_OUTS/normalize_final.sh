@@ -33,7 +33,6 @@ cleanup() {
     cp "$SCRATCH_DIR/completed_metadata.json" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "json file not found, skipping."
     cp "$SCRATCH_DIR/completed_metadata.tsv" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "tsv file not found, skipping."
     cp "$SCRATCH_DIR/completed_metadata.feather" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "feather file not found, skipping."
-    cp "$SCRATCH_DIR/completed_metadata.obo" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "obo file not found, skipping."
     cp "$SCRATCH_DIR/STEP4_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"

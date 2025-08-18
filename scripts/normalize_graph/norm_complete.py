@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 
 ##########################################################################################
-#PATHS
+# PATHS
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
@@ -28,8 +28,9 @@ STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "a
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
+
 ##########################################################################################
-#FUNCTIONS
+# FUNCTIONS
 def load_syn(csv, sc, nc, cc):
     with open(csv, "r", encoding="utf-8") as f:
         sep = "\t" if "\t" in f.readline() else ","
@@ -46,6 +47,7 @@ def load_syn(csv, sc, nc, cc):
         if cc and r[cc].strip():
             cd[name] = r[cc].strip()
     return names, sd, cd
+
 
 def normalize_term(raw_value, names_set, syn_dict):
     to_remove = [
@@ -74,19 +76,23 @@ def normalize_term(raw_value, names_set, syn_dict):
             results.append(original)
     return results
 
+
 def fmt_codes(x):
     if not isinstance(x, str) or not x:
         return x
     return x.replace('_', ':').replace('+', ';')
 
+
 def infer_from_cell_line(cell_line, cell_df):
     row = cell_df[cell_df["name"] == cell_line].iloc[0]
     output = {}
-    for f in ["disease", "age", "sex", "ethnicity", "localization", "biopsy_type", "biopsy_site", "uberon_code", "cell_type"]:
+    for f in ["disease", "age", "sex", "ethnicity", "localization", "biopsy_type", "biopsy_site", "uberon_code",
+              "cell_type"]:
         val = row.get(f, "")
         if val and val.strip():
             output[f] = val.strip()
     return output
+
 
 def clean_cell_line_name(raw):
     if not isinstance(raw, str):
@@ -97,8 +103,40 @@ def clean_cell_line_name(raw):
     cleaned = re.sub(r'\s+', ' ', cleaned)
     return cleaned.strip()
 
+
+def _compute_codes_with_partial_tokens(raw_value, normalized_parts, names_set, syn_dict, code_map, canon_case_map):
+    if not isinstance(raw_value, str):
+        raw_value = ""
+    raw_parts = [p.strip() for p in re.split(r';|,', raw_value)] if raw_value else []
+    codes = []
+    for i, norm_val in enumerate(normalized_parts):
+        code_for_part = None
+        key = norm_val.strip().lower()
+        if key in canon_case_map:
+            canonical = canon_case_map[key]
+            code_for_part = code_map.get(canonical, None)
+        if not code_for_part:
+            part_text = raw_parts[i] if i < len(raw_parts) else raw_value
+            tokens = re.findall(r"\b[A-Za-z0-9][A-Za-z0-9\-\+']*\b", part_text)
+            for tok in tokens:
+                t = tok.lower()
+                if t in syn_dict:
+                    canonical = syn_dict[t]
+                    code_for_part = code_map.get(canonical, None)
+                    if code_for_part:
+                        break
+                elif t in names_set:
+                    canonical = canon_case_map.get(t, None)
+                    if canonical:
+                        code_for_part = code_map.get(canonical, None)
+                        if code_for_part:
+                            break
+        codes.append(code_for_part if code_for_part else "unknown")
+    return "; ".join(codes)
+
+
 ##########################################################################################
-#MAIN
+# MAIN
 df = pd.read_csv(CSV_INPUT, sep='\t', dtype=str, on_bad_lines='skip').fillna('')
 df.columns = df.columns.str.strip()
 assert "run_accession" in df.columns, "Colonne 'run_accession' manquante"
@@ -114,6 +152,10 @@ for _, r in cell_df.iterrows():
     syns = [s.strip() for s in r["synonym"].split(";")] if r["synonym"] else []
     for s in syns + [name]:
         cell_syn[s.lower()] = name
+
+# Canonical case maps to recover original-case canonical names from lowercase keys
+disease_canon_case = {k.lower(): k for k in disease_code.keys()}
+organ_canon_case = {k.lower(): k for k in organ_code.keys()}
 
 fields = ["run_accession", "study_accession", "instrument_platform", "library_selection", "library_strategy",
           "base_count", "sequencing_source", "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line",
@@ -181,19 +223,25 @@ for _, row in df.iterrows():
             entry["cell_line"] = cleaned
 
     if "disease" not in locked_fields:
-        norm = normalize_term(entry["disease"], disease_names, disease_syn)
+        raw_val = entry["disease"]
+        norm = normalize_term(raw_val, disease_names, disease_syn)
         entry["disease"] = "; ".join(norm)
-        entry["do_code"] = "; ".join([disease_code.get(x, "unknown") for x in norm])
+        entry["do_code"] = _compute_codes_with_partial_tokens(raw_val, norm, disease_names, disease_syn, disease_code,
+                                                              disease_canon_case)
 
     if "organ" not in locked_fields:
-        norm = normalize_term(entry["organ"], organ_names, organ_syn)
+        raw_val = entry["organ"]
+        norm = normalize_term(raw_val, organ_names, organ_syn)
         entry["organ"] = "; ".join(norm)
-        entry["organ_uberon_code"] = "; ".join([organ_code.get(x, "unknown") for x in norm])
+        entry["organ_uberon_code"] = _compute_codes_with_partial_tokens(raw_val, norm, organ_names, organ_syn,
+                                                                        organ_code, organ_canon_case)
 
     if "biopsy_site" not in locked_fields:
-        norm = normalize_term(entry["biopsy_site"], organ_names, organ_syn)
+        raw_val = entry["biopsy_site"]
+        norm = normalize_term(raw_val, organ_names, organ_syn)
         entry["biopsy_site"] = "; ".join(norm)
-        entry["bs_uberon_code"] = "; ".join([organ_code.get(x, "unknown") for x in norm])
+        entry["bs_uberon_code"] = _compute_codes_with_partial_tokens(raw_val, norm, organ_names, organ_syn, organ_code,
+                                                                     organ_canon_case)
 
     entry["bs_uberon_code"] = fmt_codes(entry["bs_uberon_code"])
     entry["organ_uberon_code"] = fmt_codes(entry["organ_uberon_code"])
@@ -214,7 +262,8 @@ for col in out_df.columns:
     if col in exclude_cols:
         continue
     out_df[col] = out_df[col].replace("not applicable", "unknown")
-    
+
+
 def _normalize_sex_value(x: str) -> str:
     if not isinstance(x, str) or not x.strip():
         return "unknown"
@@ -239,26 +288,27 @@ def _normalize_sex_value(x: str) -> str:
         return "unknown"
     return "; ".join(dedup)
 
+
 if "sex" in out_df.columns:
     out_df["sex"] = out_df["sex"].apply(_normalize_sex_value)
 
 ##########################################################################################
-#SAVE
-#.csv
+# SAVE
+# .csv
 out_df.to_csv(CSV_OUTPUT, index=False)
-#.xlsx
+# .xlsx
 excel_output = CSV_OUTPUT.replace('.csv', '.xlsx')
 out_df.to_excel(excel_output, index=False)
-#.parquet
+# .parquet
 parquet_output = CSV_OUTPUT.replace('.csv', '.parquet')
 out_df.to_parquet(parquet_output, index=False)
-#.json
+# .json
 json_output = CSV_OUTPUT.replace('.csv', '.json')
 out_df.to_json(json_output, orient='records', lines=True, force_ascii=False)
-#.tsv
+# .tsv
 tsv_output = CSV_OUTPUT.replace('.csv', '.tsv')
 out_df.to_csv(tsv_output, sep='\t', index=False)
-#.feather
+# .feather
 feather_output = CSV_OUTPUT.replace('.csv', '.feather')
 out_df.reset_index(drop=True).to_feather(feather_output)
 

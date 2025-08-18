@@ -66,6 +66,37 @@ def extract_sample_title(ctx: str) -> str:
 def normalize(v, d):
     return d.get(v.strip().lower(), v.strip()) if isinstance(v, str) and v.strip() else ""
 
+# NEW: helper to keep current normalization behavior for exact matches, but also assign a code
+# when a single isolated word in the prediction matches a full synonym/name.
+def normalize_and_get_code(value, syn_map, code_map, allow_partial_code=True):
+    """
+    Returns (possibly_normalized_value, code).
+    - If the whole value exactly matches a synonym/name -> normalize to canonical and set code.
+    - Else keep the original value and, if allow_partial_code, try to find a single-word token
+      that exactly matches a synonym/name; if found, set the corresponding code without normalizing.
+    """
+    v = value if isinstance(value, str) else ""
+    v = v.strip()
+    if not v:
+        return v, ""
+
+    low = v.lower()
+    if low in syn_map:  # exact synonym/name match -> keep original strict behavior
+        canonical = syn_map[low]
+        return canonical, code_map.get(canonical, "")
+
+    if allow_partial_code:
+        # Find isolated tokens; a token must itself be a full synonym/name to contribute a code
+        tokens = re.findall(r"\b[A-Za-z0-9][A-Za-z0-9\-\+']*\b", v)
+        for tok in tokens:
+            key = tok.lower()
+            if key in syn_map:
+                canonical = syn_map[key]
+                code = code_map.get(canonical, "")
+                if code:
+                    return v, code  # keep original text, only attach code
+    return v, ""
+
 def extract_libsel(ctx):
     if re.search(r"poly[.\s-]?a|oligo[.\s-]?d[.\s-]?t|truseq[.\s-]?mrna|smarter[.\s-]?mrna|polyadenylated|polyadenylation|nebnext poly[.\s-]?a|magnetic poly[.\s-]?a",ctx,re.IGNORECASE):return"polyA"
     if re.search(r"ribo[.\s-]?(minus|dep|zero)|deplete[.\s-]?ribosom|rrna[.\s-]?deple|rrna[.\s-]?minus|rrna removal|rrna depletion kit|ribominus|ribodepletion",ctx,re.IGNORECASE):return"inverse rRNA"
@@ -266,12 +297,13 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             o["treatment"] = re.sub(r"\b\d+\s*(?:h|hr|hrs|hours?|d|day|days?)\b", "", o["treatment"], flags=re.IGNORECASE).strip(" ,;")
         o["treatment"] = re.sub(stopwords, "", o["treatment"], flags=re.IGNORECASE).strip()
         o["treatment"] = re.sub(r"\s{2,}", " ", o["treatment"])
-    o["disease"] = normalize(o["disease"], disease_syn)
-    o["do_code"] = disease_code.get(o["disease"], "")
-    o["organ"] = normalize(o["organ"], organ_syn)
-    o["organ_uberon_code"] = organ_code.get(o["organ"], "")
-    o["biopsy_site"] = normalize(o["biopsy_site"], organ_syn)
-    o["bs_uberon_code"] = organ_code.get(o["biopsy_site"], o["bs_uberon_code"])
+    # UPDATED: keep strict normalization if exact match; otherwise, keep original text and attach code if a single-word token matches a full synonym/name
+    o["disease"], _do_code = normalize_and_get_code(o["disease"], disease_syn, disease_code, allow_partial_code=True)
+    o["do_code"] = _do_code
+    o["organ"], _organ_code_val = normalize_and_get_code(o["organ"], organ_syn, organ_code, allow_partial_code=True)
+    o["organ_uberon_code"] = _organ_code_val
+    o["biopsy_site"], _bs_code_val = normalize_and_get_code(o["biopsy_site"], organ_syn, organ_code, allow_partial_code=True)
+    o["bs_uberon_code"] = _bs_code_val or o["bs_uberon_code"]
 
     is_official = bool(o.get("cell_line")) and (o["cell_line"].strip().lower() in official_names_lower)
 
