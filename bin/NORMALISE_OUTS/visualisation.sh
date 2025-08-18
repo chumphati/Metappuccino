@@ -16,10 +16,19 @@ METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
+NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
-SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+
+#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+if [[ -n "${PBS_JOBID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
+elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
+else
+  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "visualisation")"
+fi
 
 mkdir -p "$SCRATCH_DIR"
 cd "$SCRATCH_DIR"

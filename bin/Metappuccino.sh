@@ -58,9 +58,10 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --res_dir "$RES" \
     --tmp_keep \
     --env_requirement "$ENV_REQUIREMENT" \
+    --working_dir "/scratchlocal/$USER" \
     --model "$MODEL" \
     --getmetadata --fillmetadata --associateinformation --visualisation \
-    --iteration_limit 2 --gpus 2 --per_gpu_jobs --verbose \
+    --iteration_limit 1 --gpus 1 --per_gpu_jobs --verbose \
     --node "node49" --partition "alphafold" \
     >> "$RES/logs/Metappuccino.out" 2>> "$RES/logs/Metappuccino.err"
 deactivate

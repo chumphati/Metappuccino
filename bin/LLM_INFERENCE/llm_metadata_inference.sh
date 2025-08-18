@@ -17,6 +17,7 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
 VERBOSE=${5:-${VERBOSE:-FALSE}}
 N_GPUS=${6:-${N_GPUS:-1}}
+NODE_WORK_PATH=${7:-$NODE_WORK_PATH}
 
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
@@ -24,7 +25,15 @@ LOG_DIR=$RESULTS_DIR/logs
 
 exec > "$LOG_DIR/llm_inference.out" 2> "$LOG_DIR/llm_inference.err"
 
-SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+if [[ -n "${PBS_JOBID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
+elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
+else
+  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "normalize_final")"
+fi
+
 mkdir -p "$SCRATCH_DIR"
 cd "$SCRATCH_DIR"
 
@@ -53,7 +62,9 @@ if [[ ! -s "$DB_SRC" ]]; then
   exit 3
 fi
 
-cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
+#cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
+MODEL_BASENAME="$(basename "$MODEL")"
+ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$META_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy metadata_sra_summarized.txt"; exit 5; }
 cp "$DB_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_metadata_inference.py"; exit 7; }

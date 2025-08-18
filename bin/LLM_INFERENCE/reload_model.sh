@@ -18,13 +18,22 @@ MODEL=${4:-$MODEL}
 ITERATION_LIMIT=${5:-$ITERATION_LIMIT}
 VERBOSE=${6:-${VERBOSE:-FALSE}}
 N_GPUS=${7:-${N_GPUS:-1}}
+NODE_WORK_PATH=${8:-$NODE_WORK_PATH}
 
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
 exec > "$LOG_DIR/reload_context_llm.out" 2> "$LOG_DIR/reload_context_llm.err"
 
-SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+if [[ -n "${PBS_JOBID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
+elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
+else
+  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "reload_context_llm")"
+fi
+
 mkdir -p "$SCRATCH_DIR"
 cd "$SCRATCH_DIR"
 
@@ -54,7 +63,9 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] ; then
     exit 0
 fi
 
-cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
+#cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
+MODEL_BASENAME="$(basename "$MODEL")"
+ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$TMP_DIR/reload_model_bio_info.txt" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy reload_model_bio_info.txt"; exit 5; }
 cp "$TMP_DIR/database_metadata_curated.csv" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_metadata_inference.py"; exit 7; }

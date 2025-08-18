@@ -105,10 +105,47 @@ CLOSED_SETS = {
 }
 OPEN_CATS = ["cell_line","disease","treatment","organ","cell_type","localization","ethnicity","biopsy_site"]
 
+
+def _canon_closed(cat, v):
+    s = normalize(v)
+    s = s.replace("singlecell", "single cell")
+    SYN = {
+        "library_selection": {
+            "poly a": "polya", "poly-a": "polya", "polyadenylation": "polya", "polya": "polya",
+            "rrna depletion": "inverse rrna", "ribo-zero": "inverse rrna", "ribo zero": "inverse rrna",
+            "ribozero": "inverse rrna", "ribo-depletion": "inverse rrna",
+            "hybrid capture": "hybrid selection", "capture": "hybrid selection",
+            "small rna": "small rna", "mirna": "small rna"
+        },
+        "sequencing_source": {
+            "single-cell": "single cell", "single cell": "single cell", "singlecell": "single cell",
+            "bulk": "bulk", "spatial": "spatial"
+        },
+        "biopsy_type": {
+            "primary tumor": "primary", "primary": "primary",
+            "metastatic": "metastasis", "metastasis": "metastasis",
+            "blood": "blood"
+        },
+        "sex": {
+            "m": "male", "man": "male", "male": "male",
+            "f": "female", "woman": "female", "female": "female",
+            "na": "unknown", "n/a": "unknown", "not known": "unknown", "unknown": "unknown"
+        },
+        "is_cancer": {
+            "true": "true", "false": "false",
+            "yes": "true", "no": "false", "1": "true", "0": "false"
+        },
+    }
+    if cat in SYN and s in SYN[cat]:
+        return SYN[cat][s]
+    if cat in CLOSED_SETS and s in CLOSED_SETS[cat]:
+        return s
+    return s
+
 def remap_closed_sets(d):
     for k, allowed in CLOSED_SETS.items():
         if k in d:
-            v = _normalize_text(d[k])
+            v = _canon_closed(k, d[k])
             v = v.replace("singlecell","single cell")
             if v not in allowed:
                 if k == "library_selection":
@@ -277,7 +314,7 @@ def parse_pred_block(raw_pred):
     return {}
 
 normal_accuracy_categories = {
-    'cell_line', 'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
+    'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
 }
 
 def normalize(x):
@@ -329,6 +366,10 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             p_val = norm_val(p_dict.get(cat, ""))
             r_val = norm_val(r_dict.get(cat, ""))
 
+            if cat in CLOSED_SETS:
+                p_val = _canon_closed(cat, p_val)
+                r_val = _canon_closed(cat, r_val)
+
             print("--------------------")
             print("category: ", cat, flush=True)
             print("pred val: ", p_val, flush=True)
@@ -361,6 +402,9 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                     emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                     cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
                     acc = cos > threshold
+
+            elif cat in CLOSED_SETS:
+                acc = (normalize(p_val) == normalize(r_val))
 
             elif cat in normal_accuracy_categories:
                 acc = (normalize(p_val) == normalize(r_val))
@@ -649,7 +693,7 @@ class MyTrainer(Trainer):
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
         self.accept_revert_tolerance = 0.002
-        self.min_revert_step = 500
+        self.min_revert_step = 100
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
         self.max_cats_per_step = min(8, len(self.categories))
@@ -700,19 +744,31 @@ class MyTrainer(Trainer):
         logits_shift = logits_shared[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
         loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 0.7 * loss_micro
+        total_loss = total_loss + 0.3 * loss_micro
+
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
-            tok_counts = masks_shift_all.sum(dim=(0,2))  # [C]
+            tok_counts = masks_shift_all.sum(dim=(0,2))
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten()
             k = min(self.max_cats_per_step, present.numel())
+            
             if k > 0:
-                vals, idx = torch.topk(tok_counts[present], k)
+                with torch.no_grad():
+                    acc_vec = torch.tensor(
+                        [max(self.best_cat_acc.get(c, 0.0), 0.0) for c in self.categories],
+                        device=labels.device, dtype=torch.float32
+                    )
+                    difficulty = 1.0 - acc_vec
+                    tok_norm = tok_counts / (tok_counts.max() + 1e-6)
+                    score = 0.7 * difficulty + 0.3 * tok_norm  # <- priorise les catégories faibles
+                vals, idx = torch.topk(score[present], k)
                 active_idx = present[idx].tolist()
             else:
                 active_idx = []
-            per_step_scale = 0.5 / max(1, len(active_idx))
+
+            per_step_scale = 0.7 / max(1, len(active_idx))
+
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
@@ -825,7 +881,7 @@ class MyTrainer(Trainer):
             results = {f"{metric_key_prefix}_loss": avg_total}
             self.log(results)
 
-            DO_FULL = (self.state.global_step % 500 == 0) or (self.state.global_step == 0)
+            DO_FULL = (self.state.global_step % 150 == 0) or (self.state.global_step == 0)
             max_rows = None if DO_FULL else 64
             preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
             # preds, refs = self._eval_per_category_generate(df_val_final)
@@ -848,6 +904,8 @@ class MyTrainer(Trainer):
                     load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
                     print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
                           flush=True)
+                else:
+                    print(f"debug/keep_adapter: {self.cat2adapter[cat]} keep_best={best:.4f} cur={cur:.4f}")
             return results
         finally:
             if was_training:
@@ -907,10 +965,10 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=8,
-    lora_alpha=2*8,
+    r=12,
+    lora_alpha=2*12,
     lora_dropout=0.05,
-    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj']
+    target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 
 model_final = get_peft_model(model_base, final_peft_config)
@@ -931,14 +989,14 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
     eval_steps=50,
-    learning_rate=1e-5,
+    learning_rate=5e-6,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
-    num_train_epochs=4,
-    weight_decay=0.0,
+    num_train_epochs=5,
+    weight_decay=0.01,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=10,
+    logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
     gradient_accumulation_steps=16,
@@ -959,7 +1017,7 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.05,
+    label_smoothing=0.02,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
