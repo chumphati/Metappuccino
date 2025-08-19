@@ -99,7 +99,9 @@ def main():
     extract_preprocess = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "extract_preprocess.sh")
     summary_context = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "summary_context.sh")
     llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_metadata_inference.sh")
+    # llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_MI_per_category.sh")
     reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_model.sh")
+    # reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_MI_per_category.sh")
     normalize_final = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "normalize_final.sh")
     visualisation = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "visualisation.sh")
 
@@ -290,7 +292,7 @@ def main():
             if not os.path.isfile(step4_flag):
                 if args.local:
                     subprocess.run(["bash", llm_metadata_inference,
-                                    metappuccino_dir, res_dir, env_dir, model_path, verbose_env, str(sched_gpus),working_dir],
+                                    metappuccino_dir, res_dir, env_dir, model_path, verbose_env, str(sched_gpus), working_dir],
                                    check=True)
                 else:
                     if args.per_gpu_jobs and (sched_gpus and sched_gpus > 1):

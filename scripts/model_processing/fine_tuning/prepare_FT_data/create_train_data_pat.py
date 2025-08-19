@@ -9,9 +9,12 @@ import json
 train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/train_metadata_replaced_table.csv'
 val_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/val_metadata_replaced_table.csv'
 test_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test_metadata_replaced_table.csv'
+test2_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test2_metadata_replaced_table.csv'
+
 train_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_train_corrected.csv'
 val_output   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_val_corrected.csv'
 test_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_test_corrected.csv'
+test2_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_test_oov_corrected.csv'
 
 # train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/200_synthmetadata_gpt.csv'
 # train_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_train2_corrected.csv'
@@ -24,14 +27,14 @@ Summary: {context}
 Categories and definitions:
 - library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'
 - sequencing_source: one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context
-- biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
-- biopsy_type: state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES
-- cell_line: exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text
-- cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.
-- organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
+- biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED. state if it comes from foreign organism, etc. don't hesitate to state 'unknown' if no information on the specific sampling site is provided
+- biopsy_type: state of the organ determined in biopsy_site. 'metastasis' if cancer AND METASTASIS mentioned, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'
+- cell_line: exact cell line code, ie standardized names of cultured/immortalized laboratory cell populations
+- cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). if it is primary organ, write 'primary tissue'. If the cell type is not directly available, try to DEDUCE it from the organ or disease before answering 'primary tissue'. MUST NOT BE THE DISEASE FOLLOWED BY CELLS
+- organ: organ studied or affected (not where the sample is from, very different from biopsy_site). CAN BE INFERRED OR DEDUCES FROM DISEASE BUT CAN'T BE A DISEASE STATED HERE (e.g. pneumonia make organ = lung)
 - disease: report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
-- treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, search from meaning. DON'T STATE the disease, get info just from treatment
-- treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)
+- treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, search from meaning. DON'T STATE the disease, get info just from treatment. if you identify that no treatment is applied, state 'no treatment'
+- treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S). ONLY GET TIME INFORMATION
 - response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to search from meaning from context the stage of the disease after treatment if possible
 - age: sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)
 - sex: sample donor sex
@@ -77,3 +80,4 @@ if __name__ == "__main__":
     process_file(train_input, train_output)
     process_file(val_input, val_output)
     process_file(test_input, test_output)
+    process_file(test2_input, test2_output)

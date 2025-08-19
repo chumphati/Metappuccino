@@ -15,9 +15,10 @@
 #SBATCH --mem=8G
 
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_tests"
+RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_Llama-3.1-8B-Instruct-original"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf"
+MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Llama-3.1-8B-Instruct-original.gguf"
+#MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/test5_firstadapters/mistral7B_fine_tuned"
 
 exec > "$RES/logs/Metappuccino.out" 2> "$RES/logs/Metappuccino.err"
 
@@ -61,8 +62,8 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --working_dir "/scratchlocal/$USER" \
     --model "$MODEL" \
     --getmetadata --fillmetadata --associateinformation --visualisation \
-    --iteration_limit 1 --gpus 1 --per_gpu_jobs --verbose \
-    --node "node49" --partition "alphafold" \
+    --iteration_limit 3 --gpus 1 --per_gpu_jobs --verbose \
+    --node "node51" --partition "alphafold" \
     >> "$RES/logs/Metappuccino.out" 2>> "$RES/logs/Metappuccino.err"
 deactivate
 

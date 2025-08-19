@@ -47,15 +47,12 @@ IS_CANCER = ["true","false"]
 
 SYNONYMS = {
     "cartilage cells": [
-        "cartilage cell population",
         "chondrocyte population",
         "articular cartilage cells",
         "cartilaginous cells",
-        "cartilage cells",
     ],
     "chondrocytes": [
         "cartilage chondrocytes",
-        "cartilage-forming cells",
         "chondrocyte cells",
         "cartilage-producing cells",
         "chondrocytes",
@@ -68,7 +65,7 @@ SYNONYMS = {
         "esophageal epithelial cells",
     ],
     "retinal ganglion cells": [
-        "RGCs",
+        "RGC",
         "ganglion cells of retina",
         "retina ganglion neurons",
         "optic-nerve ganglion cells",
@@ -110,9 +107,7 @@ SYNONYMS = {
         "theca cells",
     ],
     "oocytes": [
-        "egg cells",
         "female germ cells",
-        "ovum",
         "oocyte cells",
         "oocytes",
     ],
@@ -134,13 +129,11 @@ SYNONYMS = {
         "male germ stem cells",
         "spermatogonial cells",
         "testicular spermatogonia",
-        "undifferentiated germ cells",
         "spermatogonia",
     ],
     "spermatocytes": [
         "primary spermatocytes",
         "secondary spermatocytes",
-        "meiotic germ cells",
         "spermatocyte cells",
         "spermatocytes",
     ],
@@ -161,14 +154,10 @@ SYNONYMS = {
     "cartilage tissue": [
         "cartilaginous tissue",
         "cartilage matrix",
-        "hyaline cartilage",
-        "articular cartilage tissue",
         "cartilage tissue",
     ],
     "articular cartilage": [
-        "joint cartilage",
         "articular hyaline cartilage",
-        "synovial cartilage",
         "joint surface cartilage",
         "articular cartilage",
     ],
@@ -227,76 +216,6 @@ SYNONYMS = {
         "myometrial tissue",
         "smooth muscle of uterus",
         "myometrium",
-    ],
-    "KYSE-30": [
-        "KYSE30 cells",
-        "KYSE-30 esophageal carcinoma cells",
-        "KYSE 30 line",
-        "esophageal squamous line KYSE-30",
-        "KYSE-30",
-    ],
-    "TE-1": [
-        "TE1 cells",
-        "TE-1 esophageal carcinoma cells",
-        "TE 1 line",
-        "esophageal cancer line TE-1",
-        "TE-1",
-    ],
-    "ARPE-19": [
-        "ARPE19 cells",
-        "ARPE-19 retinal pigment epithelial cells",
-        "ARPE 19 line",
-        "human RPE line ARPE-19",
-        "ARPE-19",
-    ],
-    "HEI-OC1": [
-        "HEI OC1 cells",
-        "HEI-OC1 inner ear cells",
-        "HEI OC 1 line",
-        "cochlear line HEI-OC1",
-        "HEI-OC1",
-    ],
-    "KGN": [
-        "KGN cells",
-        "KGN granulosa cell line",
-        "KGN ovarian cells",
-        "human granulosa line KGN",
-        "KGN",
-    ],
-    "NT2/D1": [
-        "NT2D1 cells",
-        "NT2/D1 testicular carcinoma cells",
-        "NT2 D1 line",
-        "pluripotent line NT2/D1",
-        "NT2/D1",
-    ],
-    "Ishikawa": [
-        "Ishikawa cells",
-        "Ishikawa endometrial cells",
-        "endometrial carcinoma line Ishikawa",
-        "uterine cancer line Ishikawa",
-        "Ishikawa",
-    ],
-    "ECC-1": [
-        "ECC1 cells",
-        "ECC-1 endometrial carcinoma cells",
-        "ECC 1 line",
-        "endometrial cancer line ECC-1",
-        "ECC-1",
-    ],
-    "SW1353": [
-        "SW-1353 cells",
-        "SW1353 chondrosarcoma cells",
-        "SW 1353 line",
-        "cartilage tumor line SW1353",
-        "SW1353",
-    ],
-    "ATDC5": [
-        "ATDC-5 cells",
-        "ATDC5 chondrogenic cells",
-        "ATDC 5 line",
-        "mouse chondroprogenitor line ATDC5",
-        "ATDC5",
     ],
     "esophagus": [
         "oesophagus",
@@ -729,7 +648,8 @@ def inject_value(sentence: str, insertion: str) -> str:
 
 with open(DATA_PATH) as f:
     templates = json.load(f)
-expanded = random.choices(templates, k=400)
+target_n = 400
+expanded = random.choices(templates, k=max(1200, target_n*3))
 with open(EXPANDED_PATH, 'w') as f:
     json.dump(expanded, f, indent=2)
 
@@ -737,6 +657,22 @@ CANCER_DISEASES = {
     "esophageal squamous cell carcinoma",
     "testicular germ cell tumor"
 }
+
+def eq_quota(values, total):
+    k=len(values); base=total//k; r=total-base*k
+    lst=list(values); random.shuffle(lst)
+    q={v:base for v in lst}
+    for v in lst[:r]: q[v]+=1
+    return q
+
+NOISE = [
+    "sequencer lane rebalanced for duplex bias","insert size ~320bp","sample barcoded with UMIs","QC passed at RIN 8.1",
+    "library molarity 7.5 nM","coverage uniformity within 1.3x","FASTQ trimmed (Phred≥30)","adapter clipping enabled",
+    "lane bleedthrough negligible","5' bias not detected","batch randomization across plates","ERCC spike-ins present",
+    "index-hopping mitigated","PCR duplicates removed","alignment on GRCh38","multi-mapping reads <2%","FRiP 0.21",
+    "median insert 286","sequencing kit v3","freeze-thaw cycles=1","lane clustering density nominal","negative control clean",
+    "RNase-free handling confirmed","unique fragments retained","flowcell ID anonymized"
+]
 
 def fuzzy_token_patterns(values):
     pats = []
@@ -790,196 +726,149 @@ def sanitize_phrase(phrase, rec):
 def normalize_is_cancer(d):
     return "true" if d in CANCER_DISEASES else "false"
 
-def pick_organ_from_disease(d):
-    return random.choice(SEM["disease"]["organ"].get(d, ORGAN))
+def pick_template(expanded_list):
+    item = random.choice(expanded_list)
+    if isinstance(item, (list, tuple)):
+        return item[0]
+    if isinstance(item, dict):
+        return item.get("template", next(iter(item.values())))
+    return item
 
-def pick_organ_from_cell_line(cl):
-    return random.choice(SEM["cell_line"]["organ"].get(cl, ORGAN))
+def allowed_sources_for_org(org):
+    if org in {"blood","bone marrow"}:
+        return [x for x in SEQ_SRC if x!="spatial"]
+    return list(SEQ_SRC)
 
-def pick_cell_type_from_organ(org):
-    cands = [ct for ct, orgs in SEM["cell_type"]["organ"].items() if org in orgs]
-    return random.choice(cands) if cands else random.choice(CELL_TYPE)
-
-def pick_cell_line_from_organ(org):
-    cands = [cl for cl, orgs in SEM["cell_line"]["organ"].items() if org in orgs]
-    return random.choice(cands) if cands and random.random() < 0.6 else random.choice([""] + cands + [""])
-
-def pick_seq_source_from_cell_type(ct):
-    sc = ct in SEM["library_source"]["cell_type"]["single-cell"]
-    sp = ct in SEM["library_source"]["cell_type"]["spatial"]
-    bk = ct in SEM["library_source"]["cell_type"]["bulk"]
-    if sc and not bk:
-        return "single-cell" if random.random()<0.8 else ("spatial" if sp and random.random()<0.3 else "bulk")
-    if sp and not bk:
-        return "spatial" if random.random()<0.8 else "single-cell"
-    if bk and not sc and not sp:
-        return "bulk"
-    # if ct appears in several buckets, pick probabilistically
-    choices = []
-    if sc: choices += ["single-cell"]*4
-    if sp: choices += ["spatial"]*2
-    if bk: choices += ["bulk"]*3
-    return random.choice(choices) if choices else random.choice(SEQ_SRC)
-
-def pick_library_selection(src):
-    # small RNA seldom in single-cell/spatial; bulk can be either
+def allowed_libraries_for_source(src):
     if src in {"single-cell","spatial"}:
-        return "other"
-    return "small RNA" if random.random()<0.35 else "other"
+        return ["other"]
+    # bulk
+    return ["small RNA","other"]
 
-def pick_disease_from_organ(org):
-    cands = [d for d in DISEASE if org in SEM["disease"]["organ"].get(d,[])]
-    return random.choice(cands) if cands else random.choice(DISEASE)
+def allowed_celltypes_for_org(org):
+    cands = [ct for ct, orgs in SEM["cell_type"]["organ"].items() if org in orgs]
+    return cands if cands else list(CELL_TYPE)
 
-def pick_treatment_from_disease(d):
-    cands = [t for t,ds in SEM["treatment"]["disease"].items() if d in ds and t in TREATMENT]
-    return random.choice(cands) if cands else random.choice(TREATMENT)
+def allowed_celllines_for_org(org):
+    cands = [cl for cl, orgs in SEM["cell_line"]["organ"].items() if org in orgs]
+    return cands if cands else list(CELL_LINE)
 
-def pick_timing_and_response(tr):
-    tt = random.choice(SEM["treatment_time"]["treatment"].get(tr, TREAT_TIME))
-    rr = random.choice(SEM["response"]["treatment"].get(tr, RESPONSE))
-    return tt, rr
+def primary_sites_for_org(org):
+    sites = [site for site, orgs in SEM["biopsy_site"]["organ"].items() if org in orgs]
+    return sites if sites else list(BIOPSY_SITE)
 
-def pick_biopsy_site(org):
-    cands = [site for site,orgs in SEM["biopsy_site"]["organ"].items() if org in orgs]
-    if cands and random.random()<0.75:
-        return random.choice(cands)
-    return random.choice(BIOPSY_SITE)
+def metastasis_sites_for_org(org):
+    return [site for site in BIOPSY_SITE if site != org]
 
-def decide_biopsy_type(site, organ, disease, is_cancer):
-    if site == "blood":
-        return "blood"
-    if is_cancer and site != organ:
-        return "metastasis"
-    return "primary"
+def allowed_treatments_for_disease(d):
+    feas = [t for t, ds in SEM["treatment"]["disease"].items() if d in ds and t in TREATMENT]
+    return feas if feas else list(TREATMENT)
 
-def pick_sex(disease, organ):
-    by_d = SEM["sex"]["disease"].get(disease, [])
-    by_o = SEM["sex"]["organ"].get(organ, [])
-    inter = list(set(by_d) & set(by_o))
-    if inter: return random.choice(inter)
-    if by_d:  return random.choice(by_d)
-    if by_o:  return random.choice(by_o)
-    return random.choice(SEX)
+def allowed_tt_for_treatment(tr):
+    return SEM["treatment_time"]["treatment"].get(tr, TREAT_TIME)
+
+def allowed_rr_for_treatment(tr):
+    return SEM["response"]["treatment"].get(tr, RESPONSE)
+
+def allowed_sex(d, org):
+    by_d = SEM["sex"]["disease"].get(d, [])
+    by_o = SEM["sex"]["organ"].get(org, [])
+    if by_d and by_o:
+        inter = sorted(set(by_d) & set(by_o))
+        if inter: return inter
+    union = sorted(set(by_d) | set(by_o))
+    return union if union else list(SEX)
+
+# ----- quotas -----
+quota = {cat: eq_quota(vals, target_n) for cat, vals in CATEGORY_LISTS.items()}
+remaining = {k: {v:c for v,c in q.items()} for k,q in quota.items()}
+
+def pop_any(cat):
+    pool=[v for v,c in remaining[cat].items() if c>0]
+    if not pool: return None
+    v=random.choice(pool); remaining[cat][v]-=1; return v
+
+def pop_from(cat, valid):
+    pool=[v for v in valid if remaining[cat].get(v,0)>0]
+    if pool:
+        v=random.choice(pool); remaining[cat][v]-=1; return v
+    return pop_any(cat)
 
 def phrase_with_context(phrase, rec):
-    for cat in CATEGORIES:
-        if cat=="is_cancer":
-            continue
+    # comme le train: injecter quelques catégories ciblées + NOISE, puis sanitize
+    cats = ['biopsy_site','organ','response','treatment','disease','cell_type','cell_line']
+    for cat in cats:
         val = rec[cat]
         alt = random.choice(SYNONYMS.get(val,[val])) if random.random()<0.8 else val
         if cat in CTX_WRAP:
             alt = random.choice(CTX_WRAP[cat]).format(val=alt)
         phrase = inject_value(phrase, alt)
+    for _ in range(random.randint(3,5)):
+        phrase = inject_value(phrase, random.choice(NOISE))
     phrase = sanitize_phrase(phrase, rec)
     return phrase
 
-def validate(rec):
-    d = rec["disease"]; org = rec["organ"]; cl = rec["cell_line"]; ct = rec["cell_type"]
-    site = rec["biopsy_site"]; btype = rec["biopsy_type"]; src = rec["sequencing_source"]
-    tr = rec["treatment"]; tt = rec["treatment_time"]; rr = rec["response"]
-    sex = rec["sex"]; isc = rec["is_cancer"]
-
-    # organ compat
-    if org not in SEM["disease"]["organ"].get(d,[]):
-        return False
-    if org not in SEM["cell_type"]["organ"].get(ct,[]):
-        return False
-    if cl and cl in SEM["cell_line"]["organ"] and org not in SEM["cell_line"]["organ"].get(cl,[]):
-        return False
-
-    # biopsy site compat
-    if org not in SEM["biopsy_site"]["organ"].get(site, []):
-        return False
-
-    # biopsy type logic
-    exp_btype = decide_biopsy_type(site, org, d, isc=="true")
-    if btype != exp_btype:
-        return False
-
-    # cancer flag
-    if isc != normalize_is_cancer(d):
-        return False
-
-    # sex constraint
-    sex_ok = True
-    if d in SEM["sex"]["disease"]:
-        sex_ok &= sex in SEM["sex"]["disease"][d]
-    if org in SEM["sex"]["organ"]:
-        sex_ok &= sex in SEM["sex"]["organ"][org]
-    if not sex_ok:
-        return False
-
-    # treatment -> timing/response
-    if tt not in SEM["treatment_time"]["treatment"].get(tr, TREAT_TIME):
-        return False
-    if rr not in SEM["response"]["treatment"].get(tr, RESPONSE):
-        return False
-
-    # source vs cell type
-    sc_ok = ct in SEM["library_source"]["cell_type"]["single-cell"]
-    bulk_ok = ct in SEM["library_source"]["cell_type"]["bulk"]
-    spatial_ok = ct in SEM["library_source"]["cell_type"]["spatial"]
-    if src=="single-cell" and not sc_ok:
-        return False
-    if src=="bulk" and not bulk_ok:
-        return False
-    if src=="spatial" and not spatial_ok:
-        return False
-
-    # library_selection coarse rule
-    if rec["sequencing_source"] in {"single-cell","spatial"} and rec["library_selection"]=="small RNA":
-        return False
-
-    return True
-
 rows = []
-target_n = 400
-attempts_cap = 100000
-attempts = 0
 
-for template, _ in expanded:
-    if len(rows)>=target_n:
-        break
+for i in range(target_n):
+    d = pop_any('disease')
+    if d is None: break
 
-while len(rows)<target_n and attempts<attempts_cap:
-    attempts += 1
-    template, _ = random.choice(expanded)
-    phrase = template
-    record = {}
-
-    anchor = random.random()
-    if anchor < 0.4:
-        d = random.choice(DISEASE)
-        org = pick_organ_from_disease(d)
-    elif anchor < 0.8:
-        org = random.choice(ORGAN)
-        d = pick_disease_from_organ(org)
-    else:
-        cl0 = random.choice(CELL_LINE)
-        org = pick_organ_from_cell_line(cl0)
-        d = pick_disease_from_organ(org)
-
-    ct = pick_cell_type_from_organ(org)
-    cl = pick_cell_line_from_organ(org)
-    src = pick_seq_source_from_cell_type(ct)
-    lib = pick_library_selection(src)
-    tr = pick_treatment_from_disease(d)
-    tt, rr = pick_timing_and_response(tr)
-    site = pick_biopsy_site(org)
-    sex = pick_sex(d, org)
-    age = random.choice(AGE)
-    eth = random.choice(ETHNICITY)
-    loc = random.choice(LOCALIZATION)
     isc = normalize_is_cancer(d)
-    btype = decide_biopsy_type(site, org, d, isc=="true")
+    # rééquilibrage 50/50 si quota saturé
+    if remaining['is_cancer'][isc]==0:
+        alt = 'false' if isc=='true' else 'true'
+        if remaining['is_cancer'][alt]>0:
+            isc = alt
+    remaining['is_cancer'][isc]-=1
 
-    record.update({
+    organs = SEM["disease"]["organ"].get(d, ORGAN) or ORGAN
+    org = pop_from('organ', organs) or random.choice(ORGAN)
+
+    ct = pop_from('cell_type', allowed_celltypes_for_org(org)) or random.choice(CELL_TYPE)
+    cl = pop_from('cell_line', allowed_celllines_for_org(org)) or random.choice(CELL_LINE)
+
+    src = pop_from('sequencing_source', allowed_sources_for_org(org)) or random.choice(SEQ_SRC)
+    lib = pop_from('library_selection', allowed_libraries_for_source(src)) or random.choice(LIB_SEL)
+
+    # Biopsy type/site avec logique partagée
+    bt = pop_from('biopsy_type', BIOPSY_TYPE) or random.choice(BIOPSY_TYPE)
+    if bt == 'blood':
+        bs = pop_from('biopsy_site', ['blood']) or 'blood'
+    elif bt == 'primary':
+        bs = pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
+    else:  # metastasis
+        if isc == 'true':
+            mets = metastasis_sites_for_org(org)
+            bs = pop_from('biopsy_site', mets) or pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
+            if bs in primary_sites_for_org(org):
+                bt = 'primary'
+        else:
+            bt = 'primary'
+            bs = pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
+
+    # spatial doit être site==org
+    if src == 'spatial' and bs != org:
+        bt = 'primary'
+        bs = pop_from('biopsy_site', [org]) or bs  # si possible, forcer site==org
+
+    tr = pop_from('treatment', allowed_treatments_for_disease(d)) or random.choice(TREATMENT)
+    tt = pop_from('treatment_time', allowed_tt_for_treatment(tr)) or random.choice(TREAT_TIME)
+    rr = pop_from('response',      allowed_rr_for_treatment(tr))  or random.choice(RESPONSE)
+
+    sx_allowed = allowed_sex(d, org)
+    sex = pop_from('sex', sx_allowed) or random.choice(SEX)
+
+    age = pop_any('age') or random.choice(AGE)
+    eth = pop_any('ethnicity') or random.choice(ETHNICITY)
+    loc = pop_any('localization') or random.choice(LOCALIZATION)
+
+    record = {
         "library_selection":lib,
         "sequencing_source":src,
         "organ":org,
-        "biopsy_site":site,
-        "biopsy_type":btype,
+        "biopsy_site":bs,
+        "biopsy_type":bt,
         "cell_line":cl,
         "cell_type":ct,
         "disease":d,
@@ -991,11 +880,10 @@ while len(rows)<target_n and attempts<attempts_cap:
         "ethnicity":eth,
         "localization":loc,
         "is_cancer":isc
-    })
+    }
 
-    if not validate(record):
-        continue
-
+    template = pick_template(expanded)
+    phrase = template if isinstance(template, str) else str(template)
     record["phrase"] = phrase_with_context(phrase, record)
     rows.append(record)
 

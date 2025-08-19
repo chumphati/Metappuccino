@@ -1,5 +1,5 @@
 ##########################################################################################
-#IMPORT
+# IMPORT
 import os
 import psutil
 import torch
@@ -21,6 +21,7 @@ parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
+parser.add_argument("--base_model_dir", type=str, default=None)
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -34,8 +35,8 @@ model = args.model
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir = os.path.join(base_path, "METADATA_LLM_INFERENCE")
 skipped_runs_path = os.path.join(base_path, "skipped_runs.txt")
-model_peft_dir = os.path.join(base_path, model)
-model_base_dir = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
+model_peft_dir = model if os.path.isabs(model) else os.path.join(base_path, model)
+model_base_dir = args.base_model_dir
 error_file_header = "run_accession\tsummary"
 
 sys.stdout = open(log_file_path, "a")
@@ -44,8 +45,9 @@ sys.stderr = sys.stdout
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
+
 ##########################################################################################
-#FUNCTIONS
+# FUNCTIONS
 
 def write_reload_file(fp, header, parts):
     dirpath = os.path.dirname(fp)
@@ -101,8 +103,20 @@ def prime_tokens(model, seq_ids, past):
         return out.past_key_values
 
 
+def _clean_generated_value(text):
+    text = text.replace("\r", " ").replace("\n", " ")
+    text = re.sub(r"\s+", " ", text)
+    if '"' in text:
+        text = text.split('"', 1)[0]
+    text = re.sub(r'\s*[,;}\]]\s*$', '', text)
+    text = text.strip()
+    if text == "":
+        text = "unknown"
+    return text
+
+
 ##########################################################################################
-#MAIN
+# MAIN
 process = psutil.Process(os.getpid())
 
 use_gpu = torch.cuda.is_available()
@@ -114,7 +128,11 @@ if use_gpu and gpu_count > 0:
 else:
     vprint("No GPU detected → using CPU only")
 
-tokenizer = AutoTokenizer.from_pretrained(model_base_dir)
+tok_src = model_peft_dir if any(
+    os.path.exists(os.path.join(model_peft_dir, f)) for f in ["tokenizer.json", "tokenizer.model"]
+) else model_base_dir
+
+tokenizer = AutoTokenizer.from_pretrained(tok_src)
 if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({'pad_token': '<pad>'})
     tokenizer.pad_token = '<pad>'
@@ -122,14 +140,34 @@ model_base = AutoModelForCausalLM.from_pretrained(model_base_dir,
                                                   torch_dtype=torch.float16 if use_gpu else torch.float32,
                                                   device_map="auto")
 
+try:
+    model_base.resize_token_embeddings(len(tokenizer))
+except Exception:
+    pass
+
 categories = [
     "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
     "cell_line", "cell_type", "organ", "disease", "treatment",
     "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
 ]
 
+
 def load_all_category_adapters(base_model, peft_root, cats):
+    merged_dirs = [d for d in os.listdir(peft_root)
+                   if d.startswith("merged_cat_") and os.path.isdir(os.path.join(peft_root, d))]
+    if merged_dirs:
+        raise RuntimeError(
+            "Merged checkpoints detected in --model. This script expects PEFT adapters in subfolders 'cat_*'."
+        )
+
     peft_model = None
+    loaded_names = set()
+
+    shared_path = os.path.join(peft_root, "shared")
+    if os.path.isdir(shared_path):
+        peft_model = PeftModel.from_pretrained(base_model, shared_path, adapter_name="shared")
+        loaded_names.add("shared")
+
     for c in cats:
         path = os.path.join(peft_root, f"cat_{c}")
         if os.path.isdir(path):
@@ -138,10 +176,24 @@ def load_all_category_adapters(base_model, peft_root, cats):
             else:
                 peft_model.load_adapter(path, adapter_name=f"cat_{c}")
             vprint(f"loaded adapter: cat_{c}")
+            loaded_names.add(f"cat_{c}")
+
     if peft_model is None:
-        peft_model = PeftModel.from_pretrained(base_model, peft_root)
-        vprint(f"loaded single adapter from: {peft_root}")
+        root_cfg = os.path.join(peft_root, "adapter_config.json")
+        if os.path.isfile(root_cfg):
+            peft_model = PeftModel.from_pretrained(base_model, peft_root, adapter_name="cat_all")
+            vprint(f"loaded single adapter from: {peft_root}")
+            loaded_names.add("cat_all")
+        else:
+            raise RuntimeError(f"Aucun adapter PEFT trouvé dans {peft_root}")
+
+    try:
+        setattr(peft_model, "_loaded_adapters", loaded_names)
+    except Exception:
+        pass
+
     return peft_model
+
 
 model = load_all_category_adapters(model_base, model_peft_dir, categories)
 model.eval()
@@ -233,21 +285,35 @@ for idx, line in enumerate(metadata_lines):
 
     prompt = f"""Run accession: {run}
             Summary: {summary}
-
+            
             Categories and definitions:
-            {inst_lines}
-
+            - library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'
+            - sequencing_source: one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context
+            - biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
+            - biopsy_type: state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES
+            - cell_line: exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text
+            - cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.
+            - organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
+            - disease: report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
+            - treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, search from meaning. DON'T STATE the disease, get info just from treatment
+            - treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)
+            - response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to search from meaning from context the stage of the disease after treatment if possible
+            - age: sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)
+            - sex: sample donor sex
+            - ethnicity: sample donor ethnicity (origins, genetics)
+            - localization: all geographical information available, if several list them all
+            - is_cancer: return 'True' if the disease is cancer related, 'False' otherwise
+            
             For each category below:
-            - Infer from the summary if possible
+            - Extract information from the summary if possible
             - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
-            - If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
-            {extra_metadata_block} 
-
+            - If one value is impossible to extract, even by deducing it, return "unknown", applicable for all categories
+                        
             BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
             FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
-
+            
             Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
-
+            
             Here is the output:
             """
 
@@ -276,8 +342,22 @@ for idx, line in enumerate(metadata_lines):
         past = prime_tokens(model, ks_t, past)
 
         for ci, key in enumerate(categories):
-            model.set_adapter(f"cat_{key}")
+            loaded = getattr(model, "_loaded_adapters", set())
+            name = f"cat_{key}" if f"cat_{key}" in loaded else ("cat_all" if "cat_all" in loaded else None)
+            if name is None:
+                raise RuntimeError(f"Aucun adapter chargé pour la catégorie '{key}'")
 
+            if "shared" in loaded:
+                try:
+                    model.set_adapter(["shared", name])
+                except Exception:
+                    model.set_adapter(name)
+            else:
+                model.set_adapter(name)
+
+            curr = getattr(model, "active_adapter", None)
+            vprint(
+                f"[{run}] {key} -> using adapter(s): {(['shared', name] if 'shared' in loaded else [name])} | active_adapter={curr}")
             prefix = f'"{key}": "'
             key_ids = tok_ids(prefix)
             if len(key_ids) == 0:
@@ -302,6 +382,7 @@ for idx, line in enumerate(metadata_lines):
                 t += 1
 
             text_val = tokenizer.decode(val_tokens, skip_special_tokens=True).strip()
+            text_val = _clean_generated_value(text_val)
             generated_map[key] = text_val
             entropy_dict[key] = calculate_entropy_optimized(val_logprobs)
 
