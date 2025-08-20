@@ -245,6 +245,7 @@ for idx, line in enumerate(metadata_lines):
         skipped_runs.append(run)
         continue
 
+    #mistral
     # category_token_patterns = {
     #     "library_selection": ['library', '_', 'selection', '":', ' "'],
     #     "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
@@ -264,23 +265,44 @@ for idx, line in enumerate(metadata_lines):
     #     "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
     # }
 
+    #llama
+    # category_token_patterns = {
+    #     "library_selection": [' {"', 'library', '_selection', '":', ' "'],
+    #     "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
+    #     "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
+    #     "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
+    #     "cell_line": [' "', 'cell', '_line', '":', ' "'],
+    #     "cell_type": [' "', 'cell', '_type', '":', ' "'],
+    #     "organ": [' "', 'organ', '":', ' "'],
+    #     "disease": [' "', 'd', 'isease', '":', ' "'],
+    #     "treatment": [' "', 't', 'reatment', '":', ' "'],
+    #     "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
+    #     "response": [' "', 'response', '":', ' "'],
+    #     "age": [' "', 'age', '":', ' "'],
+    #     "sex": [' "', 'sex', '":', ' "'],
+    #     "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
+    #     "localization": [' "', 'local', 'ization', '":', ' "'],
+    #     "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
+    # }
+
+    #gemma
     category_token_patterns = {
-        "library_selection": [' {"', 'library', '_selection', '":', ' "'],
-        "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
-        "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
-        "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
-        "cell_line": [' "', 'cell', '_line', '":', ' "'],
-        "cell_type": [' "', 'cell', '_type', '":', ' "'],
+        "library_selection": ['library', '_', 'selection', '":', ' "'],
+        "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
+        "biopsy_site": [' "', 'bio', 'psy', '_', 'site', '":', ' "'],
+        "biopsy_type": [' "', 'bio', 'psy', '_', 'type', '":', ' "'],
+        "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
+        "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
         "organ": [' "', 'organ', '":', ' "'],
-        "disease": [' "', 'd', 'isease', '":', ' "'],
-        "treatment": [' "', 't', 'reatment', '":', ' "'],
-        "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
+        "disease": [' "', 'disease', '":', ' "'],
+        "treatment": [' "', 'treatment', '":', ' "'],
+        "treatment_time": [' "', 'treatment', '_', 'time', '":', ' "'],
         "response": [' "', 'response', '":', ' "'],
         "age": [' "', 'age', '":', ' "'],
         "sex": [' "', 'sex', '":', ' "'],
-        "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
-        "localization": [' "', 'local', 'ization', '":', ' "'],
-        "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
+        "ethnicity": [' "', 'ethnicity', '":', ' "'],
+        "localization": [' "', 'localization', '":', ' "'],
+        "is_cancer": [' "', 'is', '_', 'cancer', '":', ' "'],
     }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]

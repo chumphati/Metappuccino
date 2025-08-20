@@ -17,7 +17,7 @@ CATEGORIES = [
 
 LIB_SEL = ["small RNA", "other"]
 SEQ_SRC = ["single-cell", "bulk", "spatial"]
-BIOPSY_SITE = ["blood", "eye", "ear", "ovaries", "cartilage", "esophagus"]
+BIOPSY_SITE = ["blood", "eye", "ear", "ovaries", "cartilage"]
 BIOPSY_TYPE = ['primary', 'metastasis', 'blood']
 CELL_LINE = ["KYSE-30", "TE-1", "ARPE-19", "HEI-OC1", "KGN", "NT2/D1", "Ishikawa", "ECC-1", "SW1353", "ATDC5"]
 CELL_TYPE = [
@@ -47,12 +47,15 @@ IS_CANCER = ["true","false"]
 
 SYNONYMS = {
     "cartilage cells": [
+        "cartilage cell population",
         "chondrocyte population",
         "articular cartilage cells",
         "cartilaginous cells",
+        "cartilage cells",
     ],
     "chondrocytes": [
         "cartilage chondrocytes",
+        "cartilage-forming cells",
         "chondrocyte cells",
         "cartilage-producing cells",
         "chondrocytes",
@@ -65,7 +68,7 @@ SYNONYMS = {
         "esophageal epithelial cells",
     ],
     "retinal ganglion cells": [
-        "RGC",
+        "RGCs",
         "ganglion cells of retina",
         "retina ganglion neurons",
         "optic-nerve ganglion cells",
@@ -107,7 +110,9 @@ SYNONYMS = {
         "theca cells",
     ],
     "oocytes": [
+        "egg cells",
         "female germ cells",
+        "ovum",
         "oocyte cells",
         "oocytes",
     ],
@@ -129,11 +134,13 @@ SYNONYMS = {
         "male germ stem cells",
         "spermatogonial cells",
         "testicular spermatogonia",
+        "undifferentiated germ cells",
         "spermatogonia",
     ],
     "spermatocytes": [
         "primary spermatocytes",
         "secondary spermatocytes",
+        "meiotic germ cells",
         "spermatocyte cells",
         "spermatocytes",
     ],
@@ -154,10 +161,14 @@ SYNONYMS = {
     "cartilage tissue": [
         "cartilaginous tissue",
         "cartilage matrix",
+        "hyaline cartilage",
+        "articular cartilage tissue",
         "cartilage tissue",
     ],
     "articular cartilage": [
+        "joint cartilage",
         "articular hyaline cartilage",
+        "synovial cartilage",
         "joint surface cartilage",
         "articular cartilage",
     ],
@@ -216,6 +227,76 @@ SYNONYMS = {
         "myometrial tissue",
         "smooth muscle of uterus",
         "myometrium",
+    ],
+    "KYSE-30": [
+        "KYSE30 cells",
+        "KYSE-30 esophageal carcinoma cells",
+        "KYSE 30 line",
+        "esophageal squamous line KYSE-30",
+        "KYSE-30",
+    ],
+    "TE-1": [
+        "TE1 cells",
+        "TE-1 esophageal carcinoma cells",
+        "TE 1 line",
+        "esophageal cancer line TE-1",
+        "TE-1",
+    ],
+    "ARPE-19": [
+        "ARPE19 cells",
+        "ARPE-19 retinal pigment epithelial cells",
+        "ARPE 19 line",
+        "human RPE line ARPE-19",
+        "ARPE-19",
+    ],
+    "HEI-OC1": [
+        "HEI OC1 cells",
+        "HEI-OC1 inner ear cells",
+        "HEI OC 1 line",
+        "cochlear line HEI-OC1",
+        "HEI-OC1",
+    ],
+    "KGN": [
+        "KGN cells",
+        "KGN granulosa cell line",
+        "KGN ovarian cells",
+        "human granulosa line KGN",
+        "KGN",
+    ],
+    "NT2/D1": [
+        "NT2D1 cells",
+        "NT2/D1 testicular carcinoma cells",
+        "NT2 D1 line",
+        "pluripotent line NT2/D1",
+        "NT2/D1",
+    ],
+    "Ishikawa": [
+        "Ishikawa cells",
+        "Ishikawa endometrial cells",
+        "endometrial carcinoma line Ishikawa",
+        "uterine cancer line Ishikawa",
+        "Ishikawa",
+    ],
+    "ECC-1": [
+        "ECC1 cells",
+        "ECC-1 endometrial carcinoma cells",
+        "ECC 1 line",
+        "endometrial cancer line ECC-1",
+        "ECC-1",
+    ],
+    "SW1353": [
+        "SW-1353 cells",
+        "SW1353 chondrosarcoma cells",
+        "SW 1353 line",
+        "cartilage tumor line SW1353",
+        "SW1353",
+    ],
+    "ATDC5": [
+        "ATDC-5 cells",
+        "ATDC5 chondrogenic cells",
+        "ATDC 5 line",
+        "mouse chondroprogenitor line ATDC5",
+        "ATDC5",
     ],
     "esophagus": [
         "oesophagus",
@@ -424,7 +505,7 @@ SYNONYMS = {
     "unknown":                ["NA", "not available", "unspecified", "missing data", "unknown"],
     "metastasis": ["metastasis", "Metastasis", "MET", "secondary tumor"],
     "blood": ["blood", "Blood sample", "peripheral blood", "venous blood"],
-    "spatial": ["spatial", "spatial-seq", "spatial RNA-seq", "Visium"]
+    "spatial": ["spatial", "spatial‑seq", "spatial RNA‑seq", "Visium"]
 }
 
 SEM = {
@@ -521,7 +602,7 @@ SEM = {
     },
     "biopsy_site": {
         "organ": {
-            "blood": ["blood", "ovaries", "testes", "uterus", "cartilage", "esophagus", "eye", "ear"],
+            "blood": ["blood", "ovaries", "testes", "uterus", "cartilage"],
             "eye": ["eye"],
             "ear": ["ear"],
             "ovaries": ["ovaries"],
@@ -648,8 +729,7 @@ def inject_value(sentence: str, insertion: str) -> str:
 
 with open(DATA_PATH) as f:
     templates = json.load(f)
-target_n = 400
-expanded = random.choices(templates, k=max(1200, target_n*3))
+expanded = random.choices(templates, k=400)
 with open(EXPANDED_PATH, 'w') as f:
     json.dump(expanded, f, indent=2)
 
@@ -658,233 +738,70 @@ CANCER_DISEASES = {
     "testicular germ cell tumor"
 }
 
-def eq_quota(values, total):
-    k=len(values); base=total//k; r=total-base*k
-    lst=list(values); random.shuffle(lst)
-    q={v:base for v in lst}
-    for v in lst[:r]: q[v]+=1
-    return q
-
-NOISE = [
-    "sequencer lane rebalanced for duplex bias","insert size ~320bp","sample barcoded with UMIs","QC passed at RIN 8.1",
-    "library molarity 7.5 nM","coverage uniformity within 1.3x","FASTQ trimmed (Phred≥30)","adapter clipping enabled",
-    "lane bleedthrough negligible","5' bias not detected","batch randomization across plates","ERCC spike-ins present",
-    "index-hopping mitigated","PCR duplicates removed","alignment on GRCh38","multi-mapping reads <2%","FRiP 0.21",
-    "median insert 286","sequencing kit v3","freeze-thaw cycles=1","lane clustering density nominal","negative control clean",
-    "RNase-free handling confirmed","unique fragments retained","flowcell ID anonymized"
-]
-
-def fuzzy_token_patterns(values):
-    pats = []
-    for v in values:
-        base = re.sub(r'\s+', r'\\s*', re.escape(v))
-        base = base.replace(r'\-', r'[-_ ]*').replace(r'_', r'[_ ]*')
-        pats.append(r'(?i)(?<![A-Za-z0-9])' + base + r'(?![A-Za-z0-9])')
-        if re.search(r'\d', v):
-            letters = re.sub(r'[^A-Za-z]+', '', v)
-            digits  = ''.join(re.findall(r'\d+', v))
-            if letters and digits:
-                pats.append(r'(?i)(?<![A-Za-z0-9])' + re.escape(letters) + r'\s*[-_ ]*' + re.escape(digits) + r'(?![A-Za-z0-9])')
-    return pats
-
-def allowed_terms(value):
-    return set([value] + SYNONYMS.get(value, []))
-
-def sanitize_phrase(phrase, rec):
-    keep = {
-        "organ": allowed_terms(rec["organ"]),
-        "disease": allowed_terms(rec["disease"]),
-        "cell_line": allowed_terms(rec["cell_line"]),
-        "cell_type": allowed_terms(rec["cell_type"]),
-        "treatment": allowed_terms(rec["treatment"]),
-        "biopsy_site": allowed_terms(rec["biopsy_site"]),
-        "sequencing_source": allowed_terms(rec["sequencing_source"]),
-        "library_selection": allowed_terms(rec["library_selection"]),
-    }
-    forbidden = []
-    all_sets = {
-        "organ": set(ORGAN),
-        "disease": set(DISEASE),
-        "cell_line": set(CELL_LINE),
-        "cell_type": set(CELL_TYPE),
-        "treatment": set(TREATMENT),
-        "biopsy_site": set(BIOPSY_SITE),
-        "sequencing_source": set(SEQ_SRC),
-        "library_selection": set(LIB_SEL),
-    }
-    for cat, universe in all_sets.items():
-        for val in universe:
-            if val in keep.get(cat,set()):
-                continue
-            forbidden.extend([val] + SYNONYMS.get(val, []))
-    patterns = fuzzy_token_patterns(forbidden)
-    for pat in patterns:
-        phrase = re.sub(pat, '', phrase)
-    phrase = re.sub(r'\s{2,}', ' ', phrase).strip().strip(',').strip()
-    return phrase
-
-def normalize_is_cancer(d):
-    return "true" if d in CANCER_DISEASES else "false"
-
-def pick_template(expanded_list):
-    item = random.choice(expanded_list)
-    if isinstance(item, (list, tuple)):
-        return item[0]
-    if isinstance(item, dict):
-        return item.get("template", next(iter(item.values())))
-    return item
-
-def allowed_sources_for_org(org):
-    if org in {"blood","bone marrow"}:
-        return [x for x in SEQ_SRC if x!="spatial"]
-    return list(SEQ_SRC)
-
-def allowed_libraries_for_source(src):
-    if src in {"single-cell","spatial"}:
-        return ["other"]
-    # bulk
-    return ["small RNA","other"]
-
-def allowed_celltypes_for_org(org):
-    cands = [ct for ct, orgs in SEM["cell_type"]["organ"].items() if org in orgs]
-    return cands if cands else list(CELL_TYPE)
-
-def allowed_celllines_for_org(org):
-    cands = [cl for cl, orgs in SEM["cell_line"]["organ"].items() if org in orgs]
-    return cands if cands else list(CELL_LINE)
-
-def primary_sites_for_org(org):
-    sites = [site for site, orgs in SEM["biopsy_site"]["organ"].items() if org in orgs]
-    return sites if sites else list(BIOPSY_SITE)
-
-def metastasis_sites_for_org(org):
-    return [site for site in BIOPSY_SITE if site != org]
-
-def allowed_treatments_for_disease(d):
-    feas = [t for t, ds in SEM["treatment"]["disease"].items() if d in ds and t in TREATMENT]
-    return feas if feas else list(TREATMENT)
-
-def allowed_tt_for_treatment(tr):
-    return SEM["treatment_time"]["treatment"].get(tr, TREAT_TIME)
-
-def allowed_rr_for_treatment(tr):
-    return SEM["response"]["treatment"].get(tr, RESPONSE)
-
-def allowed_sex(d, org):
-    by_d = SEM["sex"]["disease"].get(d, [])
-    by_o = SEM["sex"]["organ"].get(org, [])
-    if by_d and by_o:
-        inter = sorted(set(by_d) & set(by_o))
-        if inter: return inter
-    union = sorted(set(by_d) | set(by_o))
-    return union if union else list(SEX)
-
-# ----- quotas -----
-quota = {cat: eq_quota(vals, target_n) for cat, vals in CATEGORY_LISTS.items()}
-remaining = {k: {v:c for v,c in q.items()} for k,q in quota.items()}
-
-def pop_any(cat):
-    pool=[v for v,c in remaining[cat].items() if c>0]
-    if not pool: return None
-    v=random.choice(pool); remaining[cat][v]-=1; return v
-
-def pop_from(cat, valid):
-    pool=[v for v in valid if remaining[cat].get(v,0)>0]
-    if pool:
-        v=random.choice(pool); remaining[cat][v]-=1; return v
-    return pop_any(cat)
-
-def phrase_with_context(phrase, rec):
-    # comme le train: injecter quelques catégories ciblées + NOISE, puis sanitize
-    cats = ['biopsy_site','organ','response','treatment','disease','cell_type','cell_line']
-    for cat in cats:
-        val = rec[cat]
-        alt = random.choice(SYNONYMS.get(val,[val])) if random.random()<0.8 else val
-        if cat in CTX_WRAP:
-            alt = random.choice(CTX_WRAP[cat]).format(val=alt)
-        phrase = inject_value(phrase, alt)
-    for _ in range(random.randint(3,5)):
-        phrase = inject_value(phrase, random.choice(NOISE))
-    phrase = sanitize_phrase(phrase, rec)
-    return phrase
-
 rows = []
+for template, _ in expanded:
+    phrase = template
+    record, chosen = {}, {}
+    for cat in CATEGORIES:
+        if cat == 'organ':
+            ct = chosen.get('cell_type')
+            cl = chosen.get('cell_line')
+            opts_ct = SEM['cell_type']['organ'].get(ct, [])
+            opts_cl = SEM['cell_line']['organ'].get(cl, [])
+            candidates = list(set(opts_ct) & set(opts_cl)) or opts_ct or opts_cl or ORGAN
+            raw = random.choice(candidates)
+        elif cat == 'cell_type':
+            organ = chosen.get('organ')
+            valid_ct = [ct for ct, organs in SEM['cell_type']['organ'].items() if organ in organs]
+            raw = random.choice(valid_ct) if valid_ct else random.choice(CELL_TYPE)
+        elif cat == 'disease':
+            org = chosen.get('organ')
+            valid = [d for d in DISEASE if org in SEM['disease']['organ'].get(d, [])]
+            raw = random.choice(valid) if valid else random.choice(DISEASE)
+        elif cat == 'treatment_time':
+            tr = chosen.get('treatment')
+            raw = random.choice(SEM['treatment_time']['treatment'].get(tr, TREAT_TIME))
+        elif cat == 'response':
+            tr = chosen.get('treatment')
+            raw = random.choice(SEM['response']['treatment'].get(tr, RESPONSE))
+        elif cat == 'biopsy_site':
+            org = chosen.get('organ')
+            valid_sites = [site for site, organs in SEM.get("biopsy_site", {}).get("organ", {}).items() if
+                           org in organs]
+            raw = random.choice(valid_sites) if valid_sites else random.choice(BIOPSY_SITE)
+        elif cat == 'is_cancer':
+            raw = 'true' if chosen.get('disease') in CANCER_DISEASES else 'false'
+        elif cat == 'treatment':
+            disease = chosen.get('disease')
+            valid_treatments = [t for t, diseases in SEM['treatment']['disease'].items() if disease in diseases]
+            raw = random.choice(valid_treatments) if valid_treatments else "no treatment"
+        elif cat == 'sex':
+            org = chosen.get('organ')
+            disease = chosen.get('disease')
+            opts_from_org = SEM["sex"]["organ"].get(org, [])
+            opts_from_disease = SEM["sex"]["disease"].get(disease, [])
+            candidates = list(set(opts_from_org) & set(opts_from_disease)) or opts_from_org or opts_from_disease or SEX
+            raw = random.choice(candidates)
 
-for i in range(target_n):
-    d = pop_any('disease')
-    if d is None: break
-
-    isc = normalize_is_cancer(d)
-    # rééquilibrage 50/50 si quota saturé
-    if remaining['is_cancer'][isc]==0:
-        alt = 'false' if isc=='true' else 'true'
-        if remaining['is_cancer'][alt]>0:
-            isc = alt
-    remaining['is_cancer'][isc]-=1
-
-    organs = SEM["disease"]["organ"].get(d, ORGAN) or ORGAN
-    org = pop_from('organ', organs) or random.choice(ORGAN)
-
-    ct = pop_from('cell_type', allowed_celltypes_for_org(org)) or random.choice(CELL_TYPE)
-    cl = pop_from('cell_line', allowed_celllines_for_org(org)) or random.choice(CELL_LINE)
-
-    src = pop_from('sequencing_source', allowed_sources_for_org(org)) or random.choice(SEQ_SRC)
-    lib = pop_from('library_selection', allowed_libraries_for_source(src)) or random.choice(LIB_SEL)
-
-    # Biopsy type/site avec logique partagée
-    bt = pop_from('biopsy_type', BIOPSY_TYPE) or random.choice(BIOPSY_TYPE)
-    if bt == 'blood':
-        bs = pop_from('biopsy_site', ['blood']) or 'blood'
-    elif bt == 'primary':
-        bs = pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
-    else:  # metastasis
-        if isc == 'true':
-            mets = metastasis_sites_for_org(org)
-            bs = pop_from('biopsy_site', mets) or pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
-            if bs in primary_sites_for_org(org):
-                bt = 'primary'
         else:
-            bt = 'primary'
-            bs = pop_from('biopsy_site', primary_sites_for_org(org)) or pop_any('biopsy_site') or random.choice(BIOPSY_SITE)
+            raw = random.choice(CATEGORY_LISTS[cat])
 
-    # spatial doit être site==org
-    if src == 'spatial' and bs != org:
-        bt = 'primary'
-        bs = pop_from('biopsy_site', [org]) or bs  # si possible, forcer site==org
+        chosen[cat] = raw
 
-    tr = pop_from('treatment', allowed_treatments_for_disease(d)) or random.choice(TREATMENT)
-    tt = pop_from('treatment_time', allowed_tt_for_treatment(tr)) or random.choice(TREAT_TIME)
-    rr = pop_from('response',      allowed_rr_for_treatment(tr))  or random.choice(RESPONSE)
+        if cat != 'is_cancer':
+            alt_options = SYNONYMS.get(raw, [raw])
+            alt = random.choice(alt_options) if random.random() < 0.8 else raw
+            if cat in CTX_WRAP:
+                wrapper = random.choice(CTX_WRAP[cat])
+                alt_phrase = wrapper.format(val=alt)
+            else:
+                alt_phrase = alt
 
-    sx_allowed = allowed_sex(d, org)
-    sex = pop_from('sex', sx_allowed) or random.choice(SEX)
+            phrase = inject_value(phrase, alt_phrase)
 
-    age = pop_any('age') or random.choice(AGE)
-    eth = pop_any('ethnicity') or random.choice(ETHNICITY)
-    loc = pop_any('localization') or random.choice(LOCALIZATION)
+        record[cat] = raw
 
-    record = {
-        "library_selection":lib,
-        "sequencing_source":src,
-        "organ":org,
-        "biopsy_site":bs,
-        "biopsy_type":bt,
-        "cell_line":cl,
-        "cell_type":ct,
-        "disease":d,
-        "treatment":tr,
-        "treatment_time":tt,
-        "response":rr,
-        "age":age,
-        "sex":sex,
-        "ethnicity":eth,
-        "localization":loc,
-        "is_cancer":isc
-    }
-
-    template = pick_template(expanded)
-    phrase = template if isinstance(template, str) else str(template)
-    record["phrase"] = phrase_with_context(phrase, record)
+    record['phrase'] = phrase
     rows.append(record)
 
-pd.DataFrame(rows, columns=CATEGORIES+["phrase"]).to_csv(OUTPUT_CSV, index=False)
+pd.DataFrame(rows).to_csv(OUTPUT_CSV, index=False)

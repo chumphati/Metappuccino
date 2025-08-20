@@ -15,10 +15,11 @@
 #SBATCH --mem=8G
 
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_Llama-3.1-8B-Instruct-original"
+RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_gemma-3-270m-it-original"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/Llama-3.1-8B-Instruct-original.gguf"
+MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/models/gemma-3-270m-it-original.gguf"
 #MODEL="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/test5_firstadapters/mistral7B_fine_tuned"
+WORKING_DIR="/scratchlocal/$USER"
 
 exec > "$RES/logs/Metappuccino.out" 2> "$RES/logs/Metappuccino.err"
 
@@ -59,7 +60,7 @@ python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --res_dir "$RES" \
     --tmp_keep \
     --env_requirement "$ENV_REQUIREMENT" \
-    --working_dir "/scratchlocal/$USER" \
+    --working_dir "$WORKING_DIR" \
     --model "$MODEL" \
     --getmetadata --fillmetadata --associateinformation --visualisation \
     --iteration_limit 3 --gpus 1 --per_gpu_jobs --verbose \

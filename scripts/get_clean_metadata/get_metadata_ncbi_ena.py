@@ -172,7 +172,7 @@ def extract_and_save_metadata(run_accession):
         ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
 
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
-            f_out.write(f"{ena_data}\t{xml_raw}\traw\n")
+            f_out.write(f"{ena_data}\terror\terror\n")
 
 ########################################################################################################################
 #MAIN FUNCTION

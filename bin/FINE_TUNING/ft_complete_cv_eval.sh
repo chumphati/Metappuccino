@@ -45,6 +45,7 @@ cp -r /store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/Mistral-7B-Instruct-v0.3 $SCR
 cp $RESULT_DIR/finetune_data_train_corrected.csv $SCRATCH_DIR
 cp $RESULT_DIR/finetune_data_val_corrected.csv $SCRATCH_DIR
 cp $RESULT_DIR/finetune_data_test_corrected.csv $SCRATCH_DIR
+cp $RESULT_DIR/finetune_data_test_oov_corrected.csv $SCRATCH_DIR
 cp $METAPPUCCINO/scripts/model_processing/fine_tuning/ft_complete_cv_eval.py $SCRATCH_DIR
 
 cd $SCRATCH_DIR

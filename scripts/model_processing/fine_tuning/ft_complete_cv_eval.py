@@ -910,6 +910,7 @@ class MyTrainer(Trainer):
             ce_sum, n_batches = 0.0, 0
             for inputs in eval_dataloader:
                 inputs = self._prepare_inputs(inputs)
+                inputs.pop("cat_masks", None)
                 with torch.no_grad():
                     set_active_adapter(self.model, self.shared_adapter)
                     outputs = self.model(**inputs, output_hidden_states=False)
