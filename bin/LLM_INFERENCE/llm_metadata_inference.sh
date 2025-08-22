@@ -51,6 +51,7 @@ trap cleanup EXIT
 
 META_SRC="$RES/ORIGINAL_METADATA/metadata_sra_summarized.txt"
 DB_SRC="$TMP_DIR/database_metadata_curated.csv"
+AMBI_CL="$TMP_DIR/ambiguous_cell_lines.csv"
 if [[ ! -s "$META_SRC" ]]; then
   echo "FATAL: missing $META_SRC" >&2
   ls -l "$RES/ORIGINAL_METADATA" >&2 || true
@@ -68,6 +69,7 @@ ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$META_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy metadata_sra_summarized.txt"; exit 5; }
 cp "$DB_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_metadata_inference.py"; exit 7; }
+cp "$AMBI_CL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy ambiguous_cell_lines.csv"; exit 8; }
 
 META_ABS="$SCRATCH_DIR/metadata_sra_summarized.txt"
 DB_ABS="$SCRATCH_DIR/database_metadata_curated.csv"

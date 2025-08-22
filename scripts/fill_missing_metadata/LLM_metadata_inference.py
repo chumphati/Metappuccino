@@ -10,6 +10,8 @@ import math
 import numpy as np
 import re
 import json
+import csv
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
 parser.add_argument("--base_path", type=str, required=True)
@@ -33,6 +35,7 @@ model               = args.model
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir          = os.path.join(base_path, "METADATA_LLM_INFERENCE")
 skipped_runs_path   = os.path.join(base_path, "skipped_runs.txt")
+ambi_cl_path   = os.path.join(base_path, "ambiguous_cell_lines.csv")
 model_path          = os.path.join(base_path, model)
 error_file_header   = "run_accession\tsummary"
 
@@ -102,12 +105,44 @@ def get_token_spans(text, tokens):
     return spans
 
 
+def load_ambiguous_map(fp):
+    ambi = defaultdict(list)
+    if not fp or not os.path.isfile(fp):
+        return {}
+    with open(fp, "r", encoding="utf-8", newline="") as f:
+        sample = f.read(1024)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        except csv.Error:
+            class _D: delimiter = ","
+            dialect = _D()
+        reader = csv.reader(f, dialect)
+        header_peek = next(reader, None)
+        if header_peek is None:
+            return {}
+        def _push(row):
+            if not row or len(row) < 2:
+                return
+            run_id = row[0].strip()
+            val = row[1].strip()
+            if run_id and val:
+                ambi[run_id].append(val)
+        if header_peek and not re.search(r"run|accession", " ".join(header_peek), re.I):
+            _push(header_peek)
+        for row in reader:
+            _push(row)
+    return {k: "; ".join(v) for k, v in ambi.items()}
+
+
 ##########################################################################################
 #MAIN
 process = psutil.Process(os.getpid())
 
 use_gpu = torch.cuda.is_available()
+vprint(f"use_gpu: {use_gpu}")
 gpu_count = torch.cuda.device_count() if use_gpu else 0
+vprint(f"Used GPU count: {gpu_count}")
 
 if use_gpu and gpu_count > 0:
     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
@@ -126,6 +161,8 @@ with open(raw_final_info_path) as rf:
     raw_headers = raw[0].strip().split("\t")
     raw_data = {r.split("\t")[0]: r.strip().split("\t") for r in raw[1:]}
     vprint(raw_data)
+
+ambi_map = load_ambiguous_map(ambi_cl_path)
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -186,12 +223,11 @@ for idx, line in enumerate(metadata_lines):
         if val and val != "":
             extra_info.append(f"- {col}: {val}")
 
-    extra_metadata_block = ""
-    if extra_info:
-        extra_metadata_block = (
-                "\nWARNING: The complementary following information are information on the sample that you have to consider to be true. Use them to infer properly from the context the other categories:\n"
-                + "\n".join(extra_info)
-        )
+    ambi_val = ambi_map.get(run)
+    if ambi_val:
+        extra_info.append(f"{ambi_val}")
+
+    extra_info_str = " ".join(extra_info) if extra_info else ""
 
     vprint(f"\n[{idx+1}/{len(metadata_lines)}] {run}", flush=True)
     # print_memory_usage(process)
@@ -200,7 +236,7 @@ for idx, line in enumerate(metadata_lines):
     fmt_keys   = ", ".join(f'"{c}": "<value>"' for c in na_columns)
 
     prompt = f"""Run accession: {run}
-            Summary: {summary}
+            Summary: {summary} {extra_info_str} 
             
             Categories and definitions:
             {inst_lines}
@@ -209,7 +245,6 @@ for idx, line in enumerate(metadata_lines):
             - Infer from the summary if possible
             - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
             - If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
-            {extra_metadata_block} 
             
             BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
             FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
@@ -286,23 +321,43 @@ for idx, line in enumerate(metadata_lines):
     # }
 
     #gemma
+    # category_token_patterns = {
+    #     "library_selection": ['"', 'library', '_', 'selection', '":', '▁"'],
+    #     "sequencing_source": ['"', 'sequ', 'encing', '_', 'source', '":', '▁"'],
+    #     "biopsy_site": ['"', 'bio', 'psy', '_', 'site', '":', '▁"'],
+    #     "biopsy_type": ['"', 'bio', 'psy', '_', 'type', '":', '▁"'],
+    #     "cell_line": ['"', 'cell', '_', 'line', '":', '▁"'],
+    #     "cell_type": ['"', 'cell', '_', 'type', '":', '▁"'],
+    #     "organ": ['"', 'organ', '":', '▁"'],
+    #     "disease": ['"', 'disease', '":', '▁"'],
+    #     "treatment": ['"', 'treatment', '":', '▁"'],
+    #     "treatment_time": ['"', 'treatment', '_', 'time', '":', '▁"'],
+    #     "response": ['"', 'response', '":', '▁"'],
+    #     "age": ['"', 'age', '":', '▁"'],
+    #     "sex": ['"', 'sex', '":', '▁"'],
+    #     "ethnicity": ['"', 'ethnicity', '":', '▁"'],
+    #     "localization": ['"', 'localization', '":', '▁"'],
+    #     "is_cancer": ['"', 'is', '_', 'cancer', '":', '▁"'],
+    # }
+
+    #deepseek
     category_token_patterns = {
-        "library_selection": ['library', '_', 'selection', '":', ' "'],
-        "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
-        "biopsy_site": [' "', 'bio', 'psy', '_', 'site', '":', ' "'],
-        "biopsy_type": [' "', 'bio', 'psy', '_', 'type', '":', ' "'],
-        "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
-        "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
-        "organ": [' "', 'organ', '":', ' "'],
-        "disease": [' "', 'disease', '":', ' "'],
-        "treatment": [' "', 'treatment', '":', ' "'],
-        "treatment_time": [' "', 'treatment', '_', 'time', '":', ' "'],
-        "response": [' "', 'response', '":', ' "'],
-        "age": [' "', 'age', '":', ' "'],
-        "sex": [' "', 'sex', '":', ' "'],
-        "ethnicity": [' "', 'ethnicity', '":', ' "'],
-        "localization": [' "', 'localization', '":', ' "'],
-        "is_cancer": [' "', 'is', '_', 'cancer', '":', ' "'],
+        "library_selection": ['"', 'library', '_', 'selection', '":'],
+        "sequencing_source": ['"', 'sequ', 'encing', '_', 'source', '":'],
+        "biopsy_site": ['"', 'bi', 'opsy', '_', 'site', '":'],
+        "biopsy_type": ['"', 'bi', 'opsy', '_', 'type', '":'],
+        "cell_line": ['"', 'cell', '_', 'line', '":'],
+        "cell_type": ['"', 'cell', '_', 'type', '":'],
+        "organ": ['"', 'organ', '":'],
+        "disease": ['"', 'disease', '":'],
+        "treatment": ['"', 'treatment', '":'],
+        "treatment_time": ['"', 'treatment', '_', 'time', '":'],
+        "response": ['"', 'response', '":'],
+        "age": ['"', 'age', '":'],
+        "sex": ['"', 'sex', '":'],
+        "ethnicity": ['"', 'eth', 'nic', 'ity', '":'],
+        "localization": ['"', 'local', 'ization', '":'],
+        "is_cancer": ['"', 'is', '_', 'c', 'ancer', '":'],
     }
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]

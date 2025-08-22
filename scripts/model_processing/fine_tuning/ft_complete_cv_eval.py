@@ -24,6 +24,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from torch.nn import CrossEntropyLoss
 from collections import deque
+from collections import Counter
 import copy
 
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
@@ -209,34 +210,49 @@ def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_l
         val = str(y.get(cat, ""))
         if not val:
             continue
-        start = 0
-        found_any = False
-        while True:
-            idx = output_text.find(val, start)
-            if idx == -1:
-                break
-            found_any = True
-            char_start = idx
-            char_end = idx + len(val)
-            t_start, t_end = char_span_to_token_span(char_start, char_end)
-            if t_start is not None and t_end is not None:
-                s = len(prompt_ids) + t_start
-                e = len(prompt_ids) + t_end
-                if s < max_len:
-                    e = min(e, max_len)
-                    masks[j, s:e] = 1.0
-            if not mark_all_occurrences:
-                break
-            start = idx + 1
-        if not found_any:
-            val_ids = tokenizer(val, add_special_tokens=False)["input_ids"]
-            start_tok = find_subseq(tok_ids_enc, val_ids)
-            if start_tok != -1:
-                s = len(prompt_ids) + start_tok
-                e = s + len(val_ids)
-                if s < max_len:
-                    e = min(e, max_len)
-                    masks[j, s:e] = 1.0
+
+        vals_to_try = [val]
+        canon_val = _canon_closed(cat, val) if cat in CLOSED_SETS else val
+        if canon_val not in vals_to_try:
+            vals_to_try.append(canon_val)
+        if cat in CLOSED_SETS:
+            for v in CLOSED_SETS[cat]:
+                if v not in vals_to_try:
+                    vals_to_try.append(v)
+
+        found_any_global = False
+        for val_try in vals_to_try:
+            start = 0
+            found_any = False
+            while True:
+                idx = output_text.find(val_try, start)
+                if idx == -1:
+                    break
+                found_any = True
+                found_any_global = True
+                char_start = idx
+                char_end = idx + len(val_try)
+                t_start, t_end = char_span_to_token_span(char_start, char_end)
+                if t_start is not None and t_end is not None:
+                    s = len(prompt_ids) + t_start
+                    e = len(prompt_ids) + t_end
+                    if s < max_len:
+                        e = min(e, max_len)
+                        masks[j, s:e] = 1.0
+                if not mark_all_occurrences:
+                    break
+                start = idx + 1
+
+            if not found_any:
+                val_ids = tokenizer(val_try, add_special_tokens=False)["input_ids"]
+                start_tok = find_subseq(tok_ids_enc, val_ids)
+                if start_tok != -1:
+                    s = len(prompt_ids) + start_tok
+                    e = s + len(val_ids)
+                    if s < max_len:
+                        e = min(e, max_len)
+                        masks[j, s:e] = 1.0
+                        found_any_global = True
     return masks
 
 
@@ -259,6 +275,28 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
+    try:
+        y = json.loads(output)
+    except Exception:
+        y = {}
+    try:
+        for cat in CLOSED_SETS.keys():
+            if cat in y:
+                y[cat] = _canon_closed(cat, y[cat])
+        output = json.dumps(y, ensure_ascii=False)
+    except Exception:
+        pass
+
+    cat_weights = []
+    for cat in categories:
+        w = 1.0
+        if cat == "biopsy_type":
+            v = str(y.get("biopsy_type", "")).strip()
+            w = WEIGHT_BIOTYPE.get(v, 1.0)
+        elif cat == "cell_line":
+            v = str(y.get("cell_line", "")).strip()
+            w = WEIGHT_CELLLINE.get(v, 1.0)
+        cat_weights.append(w)
     prompt_ids = tokenizer(prompt, truncation=True, max_length=2048, add_special_tokens=False)["input_ids"]
     output_ids = tokenizer(output, truncation=True, max_length=350, add_special_tokens=False)["input_ids"]
     input_ids = prompt_ids + output_ids
@@ -282,7 +320,7 @@ def tokenize_function(example):
         max_len=max_length,
         mark_all_occurrences=True
     )
-    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels, "cat_masks": cat_masks.tolist()}
+    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels, "cat_masks": cat_masks.tolist(), "cat_weights": cat_weights}
 
 
 def parse_pred_block(raw_pred):
@@ -477,7 +515,6 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
 
     def on_evaluate(self, args, state, control, logs=None, **kwargs):
         current = logs.get(self.metric_name)
-        # bugfix: accepter 0.0 et éviter la condition falsy
         if current is not None and current > self.best:
             self.best = current;
             self.num_bad = 0
@@ -561,8 +598,8 @@ _CAT_MAX_TOKENS = {
     "sex": 2,
     "is_cancer": 2,
     "biopsy_type": 2,
-    "library_selection": 3,
-    "sequencing_source": 3,
+    "library_selection": 6,
+    "sequencing_source": 4,
     "response": 3,
     "age": 6,
     "treatment_time": 6,
@@ -722,8 +759,8 @@ class MyTrainer(Trainer):
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
-        self.guard_lambda = 0.005
-        self.guard_margin = 0.01
+        self.guard_lambda = 0.002
+        self.guard_margin = 0.02
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
@@ -732,6 +769,7 @@ class MyTrainer(Trainer):
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
         self.max_cats_per_step = min(10, len(self.categories))
+        self.warmup_all_cats_steps = 200
 
     def log(self, logs):
         return super().log(logs)
@@ -769,6 +807,7 @@ class MyTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         cat_masks = inputs.pop("cat_masks", None)
+        cat_weights_vec = inputs.pop("cat_weights", None)
         labels = inputs['labels']
         total_loss = torch.zeros([], device=labels.device)
         per_cat_losses = []
@@ -787,23 +826,60 @@ class MyTrainer(Trainer):
             B, C, L = masks_shift_all.size()
             tok_counts = masks_shift_all.sum(dim=(0, 2))
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten()
-            k = min(self.max_cats_per_step, present.numel())
 
-            if k > 0:
-                with torch.no_grad():
-                    acc_vec = torch.tensor(
-                        [max(self.best_cat_acc.get(c, 0.0), 0.0) for c in self.categories],
-                        device=labels.device, dtype=torch.float32
-                    )
-                    difficulty = 1.0 - acc_vec
-                    tok_norm = tok_counts / (tok_counts.max() + 1e-6)
-                    score = 0.7 * difficulty + 0.3 * tok_norm
-                vals, idx = torch.topk(score[present], k)
-                active_idx = present[idx].tolist()
+            if self.state.global_step % 50 == 0:
+                try:
+                    tok_per_cat = masks_shift_all.sum(dim=(0,2)).detach().cpu().numpy()
+                    cov_msg = {self.categories[j]: float(tok_per_cat[j]) for j in range(len(self.categories))}
+                    print("debug/tokens_per_cat_in_batch:", cov_msg, flush=True)
+                    few = sum(t < 5 for t in tok_per_cat)
+                    if few > 0.5 * len(self.categories):
+                        print("WARN: cat_masks quasi vides dans ce batch → peu/pas d’apprentissage", flush=True)
+                except Exception as _e:
+                    pass
+                # --- suivi LR
+                if hasattr(self, "optimizer"):
+                    try:
+                        lr_cur = self.optimizer.param_groups[0]["lr"]
+                        print(f"debug/lr: {lr_cur:.6e}", flush=True)
+                    except Exception:
+                        pass
+
+            if self.state.global_step < self.warmup_all_cats_steps:
+                active_idx = present.tolist()
             else:
-                active_idx = []
+                k = min(self.max_cats_per_step, present.numel())
+                if k > 0:
+                    with torch.no_grad():
+                        acc_vec = torch.tensor(
+                            [max(self.best_cat_acc.get(c, 0.0), 0.0) for c in self.categories],
+                            device=labels.device, dtype=torch.float32
+                        )
+                        difficulty = 1.0 - acc_vec
+                        tok_norm = tok_counts / (tok_counts.max() + 1e-6)
+                        boost = torch.zeros_like(difficulty)
+                        for idx, cat in enumerate(self.categories):
+                            if cat in ("biopsy_type", "cell_line"):
+                                boost[idx] = 0.15
+                        score = 0.6 * difficulty + 0.3 * tok_norm + 0.1 * boost
+                    vals, idx = torch.topk(score[present], k)
+                    active_idx = present[idx].tolist()
+                else:
+                    active_idx = []
 
             per_step_scale = 0.7 / max(1, len(active_idx))
+
+            if cat_weights_vec is None:
+                Wcats = torch.ones((B, C), device=labels.device, dtype=torch.float32)
+            else:
+                Wcats = torch.as_tensor(cat_weights_vec, device=labels.device, dtype=torch.float32)
+                if Wcats.dim() == 1:
+                    Wcats = Wcats.unsqueeze(0).expand(B, -1)
+
+            tok_per_active = {}
+            for j_idx in active_idx:
+                tok_per_active[j_idx] = float(masks_shift_all[:, j_idx, :].sum().item())
+            tok_total = sum(tok_per_active.values()) + 1e-6
 
             for j in active_idx:
                 cat = self.categories[j]
@@ -819,7 +895,12 @@ class MyTrainer(Trainer):
                 flat_labels = labels_shift.view(B * L)
                 valid = (flat_labels != -100) & m
                 if valid.any():
-                    loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
+                    Wtok = Wcats[:, j].unsqueeze(1).expand(B, L).reshape(B * L)[valid]
+                    ce = F.cross_entropy(
+                        flat_logits[valid], flat_labels[valid],
+                        reduction="none", label_smoothing=self.label_smoothing
+                    )
+                    loss_j = (ce * Wtok).sum() / (Wtok.sum() + 1e-6)
                     per_cat_losses.append((j, loss_j))
                     if not self.guard_initialized[j]:
                         self.guard_ema[j] = loss_j.detach().float()
@@ -828,13 +909,14 @@ class MyTrainer(Trainer):
                         self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (
                                     1 - self.guard_ema_beta) * loss_j.detach().float()
                     penalty = torch.relu(loss_j - (self.guard_ema[j].to(loss_j.device) + self.guard_margin))
-                    total_loss = total_loss + per_step_scale * loss_j + self.guard_lambda * per_step_scale * penalty
+                    weight_j = 0.7 * (tok_per_active.get(j, 0.0) / tok_total)
+                    total_loss = total_loss + weight_j * loss_j + self.guard_lambda * weight_j * penalty
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
         if (self.state.global_step + 1) % max(1, self.args.logging_steps) == 0:
             ma = float(np.mean(self.loss_ma)) if len(self.loss_ma) > 0 else step_loss
-            self.log({"train/loss": ma})
+            self.log({"train/loss_ma": ma})
         if return_outputs:
             outputs_dummy = type("obj", (), {})()
             outputs_dummy.loss_total = total_loss
@@ -911,6 +993,7 @@ class MyTrainer(Trainer):
             for inputs in eval_dataloader:
                 inputs = self._prepare_inputs(inputs)
                 inputs.pop("cat_masks", None)
+                inputs.pop("cat_weights", None)
                 with torch.no_grad():
                     set_active_adapter(self.model, self.shared_adapter)
                     outputs = self.model(**inputs, output_hidden_states=False)
@@ -1019,6 +1102,31 @@ for i, row in df_test.iterrows():
     run_accessions_list.append(run_accession)
 print(run_accessions_list, flush=True)
 
+def extract_val(series, key):
+    vals = []
+    for s in series.dropna():
+        try:
+            obj = json.loads(s)
+            vals.append(str(obj.get(key, "")).strip())
+        except:
+            pass
+    return vals
+
+def inv_freq_weights(cnt, alpha=1.0, eps=1e-6):
+    total = sum(cnt.values())
+    w = {k: (total / (cnt[k] + eps)) ** alpha for k in cnt}
+    mean_w = sum(w[k] * cnt[k] for k in cnt) / total if total > 0 else 1.0
+    for k in w:
+        w[k] /= max(mean_w, eps)
+    return w
+
+bt_vals = extract_val(df_train_final["output"], "biopsy_type")
+cl_vals = extract_val(df_train_final["output"], "cell_line")
+bt_cnt = Counter(bt_vals)
+cl_cnt = Counter(cl_vals)
+WEIGHT_BIOTYPE = inv_freq_weights(bt_cnt, alpha=1.0)
+WEIGHT_CELLLINE = inv_freq_weights(cl_cnt, alpha=0.7)
+
 ##########################################################################################
 # FINAL TRAINING ON ALL DATA (TRAIN+VAL)
 
@@ -1038,8 +1146,8 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=12,
-    lora_alpha=2 * 12,
+    r=8,
+    lora_alpha=2*8,
     lora_dropout=0.05,
     target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj']
 )
@@ -1061,12 +1169,12 @@ print("trainable_params_by_device_dtype:", by_dev_dtype, flush=True)
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     evaluation_strategy="steps",
-    eval_steps=50,
-    learning_rate=5e-6,
+    eval_steps=100,
+    learning_rate=2e-4,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
-    num_train_epochs=5,
-    weight_decay=0.01,
+    num_train_epochs=4,
+    weight_decay=0.0,
     save_strategy='steps',
     logging_strategy='steps',
     logging_steps=25,
@@ -1080,8 +1188,8 @@ training_args_final = TrainingArguments(
     metric_for_best_model="eval_accuracy_overall",
     remove_unused_columns=False,
     greater_is_better=True,
-    warmup_ratio=0.1,
-    lr_scheduler_type="linear",
+    warmup_ratio=0.05,
+    lr_scheduler_type="cosine",
     max_grad_norm=0.3
 )
 
@@ -1095,11 +1203,11 @@ trainer_final = MyTrainer(
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
         GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2),
-        LRBumpOnPlateau(metric="eval_accuracy_overall", patience=1, factor=1.5, max_bumps=2)
     ],
     sem_model=model_sem,
     compute_metrics=compute_metrics
 )
+# LRBumpOnPlateau(metric="eval_accuracy_overall", patience=1, factor=1.5, max_bumps=2)
 
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 final_writer_training.add_scalar("train/size", len(df_train_final), 0)
@@ -1109,7 +1217,6 @@ init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_p
 print("Initial val metrics - original model (step=0) →", init_val)
 
 for cat in categories:
-    # bugfix: éviter la double condition identique
     final_writer_training.add_scalar(
         f"eval_accuracy_{cat.lower()}",
         init_val.get(f"eval_accuracy_{cat.lower()}", 0.0),

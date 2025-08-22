@@ -11,6 +11,8 @@ import re
 import json
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
+import csv
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(description="Process metadata with LLM")
 parser.add_argument("--base_path", type=str, required=True)
@@ -35,6 +37,7 @@ model = args.model
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir = os.path.join(base_path, "METADATA_LLM_INFERENCE")
 skipped_runs_path = os.path.join(base_path, "skipped_runs.txt")
+ambi_cl_path   = os.path.join(base_path, "ambiguous_cell_lines.csv")
 model_peft_dir = model if os.path.isabs(model) else os.path.join(base_path, model)
 model_base_dir = args.base_model_dir
 error_file_header = "run_accession\tsummary"
@@ -113,6 +116,36 @@ def _clean_generated_value(text):
     if text == "":
         text = "unknown"
     return text
+
+
+def load_ambiguous_map(fp):
+    ambi = defaultdict(list)
+    if not fp or not os.path.isfile(fp):
+        return {}
+    with open(fp, "r", encoding="utf-8", newline="") as f:
+        sample = f.read(1024)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        except csv.Error:
+            class _D: delimiter = ","
+            dialect = _D()
+        reader = csv.reader(f, dialect)
+        header_peek = next(reader, None)
+        if header_peek is None:
+            return {}
+        def _push(row):
+            if not row or len(row) < 2:
+                return
+            run_id = row[0].strip()
+            val = row[1].strip()
+            if run_id and val:
+                ambi[run_id].append(val)
+        if header_peek and not re.search(r"run|accession", " ".join(header_peek), re.I):
+            _push(header_peek)
+        for row in reader:
+            _push(row)
+    return {k: "; ".join(v) for k, v in ambi.items()}
 
 
 ##########################################################################################
@@ -208,6 +241,8 @@ with open(raw_final_info_path) as rf:
     raw_data = {r.split("\t")[0]: r.strip().split("\t") for r in raw[1:]}
     vprint(raw_data)
 
+ambi_map = load_ambiguous_map(ambi_cl_path)
+
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -271,12 +306,11 @@ for idx, line in enumerate(metadata_lines):
         if val and val != "":
             extra_info.append(f"- {col}: {val}")
 
-    extra_metadata_block = ""
-    if extra_info:
-        extra_metadata_block = (
-                "\nWARNING: The complementary following information are information on the sample that you have to consider to be true. Use them to infer properly from the context the other categories:\n"
-                + "\n".join(extra_info)
-        )
+    ambi_val = ambi_map.get(run)
+    if ambi_val:
+        extra_info.append(f"{ambi_val}")
+
+    extra_info_str = " ".join(extra_info) if extra_info else ""
 
     vprint(f"\n[{idx + 1}/{len(metadata_lines)}] {run}", flush=True)
 
@@ -284,7 +318,7 @@ for idx, line in enumerate(metadata_lines):
     fmt_keys = ", ".join(f'"{c}": "<value>"' for c in na_columns)
 
     prompt = f"""Run accession: {run}
-            Summary: {summary}
+            Summary: {summary} {extra_info_str} 
             
             Categories and definitions:
             - library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'

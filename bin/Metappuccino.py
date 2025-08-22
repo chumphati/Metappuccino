@@ -21,6 +21,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automates metadata extraction and completion based on LLMs.")
     parser.add_argument("--metappuccino_dir", type=str, required=True,
                         help="Path to the Metappuccino directory")
+    parser.add_argument("--sample_input", type=str, required=True,
+                        help="Path to the sample input file. It must be a .csv or .txt file, with one run accession number per ligne.")
     parser.add_argument("--res_dir", type=str, required=True,
                         help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
@@ -61,6 +63,7 @@ def main():
     args = parser.parse_args()
 
     metappuccino_dir = args.metappuccino_dir
+    sample_input = args.sample_input
     res_dir = args.res_dir
     tmp_keep = args.tmp_keep
     env_dir = args.env_requirement
@@ -83,6 +86,7 @@ def main():
     else:
         node_req = node_req_in
 
+    step1_0_flag = os.path.join(tmp_dir, "STEP1_0.flag")
     step1_flag = os.path.join(tmp_dir, "STEP1_1.flag")
     step2_0_flag = os.path.join(tmp_dir, "STEP2_0.flag")
     step2_flag = os.path.join(tmp_dir, "STEP2_1.flag")
@@ -94,6 +98,7 @@ def main():
     step8_flag = os.path.join(tmp_dir, "STEP4_3.flag")
 
     install_requirements = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "install_requirements.sh")
+    init = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "init.sh")
     download_metadata = os.path.join(metappuccino_dir, "bin", "INSTALL_DOWNLOAD", "download_metadata.sh")
     clean_metadata = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "clean_metadata.sh")
     extract_preprocess = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "extract_preprocess.sh")
@@ -151,10 +156,10 @@ def main():
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:
-            if not os.path.isfile(step1_flag):
+            if not os.path.isfile(step1_0_flag):
                 if args.local:
-                    subprocess.run(["bash", download_metadata,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir],
+                    subprocess.run(["bash", init,
+                                    metappuccino_dir, res_dir, working_dir],
                                    check=True)
                 else:
                     if shutil.which("qsub"):
@@ -167,7 +172,7 @@ def main():
                         if mem_req:
                             pbs_l += f":mem={mem_req}"
                         cmd += ["-l", pbs_l,
-                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", download_metadata]
+                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir}", init]
                         vprint("Submitting:", " ".join(cmd))
                         subprocess.run(cmd, check=True)
                     elif shutil.which("sbatch"):
@@ -179,7 +184,42 @@ def main():
                         if mem_req:
                             sbatch_opts += [f"--mem={mem_req}"]
                         cmd = ["sbatch", *sbatch_opts,
-                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", download_metadata]
+                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir}", init]
+                        vprint("Submitting:", " ".join(cmd))
+                        subprocess.run(cmd, check=True)
+            wait_for_flag_file(step1_0_flag)
+            vprint("✔ Setup initialisation done!", file=sys.stdout)
+
+        if args.getmetadata:
+            if not os.path.isfile(step1_flag):
+                if args.local:
+                    subprocess.run(["bash", download_metadata,
+                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir, sample_input],
+                                   check=True)
+                else:
+                    if shutil.which("qsub"):
+                        cmd = ["qsub"]
+                        if queue_req:
+                            cmd += ["-q", queue_req]
+                        pbs_l = "select=1"
+                        if cpus_req:
+                            pbs_l += f":ncpus={cpus_req}"
+                        if mem_req:
+                            pbs_l += f":mem={mem_req}"
+                        cmd += ["-l", pbs_l,
+                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input}", download_metadata]
+                        vprint("Submitting:", " ".join(cmd))
+                        subprocess.run(cmd, check=True)
+                    elif shutil.which("sbatch"):
+                        sbatch_opts = []
+                        if partition_req:
+                            sbatch_opts += ["--partition", partition_req]
+                        if cpus_req:
+                            sbatch_opts += [f"--cpus-per-task={cpus_req}"]
+                        if mem_req:
+                            sbatch_opts += [f"--mem={mem_req}"]
+                        cmd = ["sbatch", *sbatch_opts,
+                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input}", download_metadata]
                         vprint("Submitting:", " ".join(cmd))
                         subprocess.run(cmd, check=True)
             wait_for_flag_file(step1_flag)

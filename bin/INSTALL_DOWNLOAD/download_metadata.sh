@@ -17,6 +17,7 @@ RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
+RUNS_INPUTS=${6:-$RUNS_INPUTS}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -44,7 +45,7 @@ cleanup() {
 trap cleanup EXIT
 
 cp "$METAPPUCCINO/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
-cp "$RES/runs.txt" $SCRATCH_DIR/
+cp "$RUNS_INPUTS" "$SCRATCH_DIR/runs.txt"
 
 source $ENV_REQUIREMENT/bin/activate
 echo "Start $(date)"
