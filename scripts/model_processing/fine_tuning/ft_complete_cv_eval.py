@@ -1,5 +1,5 @@
 ##########################################################################################
-# IMPORT
+#IMPORT
 import random
 import math
 import torch
@@ -24,14 +24,13 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from torch.nn import CrossEntropyLoss
 from collections import deque
-from collections import Counter
 import copy
 
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 torch.backends.cuda.matmul.allow_tf32 = True
 
 ##########################################################################################
-# SEEDS
+#SEEDS
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
@@ -40,7 +39,7 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
 ##########################################################################################
-# PATHS
+#PATHS
 parser = argparse.ArgumentParser(description="Fine-tune model")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--n_splits", type=int, default=5, help="Number of CV folds")
@@ -60,7 +59,7 @@ merged_model_path = os.path.join(base_path, "mistral7B_full_finetuned")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/tensorboard"
 
-# parameters for semantic matching
+#parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 threshold = 0.36
@@ -68,7 +67,7 @@ threshold = 0.36
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 ##########################################################################################
-# MODEL
+#MODEL
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.add_special_tokens({'pad_token': '<pad>'})
 tokenizer.pad_token = '<pad>'
@@ -91,15 +90,13 @@ model_base.to(device)
 print("Config LoRA", flush=True)
 
 ##########################################################################################
-# FUNCTIONS
+#FUNCTIONS
 
 IS_TRAINING = False
 LABEL_DROPOUT_PROB = 0.0
 
-
 def _normalize_text(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", str(s).lower())).strip()
-
 
 CLOSED_SETS = {
     "library_selection": {"polya", "inverse rrna", "hybrid selection", "small rna", "other"},
@@ -108,51 +105,13 @@ CLOSED_SETS = {
     "sex": {"male", "female", "unknown"},
     "is_cancer": {"true", "false"},
 }
-OPEN_CATS = ["cell_line", "disease", "treatment", "organ", "cell_type", "localization", "ethnicity", "biopsy_site"]
-
-
-def _canon_closed(cat, v):
-    s = normalize(v)
-    s = s.replace("singlecell", "single cell")
-    SYN = {
-        "library_selection": {
-            "poly a": "polya", "poly-a": "polya", "polyadenylation": "polya", "polya": "polya",
-            "rrna depletion": "inverse rrna", "ribo-zero": "inverse rrna", "ribo zero": "inverse rrna",
-            "ribozero": "inverse rrna", "ribo-depletion": "inverse rrna",
-            "hybrid capture": "hybrid selection", "capture": "hybrid selection",
-            "small rna": "small rna", "mirna": "small rna"
-        },
-        "sequencing_source": {
-            "single-cell": "single cell", "single cell": "single cell", "singlecell": "single cell",
-            "bulk": "bulk", "spatial": "spatial"
-        },
-        "biopsy_type": {
-            "primary tumor": "primary", "primary": "primary",
-            "metastatic": "metastasis", "metastasis": "metastasis",
-            "blood": "blood"
-        },
-        "sex": {
-            "m": "male", "man": "male", "male": "male",
-            "f": "female", "woman": "female", "female": "female",
-            "na": "unknown", "n/a": "unknown", "not known": "unknown", "unknown": "unknown"
-        },
-        "is_cancer": {
-            "true": "true", "false": "false",
-            "yes": "true", "no": "false", "1": "true", "0": "false"
-        },
-    }
-    if cat in SYN and s in SYN[cat]:
-        return SYN[cat][s]
-    if cat in CLOSED_SETS and s in CLOSED_SETS[cat]:
-        return s
-    return s
-
+OPEN_CATS = ["cell_line","disease","treatment","organ","cell_type","localization","ethnicity","biopsy_site"]
 
 def remap_closed_sets(d):
     for k, allowed in CLOSED_SETS.items():
         if k in d:
-            v = _canon_closed(k, d[k])
-            v = v.replace("singlecell", "single cell")
+            v = _normalize_text(d[k])
+            v = v.replace("singlecell","single cell")
             if v not in allowed:
                 if k == "library_selection":
                     d[k] = "other"
@@ -163,20 +122,18 @@ def remap_closed_sets(d):
             else:
                 for a in allowed:
                     if v == a:
-                        d[k] = {"true": "True", "false": "False"}.get(a, a)
+                        d[k] = {"true":"True","false":"False"}.get(a, a)
                         break
     return d
-
 
 def find_subseq(seq, subseq):
     n, m = len(seq), len(subseq)
     if m == 0 or m > n:
         return -1
     for i in range(n - m + 1):
-        if seq[i:i + m] == subseq:
+        if seq[i:i+m] == subseq:
             return i
     return -1
-
 
 def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=2048, mark_all_occurrences=True):
     masks = np.zeros((len(categories), max_len), dtype=np.float32)
@@ -210,51 +167,35 @@ def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_l
         val = str(y.get(cat, ""))
         if not val:
             continue
-
-        vals_to_try = [val]
-        canon_val = _canon_closed(cat, val) if cat in CLOSED_SETS else val
-        if canon_val not in vals_to_try:
-            vals_to_try.append(canon_val)
-        if cat in CLOSED_SETS:
-            for v in CLOSED_SETS[cat]:
-                if v not in vals_to_try:
-                    vals_to_try.append(v)
-
-        found_any_global = False
-        for val_try in vals_to_try:
-            start = 0
-            found_any = False
-            while True:
-                idx = output_text.find(val_try, start)
-                if idx == -1:
-                    break
-                found_any = True
-                found_any_global = True
-                char_start = idx
-                char_end = idx + len(val_try)
-                t_start, t_end = char_span_to_token_span(char_start, char_end)
-                if t_start is not None and t_end is not None:
-                    s = len(prompt_ids) + t_start
-                    e = len(prompt_ids) + t_end
-                    if s < max_len:
-                        e = min(e, max_len)
-                        masks[j, s:e] = 1.0
-                if not mark_all_occurrences:
-                    break
-                start = idx + 1
-
-            if not found_any:
-                val_ids = tokenizer(val_try, add_special_tokens=False)["input_ids"]
-                start_tok = find_subseq(tok_ids_enc, val_ids)
-                if start_tok != -1:
-                    s = len(prompt_ids) + start_tok
-                    e = s + len(val_ids)
-                    if s < max_len:
-                        e = min(e, max_len)
-                        masks[j, s:e] = 1.0
-                        found_any_global = True
+        start = 0
+        found_any = False
+        while True:
+            idx = output_text.find(val, start)
+            if idx == -1:
+                break
+            found_any = True
+            char_start = idx
+            char_end = idx + len(val)
+            t_start, t_end = char_span_to_token_span(char_start, char_end)
+            if t_start is not None and t_end is not None:
+                s = len(prompt_ids) + t_start
+                e = len(prompt_ids) + t_end
+                if s < max_len:
+                    e = min(e, max_len)
+                    masks[j, s:e] = 1.0
+            if not mark_all_occurrences:
+                break
+            start = idx + 1
+        if not found_any:
+            val_ids = tokenizer(val, add_special_tokens=False)["input_ids"]
+            start_tok = find_subseq(tok_ids_enc, val_ids)
+            if start_tok != -1:
+                s = len(prompt_ids) + start_tok
+                e = s + len(val_ids)
+                if s < max_len:
+                    e = min(e, max_len)
+                    masks[j, s:e] = 1.0
     return masks
-
 
 def apply_label_dropout(output_text):
     if not IS_TRAINING:
@@ -266,37 +207,14 @@ def apply_label_dropout(output_text):
     for c in OPEN_CATS:
         if c in obj:
             v = str(obj[c]).strip().lower()
-            if v and v not in ["unknown", "not applicable"] and random.random() < LABEL_DROPOUT_PROB:
+            if v and v not in ["unknown","not applicable"] and random.random() < LABEL_DROPOUT_PROB:
                 obj[c] = "unknown"
     return json.dumps(obj, ensure_ascii=False)
-
 
 def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    try:
-        y = json.loads(output)
-    except Exception:
-        y = {}
-    try:
-        for cat in CLOSED_SETS.keys():
-            if cat in y:
-                y[cat] = _canon_closed(cat, y[cat])
-        output = json.dumps(y, ensure_ascii=False)
-    except Exception:
-        pass
-
-    cat_weights = []
-    for cat in categories:
-        w = 1.0
-        if cat == "biopsy_type":
-            v = str(y.get("biopsy_type", "")).strip()
-            w = WEIGHT_BIOTYPE.get(v, 1.0)
-        elif cat == "cell_line":
-            v = str(y.get("cell_line", "")).strip()
-            w = WEIGHT_CELLLINE.get(v, 1.0)
-        cat_weights.append(w)
     prompt_ids = tokenizer(prompt, truncation=True, max_length=2048, add_special_tokens=False)["input_ids"]
     output_ids = tokenizer(output, truncation=True, max_length=350, add_special_tokens=False)["input_ids"]
     input_ids = prompt_ids + output_ids
@@ -320,8 +238,7 @@ def tokenize_function(example):
         max_len=max_length,
         mark_all_occurrences=True
     )
-    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels, "cat_masks": cat_masks.tolist(), "cat_weights": cat_weights}
-
+    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels, "cat_masks": cat_masks.tolist()}
 
 def parse_pred_block(raw_pred):
     try:
@@ -354,28 +271,24 @@ def parse_pred_block(raw_pred):
                 depth -= 1
                 if depth == 0:
                     try:
-                        return json.loads(raw_pred[start:i + 1])
+                        return json.loads(raw_pred[start:i+1])
                     except Exception:
                         break
         i += 1
     print("Invalid JSON format in prediction:", raw_pred)
     return {}
 
-
 normal_accuracy_categories = {
-    'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
+    'cell_line', 'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
 }
-
 
 def normalize(x):
     return re.sub(r'[-_]', ' ', str(x)).strip().lower()
-
 
 def norm_val(x):
     if isinstance(x, list):
         x = x[0] if x else ""
     return str(x).strip()
-
 
 def _parse_duration_days(s: str):
     s = str(s).lower().strip()
@@ -385,17 +298,16 @@ def _parse_duration_days(s: str):
     val = float(m.group(1))
     unit = m.group(2)
     unit = {
-        'd': 'day', 'day': 'day', 'days': 'day',
-        'w': 'week', 'wk': 'week', 'wks': 'week', 'week': 'week', 'weeks': 'week',
-        'mo': 'month', 'mos': 'month', 'mon': 'month', 'month': 'month', 'months': 'month',
-        'y': 'year', 'yr': 'year', 'yrs': 'year', 'year': 'year', 'years': 'year',
-        'h': 'hour', 'hr': 'hour', 'hrs': 'hour', 'hour': 'hour', 'hours': 'hour'
+        'd':'day', 'day':'day', 'days':'day',
+        'w':'week', 'wk':'week', 'wks':'week', 'week':'week', 'weeks':'week',
+        'mo':'month','mos':'month','mon':'month','month':'month','months':'month',
+        'y':'year','yr':'year','yrs':'year','year':'year','years':'year',
+        'h':'hour','hr':'hour','hrs':'hour','hour':'hour','hours':'hour'
     }.get(unit, unit)
-    mult = {'hour': 1 / 24.0, 'day': 1.0, 'week': 7.0, 'month': 30.0, 'year': 365.0}.get(unit)
+    mult = {'hour': 1/24.0, 'day': 1.0, 'week': 7.0, 'month': 30.0, 'year': 365.0}.get(unit)
     if mult is None:
         return None
     return val * mult
-
 
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
@@ -419,10 +331,6 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             p_val = norm_val(p_dict.get(cat, ""))
             r_val = norm_val(r_dict.get(cat, ""))
 
-            if cat in CLOSED_SETS:
-                p_val = _canon_closed(cat, p_val)
-                r_val = _canon_closed(cat, r_val)
-
             print("--------------------")
             print("category: ", cat, flush=True)
             print("pred val: ", p_val, flush=True)
@@ -435,9 +343,9 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             if not r_val:
                 continue
             if (
-                    cat in {"cell_line", "treatment_time", "response"}
-                    and normalize(r_val) == "unknown"
-                    and normalize(p_val) in NA_EQUIV
+                cat in {"cell_line", "treatment_time", "response"}
+                and normalize(r_val) == "unknown"
+                and normalize(p_val) in NA_EQUIV
             ):
                 accs.append(True)
                 print("match (NA vs unknown override): True", flush=True)
@@ -455,9 +363,6 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                     emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                     cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
                     acc = cos > threshold
-
-            elif cat in CLOSED_SETS:
-                acc = (normalize(p_val) == normalize(r_val))
 
             elif cat in normal_accuracy_categories:
                 acc = (normalize(p_val) == normalize(r_val))
@@ -483,14 +388,12 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
     )
     return metrics
 
-
 def compute_metrics(eval_preds: EvalPrediction):
     gen_ids, label_ids = eval_preds.predictions, eval_preds.label_ids
     decoded_preds = tokenizer.batch_decode(gen_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
     decoded_labels = tokenizer.batch_decode(label_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
     cat_metrics = compute_categorical_metrics(decoded_preds, decoded_labels, categories)
-    return {f"eval_{k}": v for k, v in cat_metrics.items()}
-
+    return {f"eval_{k}": v for k,v in cat_metrics.items()}
 
 def _no_repeat_ngram_bans(gen_ids, no_repeat_ngram_size, vocab_size):
     if no_repeat_ngram_size <= 0 or len(gen_ids) < no_repeat_ngram_size - 1:
@@ -498,34 +401,29 @@ def _no_repeat_ngram_bans(gen_ids, no_repeat_ngram_size, vocab_size):
     n = no_repeat_ngram_size
     idx = {}
     for i in range(len(gen_ids) - n + 1):
-        prev = tuple(gen_ids[i:i + n - 1])
-        nxt = gen_ids[i + n - 1]
+        prev = tuple(gen_ids[i:i+n-1])
+        nxt  = gen_ids[i+n-1]
         idx.setdefault(prev, set()).add(nxt)
-    prev = tuple(gen_ids[-(n - 1):])
+    prev = tuple(gen_ids[-(n-1):])
     return idx.get(prev, set())
 
-
 class GenerationEarlyStoppingCallback(TrainerCallback):
-    def __init__(self, metric_name: str, patience: int = 3, verbose: bool = True):
+    def __init__(self, metric_name: str, patience: int=3, verbose: bool=True):
         self.metric_name = metric_name
         self.patience = patience
         self.verbose = verbose
         self.best = -math.inf
-        self.num_bad = 0
-
+        self.num_bad=0
     def on_evaluate(self, args, state, control, logs=None, **kwargs):
         current = logs.get(self.metric_name)
-        if current is not None and current > self.best:
-            self.best = current;
-            self.num_bad = 0
-            control.should_save = True
+        if current and current>self.best:
+            self.best=current; self.num_bad=0
+            control.should_save=True
         else:
-            self.num_bad += 1
-            if self.num_bad >= self.patience:
-                control.should_early_stop = True;
-                control.should_save = True
+            self.num_bad+=1
+            if self.num_bad>=self.patience:
+                control.should_early_stop=True; control.should_save=True
         return control
-
 
 def add_category_adapters(peft_model: PeftModel, categories, base_config: LoraConfig):
     if "shared" not in peft_model.peft_config:
@@ -535,16 +433,13 @@ def add_category_adapters(peft_model: PeftModel, categories, base_config: LoraCo
         if name not in peft_model.peft_config:
             peft_model.add_adapter(name, base_config)
 
-
 def set_active_adapter(peft_model: PeftModel, adapter_name: str):
     peft_model.set_adapter(adapter_name)
-
 
 def get_adapter_state_dict(peft_model: PeftModel, adapter_name: str):
     sd = peft_model.state_dict()
     filt = {k: v.clone() for k, v in sd.items() if f".{adapter_name}." in k}
     return filt
-
 
 def load_adapter_state_dict_(peft_model: PeftModel, adapter_name: str, adapter_sd: dict):
     full_sd = peft_model.state_dict()
@@ -553,10 +448,8 @@ def load_adapter_state_dict_(peft_model: PeftModel, adapter_name: str, adapter_s
             full_sd[k] = adapter_sd[k].to(full_sd[k].device, dtype=full_sd[k].dtype)
     peft_model.load_state_dict(full_sd, strict=False)
 
-
 def tok_ids(s):
     return tokenizer(s, add_special_tokens=False, return_tensors=None)["input_ids"]
-
 
 @torch.no_grad()
 def greedy_step(model, input_ids, attention_mask, past, temperature=0.0):
@@ -574,19 +467,16 @@ def greedy_step(model, input_ids, attention_mask, past, temperature=0.0):
         lp = logp.gather(-1, next_id)
         return next_id, float(lp.item()), out.past_key_values
 
-
 @torch.no_grad()
 def prime_tokens(model, seq_ids, past):
     out = model(input_ids=seq_ids, past_key_values=past, use_cache=True)
     return out.past_key_values
-
 
 def _sanitize_value(text: str) -> str:
     text = re.sub(r'[\n\r`]+', ' ', str(text))
     text = text.strip().strip('",}').strip()
     text = re.sub(r'\s+', ' ', text)
     return text
-
 
 QUOTE_CHARS = ['"', '”', '“']
 BAD_VALUE_CHARS_NO_QUOTE = [',', '}', '\n', '`', ':', ';', '(', ')', '[', ']']
@@ -598,22 +488,21 @@ _CAT_MAX_TOKENS = {
     "sex": 2,
     "is_cancer": 2,
     "biopsy_type": 2,
-    "library_selection": 6,
-    "sequencing_source": 4,
+    "library_selection": 3,
+    "sequencing_source": 3,
     "response": 3,
     "age": 6,
     "treatment_time": 6,
-    "organ": 8,
-    "biopsy_site": 8,
-    "cell_type": 16,
-    "disease": 16,
+    "organ": 4,
+    "biopsy_site": 4,
+    "cell_type": 6,
+    "disease": 6,
     "ethnicity": 4,
     "localization": 4,
     "cell_line": 8,
-    "treatment": 18,
+    "treatment": 8,
 }
 CURRENT_CATEGORY = None
-
 
 def _ensure_vocab_masks():
     global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS, _ALWAYS_BANNED_IDS, _CAT_BANNED_IDS
@@ -653,14 +542,14 @@ def _ensure_vocab_masks():
             always_banned.add(tid)
 
         if re.search(r'\d', piece):
-            for k in ["sex", "is_cancer", "biopsy_type", "library_selection", "sequencing_source", "response"]:
+            for k in ["sex","is_cancer","biopsy_type","library_selection","sequencing_source",
+                      "response","organ","biopsy_site","cell_type","disease","ethnicity","localization"]:
                 cat_banned[k].add(tid)
 
     _BAD_NOQUOTE_IDS = bad_noquote
     _QUOTE_ANY_IDS = quote_any
     _ALWAYS_BANNED_IDS = always_banned
     _CAT_BANNED_IDS = cat_banned
-
 
 @torch.no_grad()
 def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, no_repeat_ngram_size=3):
@@ -716,7 +605,6 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
     value = re.sub(r'\s+', ' ', value).strip(' ,;.-').strip()
     return value, input_ids
 
-
 def quote_token_id_set():
     s = set()
     for q in ['"', '”', '“']:
@@ -724,7 +612,6 @@ def quote_token_id_set():
         for i in ids:
             s.add(i)
     return s
-
 
 def stop_token_id_set():
     s = set()
@@ -734,9 +621,8 @@ def stop_token_id_set():
             s.add(i)
     return s
 
-
 ##########################################################################################
-# CUSTOMED TRAINER
+#CUSTOMED TRAINER
 
 class MyTrainer(Trainer):
     def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, **kwargs):
@@ -759,19 +645,18 @@ class MyTrainer(Trainer):
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
-        self.guard_lambda = 0.002
-        self.guard_margin = 0.02
+        self.guard_lambda = 0.005
+        self.guard_margin = 0.01
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
         self.accept_revert_tolerance = 0.002
-        self.min_revert_step = 100
+        self.min_revert_step = 500
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
-        self.max_cats_per_step = min(10, len(self.categories))
-        self.warmup_all_cats_steps = 200
+        self.max_cats_per_step = min(8, len(self.categories))
 
-    def log(self, logs):
+    def log(self, logs, *args, **kwargs):
         return super().log(logs)
 
     def _print_masks_debug(self, inputs, cat_masks):
@@ -796,8 +681,7 @@ class MyTrainer(Trainer):
                     groups.append((start, prev + 1))
                     for (s, e) in groups[:3]:
                         toks = input_ids[b, s:e].tolist()
-                        text = tokenizer.decode([t for t in toks if t != tokenizer.pad_token_id],
-                                                skip_special_tokens=True, clean_up_tokenization_spaces=False)
+                        text = tokenizer.decode([t for t in toks if t != tokenizer.pad_token_id], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         except Exception as e:
             print("debug/mask_print_error:", str(e), flush=True)
 
@@ -807,7 +691,6 @@ class MyTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         cat_masks = inputs.pop("cat_masks", None)
-        cat_weights_vec = inputs.pop("cat_weights", None)
         labels = inputs['labels']
         total_loss = torch.zeros([], device=labels.device)
         per_cat_losses = []
@@ -819,68 +702,19 @@ class MyTrainer(Trainer):
         logits_shift = logits_shared[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
         loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 0.3 * loss_micro
-
+        total_loss = total_loss + 0.7 * loss_micro
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
-            tok_counts = masks_shift_all.sum(dim=(0, 2))
+            tok_counts = masks_shift_all.sum(dim=(0,2))  # [C]
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten()
-
-            if self.state.global_step % 50 == 0:
-                try:
-                    tok_per_cat = masks_shift_all.sum(dim=(0,2)).detach().cpu().numpy()
-                    cov_msg = {self.categories[j]: float(tok_per_cat[j]) for j in range(len(self.categories))}
-                    print("debug/tokens_per_cat_in_batch:", cov_msg, flush=True)
-                    few = sum(t < 5 for t in tok_per_cat)
-                    if few > 0.5 * len(self.categories):
-                        print("WARN: cat_masks quasi vides dans ce batch → peu/pas d’apprentissage", flush=True)
-                except Exception as _e:
-                    pass
-                # --- suivi LR
-                if hasattr(self, "optimizer"):
-                    try:
-                        lr_cur = self.optimizer.param_groups[0]["lr"]
-                        print(f"debug/lr: {lr_cur:.6e}", flush=True)
-                    except Exception:
-                        pass
-
-            if self.state.global_step < self.warmup_all_cats_steps:
-                active_idx = present.tolist()
+            k = min(self.max_cats_per_step, present.numel())
+            if k > 0:
+                vals, idx = torch.topk(tok_counts[present], k)
+                active_idx = present[idx].tolist()
             else:
-                k = min(self.max_cats_per_step, present.numel())
-                if k > 0:
-                    with torch.no_grad():
-                        acc_vec = torch.tensor(
-                            [max(self.best_cat_acc.get(c, 0.0), 0.0) for c in self.categories],
-                            device=labels.device, dtype=torch.float32
-                        )
-                        difficulty = 1.0 - acc_vec
-                        tok_norm = tok_counts / (tok_counts.max() + 1e-6)
-                        boost = torch.zeros_like(difficulty)
-                        for idx, cat in enumerate(self.categories):
-                            if cat in ("biopsy_type", "cell_line"):
-                                boost[idx] = 0.15
-                        score = 0.6 * difficulty + 0.3 * tok_norm + 0.1 * boost
-                    vals, idx = torch.topk(score[present], k)
-                    active_idx = present[idx].tolist()
-                else:
-                    active_idx = []
-
-            per_step_scale = 0.7 / max(1, len(active_idx))
-
-            if cat_weights_vec is None:
-                Wcats = torch.ones((B, C), device=labels.device, dtype=torch.float32)
-            else:
-                Wcats = torch.as_tensor(cat_weights_vec, device=labels.device, dtype=torch.float32)
-                if Wcats.dim() == 1:
-                    Wcats = Wcats.unsqueeze(0).expand(B, -1)
-
-            tok_per_active = {}
-            for j_idx in active_idx:
-                tok_per_active[j_idx] = float(masks_shift_all[:, j_idx, :].sum().item())
-            tok_total = sum(tok_per_active.values()) + 1e-6
-
+                active_idx = []
+            per_step_scale = 0.5 / max(1, len(active_idx))
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
@@ -895,28 +729,21 @@ class MyTrainer(Trainer):
                 flat_labels = labels_shift.view(B * L)
                 valid = (flat_labels != -100) & m
                 if valid.any():
-                    Wtok = Wcats[:, j].unsqueeze(1).expand(B, L).reshape(B * L)[valid]
-                    ce = F.cross_entropy(
-                        flat_logits[valid], flat_labels[valid],
-                        reduction="none", label_smoothing=self.label_smoothing
-                    )
-                    loss_j = (ce * Wtok).sum() / (Wtok.sum() + 1e-6)
+                    loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
                     per_cat_losses.append((j, loss_j))
                     if not self.guard_initialized[j]:
                         self.guard_ema[j] = loss_j.detach().float()
                         self.guard_initialized[j] = True
                     else:
-                        self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (
-                                    1 - self.guard_ema_beta) * loss_j.detach().float()
+                        self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (1 - self.guard_ema_beta) * loss_j.detach().float()
                     penalty = torch.relu(loss_j - (self.guard_ema[j].to(loss_j.device) + self.guard_margin))
-                    weight_j = 0.7 * (tok_per_active.get(j, 0.0) / tok_total)
-                    total_loss = total_loss + weight_j * loss_j + self.guard_lambda * weight_j * penalty
+                    total_loss = total_loss + per_step_scale * loss_j + self.guard_lambda * per_step_scale * penalty
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
         if (self.state.global_step + 1) % max(1, self.args.logging_steps) == 0:
             ma = float(np.mean(self.loss_ma)) if len(self.loss_ma) > 0 else step_loss
-            self.log({"train/loss_ma": ma})
+            self.log({"train/loss": ma})
         if return_outputs:
             outputs_dummy = type("obj", (), {})()
             outputs_dummy.loss_total = total_loss
@@ -989,26 +816,21 @@ class MyTrainer(Trainer):
         self.model.eval()
         try:
             eval_dataloader = self.get_eval_dataloader(eval_dataset)
-            ce_sum, n_batches = 0.0, 0
+            total_loss, count = 0.0, 0
             for inputs in eval_dataloader:
                 inputs = self._prepare_inputs(inputs)
-                inputs.pop("cat_masks", None)
-                inputs.pop("cat_weights", None)
                 with torch.no_grad():
-                    set_active_adapter(self.model, self.shared_adapter)
-                    outputs = self.model(**inputs, output_hidden_states=False)
-                    logits = outputs.logits[:, :-1, :].contiguous()
-                    labels_shift = inputs["labels"][:, 1:].contiguous()
-                    loss_ce = self.loss_fct(logits.view(-1, logits.size(-1)), labels_shift.view(-1))
-                    ce_sum += float(loss_ce.item())
-                    n_batches += 1
-            avg_ce = ce_sum / n_batches if n_batches else 0.0
-            results = {f"{metric_key_prefix}_loss": avg_ce}
+                    loss, outputs = self.compute_loss(self.model, inputs, return_outputs=True)
+                total_loss += outputs.loss_total.item()
+                count += 1
+            avg_total = total_loss / count if count else 0.0
+            results = {f"{metric_key_prefix}_loss": avg_total}
             self.log(results)
 
-            DO_FULL = (self.state.global_step % 150 == 0) or (self.state.global_step == 0)
+            DO_FULL = (self.state.global_step % 500 == 0) or (self.state.global_step == 0)
             max_rows = None if DO_FULL else 64
             preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
+            # preds, refs = self._eval_per_category_generate(df_val_final)
             cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
             for k, v in cat_metrics.items():
                 key = f"{metric_key_prefix}_{k}"
@@ -1024,50 +846,20 @@ class MyTrainer(Trainer):
                     sd = get_adapter_state_dict(self.model, self.cat2adapter[cat])
                     self.best_cat_adapter_sd[cat] = {k: v.detach().cpu().clone() for k, v in sd.items()}
                     print(f"debug/accept_adapter: {self.cat2adapter[cat]} new_best={cur:.4f}", flush=True)
-                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(
-                        cat) is not None and self.state.global_step >= getattr(self, "min_revert_step", 0):
+                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None and self.state.global_step >= getattr(self, "min_revert_step", 0):
                     load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
                     print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
                           flush=True)
                 else:
-                    print(f"debug/keep_adapter: {self.cat2adapter[cat]} keep_best={best:.4f} cur={cur:.4f}")
+                    print("No updates!", flush=True)
             return results
         finally:
             if was_training:
                 self.model.train()
 
 
-class LRBumpOnPlateau(TrainerCallback):
-    def __init__(self, metric="eval_accuracy_overall", patience=3, factor=1.5, max_bumps=2):
-        self.metric = metric
-        self.patience = patience
-        self.factor = factor
-        self.best = -float("inf")
-        self.bad = 0
-        self.bumps = 0
-        self.max_bumps = max_bumps
-
-    def on_evaluate(self, args, state, control, logs=None, **kwargs):
-        cur = logs.get(self.metric)
-        if cur is None:
-            return
-        if cur > self.best + 1e-6:
-            self.best = cur
-            self.bad = 0
-        else:
-            self.bad += 1
-            if self.bad >= self.patience and self.bumps < self.max_bumps and hasattr(self, "trainer"):
-                for g in self.trainer.optimizer.param_groups:
-                    g["lr"] *= self.factor
-                self.bad = 0
-                self.bumps += 1
-                print(f"[LR BUMP] New LR: {self.trainer.optimizer.param_groups[0]['lr']:.2e}", flush=True)
-
-    def on_train_begin(self, args, state, control, **kwargs):
-        self.trainer = kwargs.get("model") and kwargs.get("trainer")
-
 ##########################################################################################
-# MAIN
+#MAIN
 print("Load dataset with prompts", flush=True)
 df_train = pd.read_csv(prompt_train_file)
 df_val = pd.read_csv(prompt_val_file)
@@ -1076,9 +868,7 @@ df_test = pd.read_csv(prompt_test_file)
 df_train_final = df_train
 df_val_final = df_val
 
-print(
-    f"Training set size: {len(df_train_final)}, Validation set size: {len(df_val_final)}, Test set size: {len(df_test)}",
-    flush=True)
+print(f"Training set size: {len(df_train_final)}, Validation set size: {len(df_val_final)}, Test set size: {len(df_test)}", flush=True)
 
 all_cats = set()
 for out in df_train_final["output"].dropna():
@@ -1102,33 +892,8 @@ for i, row in df_test.iterrows():
     run_accessions_list.append(run_accession)
 print(run_accessions_list, flush=True)
 
-def extract_val(series, key):
-    vals = []
-    for s in series.dropna():
-        try:
-            obj = json.loads(s)
-            vals.append(str(obj.get(key, "")).strip())
-        except:
-            pass
-    return vals
-
-def inv_freq_weights(cnt, alpha=1.0, eps=1e-6):
-    total = sum(cnt.values())
-    w = {k: (total / (cnt[k] + eps)) ** alpha for k in cnt}
-    mean_w = sum(w[k] * cnt[k] for k in cnt) / total if total > 0 else 1.0
-    for k in w:
-        w[k] /= max(mean_w, eps)
-    return w
-
-bt_vals = extract_val(df_train_final["output"], "biopsy_type")
-cl_vals = extract_val(df_train_final["output"], "cell_line")
-bt_cnt = Counter(bt_vals)
-cl_cnt = Counter(cl_vals)
-WEIGHT_BIOTYPE = inv_freq_weights(bt_cnt, alpha=1.0)
-WEIGHT_CELLLINE = inv_freq_weights(cl_cnt, alpha=0.7)
-
 ##########################################################################################
-# FINAL TRAINING ON ALL DATA (TRAIN+VAL)
+#FINAL TRAINING ON ALL DATA (TRAIN+VAL)
 
 train_dataset_final = Dataset.from_pandas(df_train_final)
 val_dataset_final = Dataset.from_pandas(df_val_final)
@@ -1149,7 +914,7 @@ final_peft_config = LoraConfig(
     r=8,
     lora_alpha=2*8,
     lora_dropout=0.05,
-    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj']
+    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj']
 )
 
 model_final = get_peft_model(model_base, final_peft_config)
@@ -1168,19 +933,19 @@ print("trainable_params_by_device_dtype:", by_dev_dtype, flush=True)
 
 training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
-    evaluation_strategy="steps",
-    eval_steps=100,
-    learning_rate=2e-4,
+    eval_strategy="steps",
+    eval_steps=50,
+    learning_rate=5e-5,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
     num_train_epochs=4,
     weight_decay=0.0,
     save_strategy='steps',
     logging_strategy='steps',
-    logging_steps=25,
+    logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     gradient_checkpointing=True,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
@@ -1188,8 +953,8 @@ training_args_final = TrainingArguments(
     metric_for_best_model="eval_accuracy_overall",
     remove_unused_columns=False,
     greater_is_better=True,
-    warmup_ratio=0.05,
-    lr_scheduler_type="cosine",
+    warmup_ratio=0.1,
+    lr_scheduler_type="linear",
     max_grad_norm=0.3
 )
 
@@ -1198,30 +963,25 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.02,
+    label_smoothing=0.2,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
-        GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2),
-    ],
+            GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2),
+        ],
     sem_model=model_sem,
     compute_metrics=compute_metrics
 )
-# LRBumpOnPlateau(metric="eval_accuracy_overall", patience=1, factor=1.5, max_bumps=2)
 
 final_writer_training = SummaryWriter(os.path.join(tensorboard_log_dir, "final_training"))
 final_writer_training.add_scalar("train/size", len(df_train_final), 0)
-final_writer_training.add_scalar("val/size", len(df_val_final), 0)
+final_writer_training.add_scalar("val/size",   len(df_val_final),   0)
 
 init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_prefix="eval")
 print("Initial val metrics - original model (step=0) →", init_val)
 
 for cat in categories:
-    final_writer_training.add_scalar(
-        f"eval_accuracy_{cat.lower()}",
-        init_val.get(f"eval_accuracy_{cat.lower()}", 0.0),
-        0
-    )
+    final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else 0.0, 0)
 
 trainer_final.train()
 final_writer_training.close()
@@ -1231,12 +991,6 @@ trainer_final.save_model(output_model)
 
 print("Merge and save full model", flush=True)
 os.makedirs(merged_model_path, exist_ok=True)
-
-for c in categories:
-    best_sd = trainer_final.best_cat_adapter_sd.get(c)
-    if best_sd is not None:
-        load_adapter_state_dict_(model_final, f"cat_{c}", best_sd)
-
 for cat in categories:
     adapter_name = f"cat_{cat}"
     set_active_adapter(model_final, adapter_name)
@@ -1253,7 +1007,7 @@ for cat in categories:
             load_adapter_state_dict_(model_final, f"cat_{c}", best_sd)
 
 ##########################################################################################
-# EVAL TEST REP
+#EVAL TEST
 
 print("\nGenerating predictions on final test set", flush=True)
 model_final.eval()
@@ -1318,7 +1072,7 @@ for cat in categories:
 
 final_test_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_test"))
 for cat in categories:
-    final_test_writer.add_scalar(f"test/{cat}", metrics_test[f"accuracy_{cat.lower()}"], 0)
+    final_test_writer.add_scalar(f"test/{cat}", metrics_test[f"accuracy_{cat.lower()}"] , 0)
 final_test_writer.close()
 
 ##########################################################################################
@@ -1327,6 +1081,16 @@ final_test_writer.close()
 if os.path.exists(prompt_test_oov_file):
     print("\nGenerating predictions on final OOV test set", flush=True)
     df_test_oov = pd.read_csv(prompt_test_oov_file)
+    with torch.no_grad():
+        model_copy_oov = copy.deepcopy(model_final)
+    set_active_adapter(model_copy_oov, "shared")
+    base_shared_oov = model_copy_oov.merge_and_unload()
+    model_gen_oov = get_peft_model(base_shared_oov, final_peft_config)
+    add_category_adapters(model_gen_oov, categories, final_peft_config)
+    for c in categories:
+        sd = get_adapter_state_dict(model_final, f"cat_{c}")
+        load_adapter_state_dict_(model_gen_oov, f"cat_{c}", sd)
+    model_gen_oov.to(device)
 
     test_oov_preds, test_oov_refs = [], []
     oov_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_predictions_oov"))
@@ -1336,7 +1100,7 @@ if os.path.exists(prompt_test_oov_file):
         print(prompt, flush=True)
         expected = row["output"].strip()
         merged = {}
-        device = model_final.device
+        device = model_gen_oov.device
         ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
         context_ids = ids["input_ids"]
 
@@ -1354,10 +1118,10 @@ if os.path.exists(prompt_test_oov_file):
             prefix_ids = tok_ids(f'"{cat}": "')
             context_ids = torch.cat([context_ids, torch.tensor([prefix_ids], device=device)], dim=1)
 
-            set_active_adapter(model_final, f"cat_{cat}")
+            set_active_adapter(model_gen_oov, f"cat_{cat}")
             CURRENT_CATEGORY = cat
             text_val, context_ids = gen_until_quote_fullctx(
-                model_final, tokenizer, context_ids, max_value_tokens=64
+                model_gen_oov, tokenizer, context_ids, max_value_tokens=64
             )
             merged[cat] = text_val
 
@@ -1381,7 +1145,7 @@ if os.path.exists(prompt_test_oov_file):
     oov_writer.close()
 
     metrics_test_oov = compute_categorical_metrics(test_oov_preds, test_oov_refs, categories)
-    print("\nCategory SMA - test set:", flush=True)
+    print("\nCategory SMA - oov test set:", flush=True)
     for cat in categories:
         print(f"{cat}: {metrics_test_oov[f'accuracy_{cat.lower()}']:.4f}", flush=True)
 

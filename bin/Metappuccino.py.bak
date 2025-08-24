@@ -51,7 +51,7 @@ def main():
                         help="Verbose output")
     parser.add_argument("--tmp_keep", action="store_true",
                         help="Keep final temporary file. Default = deleted.")
-    parser.add_argument("--iteration_limit", type=int, default=1, help="Number of attempts to restart inference if less than 30%% of categories have been predicted or if the JSON is malformed.")
+    parser.add_argument("--iteration_limit", type=int, default=1, help="Number of attempts to restart inference if less than 30% of categories have been predicted or if the JSON is malformed.")
     parser.add_argument("--local", action="store_true",
                         help="Run steps locally (sequentially) instead of submitting to PBS/Slurm.")
     parser.add_argument("--node", type=str, default="", help="Specific node name to request (optional).")

@@ -32,7 +32,9 @@ VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ########################################################################################################################
+#FUNCTIONS
 
+download("en_core_web_sm")
 nlp_match = spacy.load("en_core_web_sm")
 
 def ensure_maxlen(nlp, text):

@@ -49,7 +49,11 @@ NEG_BOOST = 1.0
 
 tok = None
 tok_id = None
-for mid in ["mistralai/Mistral-7B-Instruct-v0.3", "mistralai/Mistral-7B-Instruct-v0.2", "mistralai/Mistral-7B-v0.1"]:
+for mid in [
+    "mistralai/Mistral-7B-Instruct-v0.3",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "mistralai/Mistral-7B-v0.1"
+]:
     try:
         tok = AutoTokenizer.from_pretrained(mid, use_fast=True)
         tok_id = mid
@@ -57,7 +61,12 @@ for mid in ["mistralai/Mistral-7B-Instruct-v0.3", "mistralai/Mistral-7B-Instruct
     except Exception:
         continue
 if tok is None:
-    raise RuntimeError("Cannot load Mistral tokenizer")
+    try:
+        tok = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf", use_fast=True)
+        tok_id = "meta-llama/Llama-2-7b-hf (fallback)"
+    except Exception:
+        tok = AutoTokenizer.from_pretrained("gpt2", use_fast=True)
+        tok_id = "gpt2 (fallback)"
 vprint(f"Tokenizer loaded: {tok_id}", flush=True)
 
 category_docs = [nlp(cat) for cat in CATEGORY_KEYWORDS]

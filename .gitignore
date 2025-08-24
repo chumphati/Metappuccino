@@ -177,3 +177,12 @@ results*/
 results_mistral7B_original/
 results_ft_patron_semi/
 results_metappuccino/
+results2/
+
+dist/
+.venv_test/
+.venv_build/
+dist_sdist/
+.github/
+metappuccino.egg-info/
+

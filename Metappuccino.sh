@@ -18,26 +18,26 @@
 #PARAMETERS
 
 ##REQUIRED
-SAMPLE_INPUT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_tests/run.txt"
+SAMPLE_INPUT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/benchmark_Metappuccino/results_gemma-3-270m-it-original/runs.txt"
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/benchmark_Metappuccino/results_DeepSeek-Coder-V2-Lite-Instruct-original"
+RES_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/benchmark_Metappuccino/results_gemma-3-270m-it-original"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 WORKING_DIR="/scratchlocal/$USER"
-MODEL_PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/gguf/DeepSeek-Coder-V2-Lite-Instruct-original.gguf"
+MODEL_PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/models/gemma-3-270m-it-original.gguf"
 NODE_NAME="node51"
 PARTITION="alphafold"
 
 ##OPTIONAL
 ITERATION_LIMIT=3
 NGPUS=1
-NCPUS=10
+NCPUS=20
 MEM="50gb"
 LOGAN_PATH=""
 CUDA_PATH="/usr/local/cuda"
 
 ##STEPS
 VERBOSE=TRUE
-TMP_KEEP=FALSE
+TMP_KEEP=TRUE
 INSTALL_REQUIREMENTS=FALSE
 GET_METADATA=TRUE
 FILL_METADATA=TRUE
