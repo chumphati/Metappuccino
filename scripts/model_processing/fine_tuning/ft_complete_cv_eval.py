@@ -106,12 +106,22 @@ CLOSED_SETS = {
     "is_cancer": {"true", "false"},
 }
 OPEN_CATS = ["cell_line","disease","treatment","organ","cell_type","localization","ethnicity","biopsy_site"]
+ALIASES = {
+  "library_selection": {
+    "poly a":"polya","poly-a":"polya","poly a+":"polya",
+    "rrna depletion":"inverse rrna","ribominus":"inverse rrna","ribo minus":"inverse rrna",
+    "capture hybrid":"hybrid selection","hybrid capture":"hybrid selection",
+  },
+  "sex": {"m":"male","man":"male","male":"male","f":"female","woman":"female","M":"male","F":"female"},
+  "biopsy_type": {"primary tumor":"primary","metastatic":"metastasis"}
+}
 
 def remap_closed_sets(d):
     for k, allowed in CLOSED_SETS.items():
         if k in d:
             v = _normalize_text(d[k])
             v = v.replace("singlecell","single cell")
+            v = ALIASES.get(k, {}).get(v, v)
             if v not in allowed:
                 if k == "library_selection":
                     d[k] = "other"
@@ -632,7 +642,7 @@ class MyTrainer(Trainer):
             p.requires_grad = False
         self.sem_loss_weight = sem_loss_weight
         self.label_smoothing = label_smoothing
-        self.loss_fct = CrossEntropyLoss(label_smoothing=label_smoothing, ignore_index=-100)
+        self.loss_fct = CrossEntropyLoss(label_smoothing=self.label_smoothing, ignore_index=-100)
         self._tot_sum = 0.0
         self._count = 0
         self.loss_ma = deque(maxlen=50)
@@ -641,6 +651,7 @@ class MyTrainer(Trainer):
             self.sem_model.get_sentence_embedding_dimension()
         ).to(self.model.device)
         self.categories = getattr(self.model.config, "categories", [])
+        self.cat_seen = torch.zeros(len(self.categories), dtype=torch.long) #update per cat: eq category seen
         self._cat_sum = torch.zeros(len(self.categories), dtype=torch.float64)
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
@@ -650,11 +661,11 @@ class MyTrainer(Trainer):
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
-        self.accept_revert_tolerance = 0.002
-        self.min_revert_step = 500
+        self.accept_revert_tolerance = 0.01
+        self.min_revert_step = 100
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.shared_adapter = "shared"
-        self.max_cats_per_step = min(8, len(self.categories))
+        self.max_cats_per_step = min(10, len(self.categories))
 
     def log(self, logs, *args, **kwargs):
         return super().log(logs)
@@ -702,19 +713,27 @@ class MyTrainer(Trainer):
         logits_shift = logits_shared[:, :-1, :].contiguous()
         labels_shift = labels[:, 1:].contiguous()
         loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 0.7 * loss_micro
+        total_loss = total_loss + 0.4 * loss_micro
+
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
-            tok_counts = masks_shift_all.sum(dim=(0,2))  # [C]
-            present = (tok_counts > 0).nonzero(as_tuple=False).flatten()
-            k = min(self.max_cats_per_step, present.numel())
+            tok_counts = masks_shift_all.sum(dim=(0,2))
+
+            #get turning categories to update everything
+            present = (tok_counts > 0).nonzero(as_tuple=False).flatten().tolist()
+            k = min(self.max_cats_per_step, len(present))
             if k > 0:
-                vals, idx = torch.topk(tok_counts[present], k)
-                active_idx = present[idx].tolist()
+                seen_vals = self.cat_seen[present].numpy()
+                noise = np.random.rand(len(present)) * 1e-3
+                order = np.argsort(seen_vals + noise)
+                active_idx = [present[i] for i in order[:k]]
+                for j in active_idx:
+                    self.cat_seen[j] += 1
             else:
                 active_idx = []
-            per_step_scale = 0.5 / max(1, len(active_idx))
+
+            per_step_scale = 0.6 / max(1, len(active_idx))
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
@@ -741,9 +760,14 @@ class MyTrainer(Trainer):
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
+
         if (self.state.global_step + 1) % max(1, self.args.logging_steps) == 0:
             ma = float(np.mean(self.loss_ma)) if len(self.loss_ma) > 0 else step_loss
-            self.log({"train/loss": ma})
+            self.log({"train/loss_ma": ma})
+        if (self.state.global_step + 1) % (self.args.logging_steps * 2) == 0:
+            for j, cat in enumerate(self.categories):
+                self.log({f"train/cat_updates/{cat}": int(self.cat_seen[j].item())})
+
         if return_outputs:
             outputs_dummy = type("obj", (), {})()
             outputs_dummy.loss_total = total_loss
@@ -851,7 +875,7 @@ class MyTrainer(Trainer):
                     print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
                           flush=True)
                 else:
-                    print("No updates!", flush=True)
+                    print(f"debug/no_updates: new_best={cur:.4f}, best = {best:.4f}", flush=True)
             return results
         finally:
             if was_training:
@@ -935,7 +959,7 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     eval_strategy="steps",
     eval_steps=50,
-    learning_rate=5e-5,
+    learning_rate=5e-4,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=1,
     num_train_epochs=4,

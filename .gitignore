@@ -183,6 +183,5 @@ dist/
 .venv_test/
 .venv_build/
 dist_sdist/
-.github/
 metappuccino.egg-info/
 

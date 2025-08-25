@@ -47,9 +47,6 @@ source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
-chmod 777 "$METAPPUCCINO/requirements.txt"
-python3 -m pip install -r "$METAPPUCCINO/requirements.txt"
-
 echo "Installing llama-cpp-python with CUDA support." \
   >> "$SCRATCH_DIR/llm_log_install.txt"
 export CMAKE_ARGS="-DGGML_CUDA=on \

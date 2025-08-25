@@ -32,7 +32,9 @@ def main():
     parser.add_argument("--working_dir", type=str, required=True,
                         help="Absolute path to the working directory on the compute node—preferably a local scratch location—with sufficient writable space. Examples: $SLURM_TMPDIR, $TMPDIR, /scratchlocal/$USER/$PBS_JOBID. Contents are temporary and may be cleaned up at job end.")
     parser.add_argument("--model", type=str, required=True,
-                        help="Path to LLM model used for inference. mistral 7B ft is to download on hugging face.")
+                        help="Path to LLM model used for inference. A specific model trained for the task is to download on hugging face.")
+    parser.add_argument("--gguf", action="store_true",
+                        help="LLM  inference based on a gguf model (!= Metappuccino fine-tuned model).")
     parser.add_argument("--logan_path", type=str, default="",
                         help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")
     parser.add_argument("--requirements", action="store_true",
@@ -103,12 +105,15 @@ def main():
     clean_metadata = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "clean_metadata.sh")
     extract_preprocess = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "extract_preprocess.sh")
     summary_context = os.path.join(metappuccino_dir, "bin", "PRE_PROCESSING", "summary_context.sh")
-    llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_metadata_inference.sh")
-    # llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_MI_per_category.sh")
-    reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_model.sh")
-    # reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_MI_per_category.sh")
     normalize_final = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "normalize_final.sh")
     visualisation = os.path.join(metappuccino_dir, "bin", "NORMALISE_OUTS", "visualisation.sh")
+
+    if args.gguf:
+        llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_metadata_inference.sh")
+        reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_model.sh")
+    else:
+        llm_metadata_inference = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "llm_MI_per_category.sh")
+        reload_model = os.path.join(metappuccino_dir, "bin", "LLM_INFERENCE", "reload_MI_per_category.sh")
 
     # verbose helpers
     verbose_env = "TRUE" if verbose else "FALSE"
@@ -126,6 +131,7 @@ def main():
                 subprocess.run(["bash", install_requirements,
                                 metappuccino_dir, res_dir, env_dir, cuda_path, working_dir],
                                check=True)
+                wait_for_flag_file(step1_0_flag)
                 vprint("✔ Installation requirements completed!", file=sys.stdout)
             else:
                 if shutil.which("qsub"):
@@ -141,6 +147,8 @@ def main():
                             "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
                     vprint("Submitting:", " ".join(cmd))
                     subprocess.run(cmd, check=True)
+                    wait_for_flag_file(step1_0_flag)
+                    vprint("✔ Installation requirements completed!", file=sys.stdout)
                 elif shutil.which("sbatch"):
                     sbatch_opts = []
                     if partition_req:
@@ -153,6 +161,8 @@ def main():
                            f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
                     vprint("Submitting:", " ".join(cmd))
                     subprocess.run(cmd, check=True)
+                    wait_for_flag_file(step1_0_flag)
+                    vprint("✔ Installation requirements completed!", file=sys.stdout)
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:

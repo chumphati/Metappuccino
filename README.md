@@ -8,7 +8,8 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 
 * [Features](#features)
 * [Installation](#installation)
-
+  * [Download the LLM Model](#download-the-LLM-model)
+  * [Clone the repository](#clone-the-repository)
   * [Install from wheel](#install-from-wheel)
   * [Run with Docker / GHCR](#run-with-docker--ghcr)
   * [GPU setup without Docker](#gpu-setup-without-docker)
@@ -42,7 +43,11 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 
 ### Clone the repository
 ```bash
+#SSH
 git clone git@github.com:chumphati/Metappuccino.git
+#HTTPS
+https://github.com/chumphati/Metappuccino.git
+
 cd metappuccino
 ```
 
@@ -61,18 +66,12 @@ metappuccino --help
 **Docker**
 
 ```bash
-# CPU
-docker run --rm ghcr.io/<owner>/<repo>:latest-cpu --help
-
-# GPU (host must have NVIDIA driver + nvidia-container-toolkit)
-docker run --rm --gpus all ghcr.io/<owner>/<repo>:latest-cu121 --help
 ```
 
 **Apptainer/Singularity:**
 
 ```bash
-apptainer pull metappuccino-cu121.sif docker://ghcr.io/<owner>/<repo>:latest-cu121
-apptainer run --nv metappuccino-cu121.sif --help
+
 ```
 
 ### GPU setup without Docker
@@ -242,7 +241,7 @@ sbatch -J metappuccino -p <partition> --time=10000:00:00 \
    Map free text to controlled terms/codes; resolve inconsistencies.
 
 4. **Visualization** (`--visualisation`)
-   Produce graphs/figures from curated metadata.
+   Produce graphs/figures from curated metadata and model confidence.
 
 > Provide all four flags to run the full pipeline in one go, or run step-by-step.
 
