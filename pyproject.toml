@@ -16,14 +16,14 @@ include = ["metappuccino*"]
 metappuccino = [
   "bin/**/*.sh",
   "scripts/**/*.py",
-  "data/*",
+  "data/**",
 ]
 
 [tool.setuptools]
 include-package-data = true
 
 [project.scripts]
-metappuccino = "metappuccino.app:main"
+metappuccino = "metappuccino.bin.Metappuccino:main"
 
 [build-system]
 requires = ["setuptools>=68","wheel","build"]
