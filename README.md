@@ -10,9 +10,8 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 * [Installation](#installation)
   * [Download the LLM Model](#download-the-LLM-model)
   * [Install from source](#install-from-source)
-  * [Install from wheel](#install-from-wheel)
-  * [Run with Docker / GHCR](#run-with-docker--ghcr)
-  * [GPU setup without Docker](#gpu-setup-without-docker)
+  * [GPU setup](#gpu-setup)
+  * [Additional setup](#additional-setup)
 * [Minimal usage](#minimal-usage)
 * [Scheduler submission (no script file)](#scheduler-submission-no-script-file)
 

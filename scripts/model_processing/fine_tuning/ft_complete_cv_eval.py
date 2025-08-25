@@ -651,7 +651,7 @@ class MyTrainer(Trainer):
             self.sem_model.get_sentence_embedding_dimension()
         ).to(self.model.device)
         self.categories = getattr(self.model.config, "categories", [])
-        self.cat_seen = torch.zeros(len(self.categories), dtype=torch.long) #update per cat: eq category seen
+        self.cat_seen = [0 for _ in self.categories]
         self._cat_sum = torch.zeros(len(self.categories), dtype=torch.float64)
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
@@ -720,16 +720,17 @@ class MyTrainer(Trainer):
             B, C, L = masks_shift_all.size()
             tok_counts = masks_shift_all.sum(dim=(0,2))
 
-            #get turning categories to update everything
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten().tolist()
             k = min(self.max_cats_per_step, len(present))
+
             if k > 0:
-                seen_vals = self.cat_seen[present].numpy()
-                noise = np.random.rand(len(present)) * 1e-3
-                order = np.argsort(seen_vals + noise)
+                seen_vals = [self.cat_seen[j] for j in present]
+                order = sorted(range(len(present)), key=lambda i: (seen_vals[i], random.random()))
                 active_idx = [present[i] for i in order[:k]]
-                for j in active_idx:
-                    self.cat_seen[j] += 1
+
+                if self.model.training:
+                    for j in active_idx:
+                        self.cat_seen[j] += 1
             else:
                 active_idx = []
 
@@ -760,14 +761,9 @@ class MyTrainer(Trainer):
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
-
         if (self.state.global_step + 1) % max(1, self.args.logging_steps) == 0:
             ma = float(np.mean(self.loss_ma)) if len(self.loss_ma) > 0 else step_loss
             self.log({"train/loss_ma": ma})
-        if (self.state.global_step + 1) % (self.args.logging_steps * 2) == 0:
-            for j, cat in enumerate(self.categories):
-                self.log({f"train/cat_updates/{cat}": int(self.cat_seen[j].item())})
-
         if return_outputs:
             outputs_dummy = type("obj", (), {})()
             outputs_dummy.loss_total = total_loss
