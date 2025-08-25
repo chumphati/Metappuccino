@@ -1,52 +1,15 @@
-# ==== CORE ML / HF ====
-torch
-torchvision
-transformers
-accelerate
-datasets
-huggingface-hub
-tokenizers
-safetensors
-sentencepiece
-tiktoken
-peft
-requests
-
-# Quantization / perf (GPU)
-# bitsandbytes
-# xformers
-
-# ==== SCIENCE DES DONNÉES & TRAINING ====
 numpy
-pandas
-scipy
-scikit-learn
-matplotlib
-tqdm
-regex
-pyyaml
-python-dotenv
+psutil
 rich
 requests
-tensorboard
-seaborn
-
-# ==== LLM inference backends ====
-# llama-cpp-python
-# auto-gptq
-# gguf
-# optimum
-
-# ==== NLP / spaCy ====
+pandas
 spacy
-scispacy
-
-# ==== SERVING API ====
-# fastapi
-# uvicorn
-
-# ==== VISION ====
-# opencv-python-headless
-
-# ==== INTÉGRATIONS ====
-sentence-transformers
+scikit-learn
+nltk
+transformers
+torch
+llama-cpp-python
+openpyxl
+pyarrow
+fastparquet
+matplotlib

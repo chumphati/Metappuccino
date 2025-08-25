@@ -19,6 +19,8 @@ VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 RUNS_INPUTS=${6:-$RUNS_INPUTS}
 
+source $ENV_REQUIREMENT/bin/activate
+
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
@@ -47,7 +49,6 @@ trap cleanup EXIT
 cp "$METAPPUCCINO/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
 cp "$RUNS_INPUTS" "$SCRATCH_DIR/runs.txt"
 
-source $ENV_REQUIREMENT/bin/activate
 echo "Start $(date)"
 
 PY_VERBOSE=()

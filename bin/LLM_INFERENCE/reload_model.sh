@@ -20,6 +20,8 @@ VERBOSE=${6:-${VERBOSE:-FALSE}}
 N_GPUS=${7:-${N_GPUS:-1}}
 NODE_WORK_PATH=${8:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
@@ -69,7 +71,7 @@ ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$TMP_DIR/reload_model_bio_info.txt" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy reload_model_bio_info.txt"; exit 5; }
 cp "$TMP_DIR/database_metadata_curated.csv" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_metadata_inference.py"; exit 7; }
-source "$ENV_REQUIREMENT/bin/activate"
+
 echo "Begin date: $(date)"
 
 PY_VERBOSE=()

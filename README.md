@@ -9,7 +9,7 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 * [Features](#features)
 * [Installation](#installation)
   * [Download the LLM Model](#download-the-LLM-model)
-  * [Clone the repository](#clone-the-repository)
+  * [Install from source](#install-from-source)
   * [Install from wheel](#install-from-wheel)
   * [Run with Docker / GHCR](#run-with-docker--ghcr)
   * [GPU setup without Docker](#gpu-setup-without-docker)
@@ -41,17 +41,20 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 
 ### Download the LLM Model
 
-### Clone the repository
+### Metappuccino installation
+
+#### Install from source
 ```bash
 #SSH
 git clone git@github.com:chumphati/Metappuccino.git
 #HTTPS
-https://github.com/chumphati/Metappuccino.git
-
+git clone https://github.com/chumphati/Metappuccino.git
 cd metappuccino
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Install from wheel
+#### Install from wheel
 
 ```bash
 wget https://github.com/chumphati/Metappuccino/releases/download/<VERSION>/metappuccino-VERSION-py3-none-any.whl
@@ -62,20 +65,7 @@ metappuccino --help
 
 > **Python**: 3.10+ recommended (3.9 works only if your packaged wheel declares it).
 
-### Run with Docker / GHCR
-
-**Docker**
-
-```bash
-```
-
-**Apptainer/Singularity:**
-
-```bash
-
-```
-
-### GPU setup without Docker
+### GPU setup
 
 A wheel **does not** install GPU drivers or CUDA. To enable GPU natively:
 
@@ -91,17 +81,21 @@ pip install --index-url https://download.pytorch.org/whl/cu121 \
   "torch==<version+cu121>" "torchvision==<version+cu121>"
 ```
 
-3. **llama-cpp-python** with CUDA (if you use it):
+### Additional setup
 
+**Optional: In case of use of GGUF external model**
+
+llama-cpp-python installation with CUDA:
 ```bash
-export CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=/usr/local/cuda \
-  -DCUDAToolkit_ROOT=/usr/local/cuda \
-  -DCUDAToolkit_INCLUDE_DIR=/usr/local/cuda/include \
-  -DCUDAToolkit_LIBRARY_DIR=/usr/local/cuda/lib64"
-export CUDACXX=/usr/local/cuda/bin/nvcc
+export CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=<CUDA_PATH> \
+  -DCUDAToolkit_ROOT=<CUDA_PATH> \
+  -DCUDAToolkit_INCLUDE_DIR=<CUDA_PATH>/include \
+  -DCUDAToolkit_LIBRARY_DIR=<CUDA_PATH>/lib64"
+export CUDACXX=<CUDA_PATH>/bin/nvcc
 pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
 ```
-Caution: replace the CUDA paths with the ones of your machine.
+
+This can be automatically done by Metappuccino with the `--requirements` flag. 
 
 ---
 
@@ -186,31 +180,31 @@ sbatch -J metappuccino -p <partition> --time=10000:00:00 \
 
 ## Arguments
 
-| Argument                 | Type / Default                   | Description                                                                   |
-| ------------------------ | -------------------------------- | ----------------------------------------------------------------------------- |
-| `--metappuccino_dir`     | str, **required**                | Absolute path to the Metappuccino repo (must contain `bin/Metappuccino.py`).  |
-| `--sample_input`         | str, **required**                | `.txt`/`.csv` with one **run accession** per line (or headered column).       |
-| `--res_dir`              | str, **required**                | Output/results directory (shared FS recommended on clusters).                 |
-| `--env_requirement`      | str, **required**                | Path to Python **venv** with runtime deps (activated inside jobs).            |
-| `--working_dir`          | str, **required**                | Scratch dir on the compute node (fast local disk preferred).                  |
-| `--model`                | str, **required**                | Path to model (e.g., `.../model.gguf` or HF model path used by your scripts). |
-| `--partition`            | str                              | Queue/partition (PBS: queue via `-q`, Slurm: `--partition`).                  |
-| `--node`                 | str, default `""`                | Specific node name (optional).                                                |
-| `--gpus`                 | int, default `1`                 | GPUs to use/request. With `--per_gpu_jobs`, spawns per-GPU shards.            |
-| `--cpus`                 | int, default `30`                | CPUs to request.                                                              |
-| `--mem`                  | str, default `"50gb"`            | Memory request (e.g., `50gb`, `80G`).                                         |
-| `--per_gpu_jobs`         | flag                             | Submit one job per GPU (sharded inference).                                   |
-| `--iteration_limit`      | int, default `1`                 | Max restarts if malformed JSON or <30% categories predicted.                  |
-| `--logan_path`           | str, default `""`                | Optional auxiliary info file (`sample_acc` column expected).                  |
-| `--cuda`                 | str, default `"/usr/local/cuda"` | CUDA path for building CUDA backends if needed.                               |
-| `--requirements`         | flag                             | Install requirements/CUDA on node (requires proper privileges).               |
-| `--getmetadata`          | flag                             | Run init + download + clean + summarization.                                  |
-| `--fillmetadata`         | flag                             | Run LLM inference for missing metadata.                                       |
-| `--associateinformation` | flag                             | Map terms to codes and clean outputs.                                         |
-| `--visualisation`        | flag                             | Build figures from curated metadata.                                          |
-| `--tmp_keep`             | flag                             | Keep temporary files.                                                         |
-| `--local`                | flag                             | Force local execution (no scheduler).                                         |
-| `--verbose`              | flag                             | Verbose logging.                                                              |
+| Argument                 | Type / Default                   | Description                                                                                                |
+| ------------------------ |----------------------------------|------------------------------------------------------------------------------------------------------------|
+| `--sample_input`         | str, **required**                | `.txt`/`.csv` with one **run accession** per line (or headered column).                                    |
+| `--res_dir`              | str, **required**                | Output/results directory (shared FS recommended on clusters).                                              |
+| `--env_requirement`      | str, **required**                | Path to Python **venv** with runtime deps (activated inside jobs).                                         |
+| `--working_dir`          | str, **required**                | Scratch dir on the compute node (fast local disk preferred).                                               |
+| `--model`                | str, **required**                | Path to model (e.g., `.../model.gguf` or HF model path used by your scripts).                              |
+| `--partition`            | str                              | Queue/partition (PBS: queue via `-q`, Slurm: `--partition`).                                               |
+| `--node`                 | str, default `""`                | Specific node name (optional).                                                                             |
+| `--gpus`                 | int, default `1`                 | GPUs to use/request. With `--per_gpu_jobs`, spawns per-GPU shards.                                         |
+| `--cpus`                 | int, default `30`                | CPUs to request.                                                                                           |
+| `--mem`                  | str, default `"50gb"`            | Memory request (e.g., `50gb`, `80G`).                                                                      |
+| `--per_gpu_jobs`         | flag                             | Submit one job per GPU (sharded inference).                                                                |
+| `--iteration_limit`      | int, default `1`                 | Max restarts if malformed JSON or <30% categories predicted.                                               |
+| `--metappuccino_dir`     | str                              | Absolute path to the Metappuccino repo in case of source installation (must contain `bin/Metappuccino.py`).|
+| `--logan_path`           | str, default `""`                | Optional auxiliary info file (`sample_acc` column expected).                                               |
+| `--cuda`                 | str, default `"/usr/local/cuda"` | CUDA path for building CUDA backends if needed.                                                            |
+| `--requirements`         | flag                             | Install requirements/CUDA on node (requires proper privileges).                                            |
+| `--getmetadata`          | flag                             | Run init + download + clean + summarization.                                                               |
+| `--fillmetadata`         | flag                             | Run LLM inference for missing metadata.                                                                    |
+| `--associateinformation` | flag                             | Map terms to codes and clean outputs.                                                                      |
+| `--visualisation`        | flag                             | Build figures from curated metadata.                                                                       |
+| `--tmp_keep`             | flag                             | Keep temporary files.                                                                                      |
+| `--local`                | flag                             | Force local execution (no scheduler).                                                                      |
+| `--verbose`              | flag                             | Verbose logging.                                                                                           |
 
 ---
 

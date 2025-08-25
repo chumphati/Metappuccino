@@ -18,6 +18,8 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
@@ -54,8 +56,6 @@ cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/normalize_graph/norm_complete.py" $SCRATCH_DIR/
-
-source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 

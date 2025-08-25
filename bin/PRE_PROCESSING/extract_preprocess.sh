@@ -18,6 +18,8 @@ LOGAN_PATH=${4:-$LOGAN_PATH}
 VERBOSE=${5:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${6:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
@@ -54,8 +56,6 @@ cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
 cp "$TMP_DIR/cleaned_metadata_sra.txt" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/fetch_existing_cat.py" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/get_clean_metadata/logan_add_search.py" $SCRATCH_DIR/
-
-source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 

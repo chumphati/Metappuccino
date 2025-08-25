@@ -8,14 +8,24 @@ license = "Apache-2.0"
 authors = [{name="Fiona Hak"}]
 dependencies = ["numpy", "psutil", "rich", "requests", "pandas", "spacy", "scikit-learn", "nltk", "transformers", "torch", "llama-cpp-python", "openpyxl", "pyarrow", "fastparquet", "matplotlib"]
 
+
+[tool.setuptools.package-data]
+metappuccino = [
+  "bin/**/*.sh",
+  "scripts/**/*.py",
+  "data/*",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["metappuccino*"]
+
+[tool.setuptools]
+include-package-data = true
+
 [project.scripts]
 metappuccino = "metappuccino.cli:main"
 
 [build-system]
 requires = ["setuptools>=68","wheel","build"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["."]
-[tool.setuptools]
-include-package-data = true

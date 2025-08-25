@@ -20,6 +20,8 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 PATH_CUDA=${4:-$PATH_CUDA}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
@@ -42,8 +44,6 @@ cleanup() {
   rm -rf "$SCRATCH_DIR"
 }
 trap cleanup EXIT
-
-source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 

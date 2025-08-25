@@ -19,6 +19,8 @@ VERBOSE=${5:-${VERBOSE:-FALSE}}
 N_GPUS=${6:-${N_GPUS:-1}}
 NODE_WORK_PATH=${7:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
@@ -75,7 +77,6 @@ META_ABS="$SCRATCH_DIR/metadata_sra_summarized.txt"
 DB_ABS="$SCRATCH_DIR/database_metadata_curated.csv"
 MODEL_BASENAME="$(basename "$MODEL")"
 
-source "$ENV_REQUIREMENT/bin/activate"
 echo "Start $(date)"
 
 PY_VERBOSE=()

@@ -135,6 +135,41 @@ def load_ambiguous_map(fp):
     return {k: "; ".join(v) for k, v in ambi.items()}
 
 
+def tokenize_pieces(llm, text):
+    ids = llm.tokenize(text.encode("utf-8"), add_bos=False)  # IMPORTANT: pas de BOS
+    return [llm.detokenize([tid]).decode("utf-8", errors="ignore") for tid in ids]
+
+
+def build_category_token_patterns(keys, llm):
+    patterns = {}
+    suffixes = ['"', '":', '": ', '": "']
+    prefixes = ['', ' ', '\n', ', ', '\n  ']
+
+    for k in keys:
+        variants = []
+        for suf in suffixes:
+            s = f'"{k}{suf}'
+            variants.append(tokenize_pieces(llm, s))
+            for pref in prefixes[1:]:
+                variants.append(tokenize_pieces(llm, pref + s))
+        dedup = []
+        seen = set()
+        for v in variants:
+            tup = tuple(v)
+            if tup not in seen:
+                seen.add(tup)
+                dedup.append(v)
+        patterns[k] = dedup
+    return patterns
+
+
+def find_subsequence_any(full_tokens, list_of_patterns):
+    for pat in list_of_patterns:
+        idx = find_subsequence(full_tokens, pat)
+        if idx >= 0:
+            return idx
+    return -1
+
 ##########################################################################################
 #MAIN
 process = psutil.Process(os.getpid())
@@ -280,85 +315,7 @@ for idx, line in enumerate(metadata_lines):
         skipped_runs.append(run)
         continue
 
-    #mistral
-    # category_token_patterns = {
-    #     "library_selection": ['library', '_', 'selection', '":', ' "'],
-    #     "sequencing_source": [' "', 'sequ', 'encing', '_', 'source', '":', ' "'],
-    #     "biopsy_site": [' "', 'bi', 'ops', 'y', '_', 'site', '":', ' "'],
-    #     "biopsy_type": [' "', 'bi', 'ops', 'y', '_', 'type', '":', ' "'],
-    #     "cell_line": [' "', 'cell', '_', 'line', '":', ' "'],
-    #     "cell_type": [' "', 'cell', '_', 'type', '":', ' "'],
-    #     "organ": [' "', 'organ', '":', ' "'],
-    #     "disease": [' "', 'd', 'ise', 'ase', '":', ' "'],
-    #     "treatment": [' "', 't', 'reat', 'ment', '":', ' "'],
-    #     "treatment_time": [' "', 't', 'reat', 'ment', '_', 'time', '":', ' "'],
-    #     "response": [' "', 'response', '":', ' "'],
-    #     "age": [' "', 'age', '":', ' "'],
-    #     "sex": [' "', 'sex', '":', ' "'],
-    #     "ethnicity": [' "', 'eth', 'nic', 'ity', '":', ' "'],
-    #     "localization": [' "', 'local', 'ization', '":', ' "'],
-    #     "is_cancer": [' "', 'is', '_', 'c', 'ancer', '":', ' "'],
-    # }
-
-    #llama
-    # category_token_patterns = {
-    #     "library_selection": [' {"', 'library', '_selection', '":', ' "'],
-    #     "sequencing_source": [' "', 'sequ', 'encing', '_source', '":', ' "'],
-    #     "biopsy_site": [' "', 'bi', 'opsy', '_site', '":', ' "'],
-    #     "biopsy_type": [' "', 'bi', 'opsy', '_type', '":', ' "'],
-    #     "cell_line": [' "', 'cell', '_line', '":', ' "'],
-    #     "cell_type": [' "', 'cell', '_type', '":', ' "'],
-    #     "organ": [' "', 'organ', '":', ' "'],
-    #     "disease": [' "', 'd', 'isease', '":', ' "'],
-    #     "treatment": [' "', 't', 'reatment', '":', ' "'],
-    #     "treatment_time": [' "', 't', 'reatment', '_time', '":', ' "'],
-    #     "response": [' "', 'response', '":', ' "'],
-    #     "age": [' "', 'age', '":', ' "'],
-    #     "sex": [' "', 'sex', '":', ' "'],
-    #     "ethnicity": [' "', 'ethnic', 'ity', '":', ' "'],
-    #     "localization": [' "', 'local', 'ization', '":', ' "'],
-    #     "is_cancer": [' "', 'is', '_c', 'ancer', '":', ' "'],
-    # }
-
-    #gemma
-    category_token_patterns = {
-        "library_selection": ['library', '_', 'selection'],
-        "sequencing_source": ['sequ', 'encing', '_', 'source'],
-        "biopsy_site": ['bio', 'psy', '_', 'site'],
-        "biopsy_type": ['bio', 'psy', '_', 'type'],
-        "cell_line": ['cell', '_', 'line'],
-        "cell_type": ['cell', '_', 'type'],
-        "organ": ['organ'],
-        "disease": ['disease'],
-        "treatment": ['treatment'],
-        "treatment_time": ['treatment', '_', 'time'],
-        "response": ['response'],
-        "age": ['age'],
-        "sex": ['sex'],
-        "ethnicity": ['ethnicity'],
-        "localization": ['localization'],
-        "is_cancer": ['is', '_', 'cancer'],
-    }
-
-    #deepseek
-    # category_token_patterns = {
-    #     "library_selection": ['library', '_', 'selection'],
-    #     "sequencing_source": ['sequ', 'encing', '_', 'source'],
-    #     "biopsy_site": ['bi', 'opsy', '_', 'site'],
-    #     "biopsy_type": ['bi', 'opsy', '_', 'type'],
-    #     "cell_line": ['cell', '_', 'line'],
-    #     "cell_type": ['cell', '_', 'type'],
-    #     "organ": ['organ'],
-    #     "disease": ['disease'],
-    #     "treatment": ['treatment'],
-    #     "treatment_time": ['treatment', '_', 'time'],
-    #     "response": ['response'],
-    #     "age": ['age'],
-    #     "sex": ['sex'],
-    #     "ethnicity": ['eth', 'nic', 'ity'],
-    #     "localization": ['local', 'ization'],
-    #     "is_cancer": ['is', '_', 'c', 'ancer'],
-    # }
+    category_token_patterns = build_category_token_patterns(categories, llm)
 
     tokens = resp["choices"][0]["logprobs"]["tokens"]
     logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
@@ -367,11 +324,23 @@ for idx, line in enumerate(metadata_lines):
     entropy_dict = {}
 
     for key in ordered_keys:
-        pat = category_token_patterns.get(key)
-        if pat is None:
+        pats = category_token_patterns.get(key, [])
+        if not pats:
+            entropy_dict[key] = None
             continue
 
-        idx = find_subsequence(tokens, pat)
+        idx = find_subsequence_any(tokens, pats)
+        start = idx + len(pats[0]) if idx >= 0 else None
+        if idx >= 0:
+            matched_len = None
+            for pat in pats:
+                if find_subsequence(tokens, pat) == idx:
+                    matched_len = len(pat)
+                    break
+            start = idx + (matched_len or len(pats[0]))
+        else:
+            start = None
+
         start = idx + len(pat) if idx >= 0 else None
         if start is None:
             entropy_dict[key] = None

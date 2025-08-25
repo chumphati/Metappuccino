@@ -18,6 +18,8 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 
+source $ENV_REQUIREMENT/bin/activate
+
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
@@ -45,8 +47,6 @@ trap cleanup EXIT
 
 cp "$RES/COMPLETED_INFERENCE/completed_metadata.csv" $SCRATCH_DIR/
 cp "$METAPPUCCINO/scripts/normalize_graph/vizualisation_data.py" $SCRATCH_DIR/
-
-source $ENV_REQUIREMENT/bin/activate
 
 echo "Start $(date)"
 
