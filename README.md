@@ -54,6 +54,7 @@ cd metappuccino
 ### Install from wheel
 
 ```bash
+wget https://github.com/chumphati/Metappuccino/releases/download/<VERSION>/metappuccino-VERSION-py3-none-any.whl
 python3 -m venv .venv && source .venv/bin/activate
 pip install metappuccino-<VERSION>-py3-none-any.whl
 metappuccino --help
