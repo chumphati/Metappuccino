@@ -4,26 +4,31 @@
 #PBS -l walltime=01:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
-#PBS -l select=1:ngpus=1
+#PBS -l select=1
 
 #SBATCH --job-name=install_requirements
-#SBATCH --partition=alphafold
 #SBATCH --time=01:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
-RES=${2:-RES}
+RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 PATH_CUDA=${4:-$PATH_CUDA}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
+
+#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+#RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_tests"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/test/.venv"
+#PATH_CUDA="/usr/local/cuda"
+#NODE_WORK_PATH="/scratchlocal/$USER"
 
 source $ENV_REQUIREMENT/bin/activate
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
+mkdir -p "$LOG_DIR" "$TMP_DIR"
 
 #SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 if [[ -n "${PBS_JOBID:-}" ]]; then

@@ -9,7 +9,7 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 * [Features](#features)
 * [Installation](#installation)
   * [Download the LLM Model](#download-the-LLM-model)
-  * [Install from source](#install-from-source)
+  * [Metappuccino installation](#metappuccino-installation)
   * [GPU setup](#gpu-setup)
   * [Additional setup](#additional-setup)
 * [Minimal usage](#minimal-usage)
@@ -127,16 +127,15 @@ Heredoc one-liner (no extra files):
 
 ```bash
 qsub -N metappuccino -q <queue> \
-  -l select=1:ncpus=20:mem=50gb:ngpus=1 -l walltime=10000:00:00 <<'SH'
+  -l select=1:ncpus=1:mem=8gb:ngpus=1 -l walltime=100:00:00 <<'SH'
 #!/bin/bash
-source /abs/path/Metappuccino/.venv/bin/activate
-cd /abs/path/Metappuccino
+source <ENV_PATH>/bin/activate
 metappuccino \
-  --metappuccino_dir "/abs/path/Metappuccino" \
   --res_dir "/abs/path/results" \
   --sample_input "/abs/path/runs.txt" \
   --env_requirement "/abs/path/Metappuccino/.venv" \
   --working_dir "/scratchlocal/$USER" \
+  [ --metappuccino_dir "/abs/path/Metappuccino" \ ]
   --model "/abs/path/model.gguf" \
   --partition "<queue>" \
   --gpus 1 --cpus 20 --mem "50gb" --per_gpu_jobs \
@@ -152,17 +151,16 @@ SH
 `--wrap` one-liner:
 
 ```bash
-sbatch -J metappuccino -p <partition> --time=10000:00:00 \
-  --nodes=1 --cpus-per-task=20 --mem=50G --gres=gpu:1 \
+sbatch -J metappuccino -p <partition> --time=100:00:00 \
+  --nodes=1 --cpus-per-task=1 --mem=8G --gres=gpu:1 \
   --wrap 'bash -lc "
-    source /abs/path/Metappuccino/.venv/bin/activate
-    cd /abs/path/Metappuccino
+    source <ENV_PATH>/bin/activate
     metappuccino \
-      --metappuccino_dir \"/abs/path/Metappuccino\" \
       --res_dir \"/abs/path/results\" \
       --sample_input \"/abs/path/runs.txt\" \
       --env_requirement \"/abs/path/Metappuccino/.venv\" \
       --working_dir \"/scratchlocal/$USER\" \
+      [ --metappuccino_dir "/abs/path/Metappuccino" \ ]
       --model \"/abs/path/model.gguf\" \
       --partition <partition> \
       --gpus 1 --cpus 20 --mem 50gb --per_gpu_jobs \

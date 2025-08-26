@@ -145,7 +145,7 @@ def find_subseq(seq, subseq):
             return i
     return -1
 
-def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=2048, mark_all_occurrences=True):
+def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=3500, mark_all_occurrences=True):
     masks = np.zeros((len(categories), max_len), dtype=np.float32)
     try:
         y = json.loads(output_text)
@@ -225,12 +225,12 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=2048, add_special_tokens=False)["input_ids"]
+    prompt_ids = tokenizer(prompt, truncation=True, max_length=3500, add_special_tokens=False)["input_ids"]
     output_ids = tokenizer(output, truncation=True, max_length=350, add_special_tokens=False)["input_ids"]
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
-    max_length = 2048
+    max_length = 3500
     padding_length = max_length - len(input_ids)
     if padding_length < 0:
         input_ids = input_ids[:max_length]
@@ -772,7 +772,7 @@ class MyTrainer(Trainer):
 
     def _generate_with_adapter(self, adapter_name, prompt):
         set_active_adapter(self.model, adapter_name)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(self.model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(self.model.device)
         with torch.no_grad():
             out_ids = self.model.generate(
                 input_ids=inputs["input_ids"],
@@ -805,7 +805,7 @@ class MyTrainer(Trainer):
         for _, row in df_eval.iterrows():
             prompt = row['prompt'].strip()
             expected = row['output'].strip()
-            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
             context_ids = ids["input_ids"]
             ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
             context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
@@ -1042,7 +1042,7 @@ for i, row in test_df.iterrows():
     expected = row["output"].strip()
     merged = {}
     device = model_final.device
-    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
     context_ids = ids["input_ids"]
 
     ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
@@ -1121,7 +1121,7 @@ if os.path.exists(prompt_test_oov_file):
         expected = row["output"].strip()
         merged = {}
         device = model_gen_oov.device
-        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
         context_ids = ids["input_ids"]
 
         ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")

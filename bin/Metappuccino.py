@@ -145,7 +145,6 @@ def main():
                 subprocess.run(["bash", install_requirements,
                                 metappuccino_dir, res_dir, env_dir, cuda_path, working_dir],
                                check=True, env=env)
-                wait_for_flag_file(step1_0_flag)
                 vprint("✔ Installation requirements completed!", file=sys.stdout)
             else:
                 if shutil.which("qsub"):
@@ -161,7 +160,6 @@ def main():
                             "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
                     vprint("Submitting:", " ".join(cmd))
                     subprocess.run(cmd, check=True, env=env)
-                    wait_for_flag_file(step1_0_flag)
                     vprint("✔ Installation requirements completed!", file=sys.stdout)
                 elif shutil.which("sbatch"):
                     sbatch_opts = []
@@ -175,7 +173,6 @@ def main():
                            f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
                     vprint("Submitting:", " ".join(cmd))
                     subprocess.run(cmd, check=True, env=env)
-                    wait_for_flag_file(step1_0_flag)
                     vprint("✔ Installation requirements completed!", file=sys.stdout)
 
         ##STEP 1: GET AND CLEAN METADATA

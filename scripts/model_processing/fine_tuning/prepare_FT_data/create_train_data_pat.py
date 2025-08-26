@@ -6,10 +6,10 @@ import json
 
 ##########################################################################################
 #PATHS
-train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/train_metadata_replaced_table.csv'
-val_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/val_metadata_replaced_table.csv'
-test_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test_metadata_replaced_table.csv'
-test2_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test2_metadata_replaced_table.csv'
+train_input = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw_m/train_metadata_replaced_table.csv'
+val_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw_m/val_metadata_replaced_table.csv'
+test_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw_m/test_metadata_replaced_table.csv'
+test2_input   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw_m/test2_metadata_replaced_table.csv'
 
 train_output = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_train_corrected.csv'
 val_output   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/finetune_data_val_corrected.csv'
@@ -56,7 +56,7 @@ Here is the output:
 """
 
 def process_file(input_csv, output_csv):
-    df = pd.read_csv(input_csv)
+    df = pd.read_csv(input_csv, sep='\t')
     records = []
     fields = [
         "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
