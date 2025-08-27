@@ -18,12 +18,12 @@
 #PARAMETERS
 
 ##REQUIRED
-SAMPLE_INPUT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/benchmark_Metappuccino/results_gemma-3-270m-it-original/runs.txt"
+SAMPLE_INPUT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_tests/run.txt"
 METAPPUCCINO_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-RES_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/benchmark_Metappuccino/results_gemma-3-270m-it-original"
+RES_DIR="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_tests"
 ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
 WORKING_DIR="/scratchlocal/$USER"
-MODEL_PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/models/gemma-3-270m-it-original.gguf"
+MODEL_PATH="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/models/4bits_quantified/Mistral7B-Instruct-ft-Q4_K_M.gguf"
 NODE_NAME="node51"
 PARTITION="alphafold"
 

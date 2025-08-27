@@ -62,7 +62,6 @@ tensorboard_log_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/result
 #parameters for semantic matching
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
-threshold = 0.36
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -71,6 +70,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.add_special_tokens({'pad_token': '<pad>'})
 tokenizer.pad_token = '<pad>'
+print(f"debug/tokenizer_is_fast={getattr(tokenizer, 'is_fast', False)}", flush=True)
 
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -113,10 +113,11 @@ ALIASES = {
     "capture hybrid":"hybrid selection","hybrid capture":"hybrid selection",
   },
   "sex": {"m":"male","man":"male","male":"male","f":"female","woman":"female","M":"male","F":"female"},
-  "biopsy_type": {"primary tumor":"primary","metastatic":"metastasis"}
+  "biopsy_type": {"primary tumor":"primary","metastatic":"metastasis","primary tissue":"primary"}
 }
 
 def remap_closed_sets(d):
+    print("debug/remap_closed_sets: entering", flush=True)
     for k, allowed in CLOSED_SETS.items():
         if k in d:
             v = _normalize_text(d[k])
@@ -126,9 +127,10 @@ def remap_closed_sets(d):
                 if k == "library_selection":
                     d[k] = "other"
                 elif k == "is_cancer":
-                    d[k] = "False"
+                    d[k] = "unknown"
                 else:
                     d[k] = "unknown"
+                print(f"debug/remap_closed_sets: '{k}' value '{v}' not in allowed → mapped to '{d[k]}'", flush=True)
             else:
                 for a in allowed:
                     if v == a:
@@ -145,21 +147,27 @@ def find_subseq(seq, subseq):
             return i
     return -1
 
-def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=3500, mark_all_occurrences=True):
+def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=2048, mark_all_occurrences=True, output_enc=None):
     masks = np.zeros((len(categories), max_len), dtype=np.float32)
-    try:
-        y = json.loads(output_text)
-    except Exception:
-        y = {}
-    enc = tokenizer(
-        output_text,
-        add_special_tokens=False,
-        return_offsets_mapping=True,
-        truncation=True,
-        max_length=max_len
-    )
-    tok_ids_enc = enc["input_ids"]
+    if output_enc is None:
+        print("debug/make_cat_masks_offsets: WARNING no output_enc provided; falling back to independent encoding", flush=True)
+        available_len = max(1, max_len - len(prompt_ids))
+        enc = tokenizer(
+            output_text,
+            add_special_tokens=False,
+            return_offsets_mapping=True,
+            truncation=True,
+            max_length=available_len
+        )
+    else:
+        enc = output_enc
+        if "offset_mapping" not in enc or enc["offset_mapping"] is None:
+            print("debug/make_cat_masks_offsets: missing offset_mapping -> returning zero mask", flush=True)
+            return masks
+
     offsets = enc["offset_mapping"]
+    eff_out_len = len(enc["input_ids"])
+    print(f"debug/make_cat_masks_offsets: effective_output_token_length={eff_out_len}", flush=True)
 
     def char_span_to_token_span(char_start, char_end):
         t_start, t_end = None, None
@@ -174,37 +182,36 @@ def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_l
         return t_start, t_end
 
     for j, cat in enumerate(categories):
-        val = str(y.get(cat, ""))
-        if not val:
+        prefix = f'"{cat}": "'
+        k = output_text.find(prefix)
+        if k == -1:
             continue
-        start = 0
-        found_any = False
-        while True:
-            idx = output_text.find(val, start)
-            if idx == -1:
+        start_val = k + len(prefix)
+        i = start_val
+        end_val = None
+        while i < len(output_text):
+            if output_text[i] == '"' and output_text[i-1] != '\\':
+                end_val = i
                 break
-            found_any = True
-            char_start = idx
-            char_end = idx + len(val)
-            t_start, t_end = char_span_to_token_span(char_start, char_end)
-            if t_start is not None and t_end is not None:
-                s = len(prompt_ids) + t_start
-                e = len(prompt_ids) + t_end
-                if s < max_len:
-                    e = min(e, max_len)
-                    masks[j, s:e] = 1.0
-            if not mark_all_occurrences:
-                break
-            start = idx + 1
-        if not found_any:
-            val_ids = tokenizer(val, add_special_tokens=False)["input_ids"]
-            start_tok = find_subseq(tok_ids_enc, val_ids)
-            if start_tok != -1:
-                s = len(prompt_ids) + start_tok
-                e = s + len(val_ids)
-                if s < max_len:
-                    e = min(e, max_len)
-                    masks[j, s:e] = 1.0
+            i += 1
+        if end_val is None or end_val <= start_val:
+            continue
+
+        t_start, t_end = char_span_to_token_span(start_val, end_val)
+        if t_start is None or t_end is None:
+            continue
+
+        s = len(prompt_ids) + min(t_start, eff_out_len)
+        e = len(prompt_ids) + min(t_end, eff_out_len)
+        if s < max_len:
+            e = min(e, max_len)
+            if e > s:
+                masks[j, s:e] = 1.0
+
+    if random.random() < 0.05:
+        nonzeros = {categories[idx]: int(masks[idx].sum()) for idx in range(len(categories))}
+        print(f"debug/masks_per_sample_nonzero_tokens={nonzeros}", flush=True)
+
     return masks
 
 def apply_label_dropout(output_text):
@@ -225,28 +232,40 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    prompt_ids = tokenizer(prompt, truncation=True, max_length=3500, add_special_tokens=False)["input_ids"]
-    output_ids = tokenizer(output, truncation=True, max_length=350, add_special_tokens=False)["input_ids"]
+    max_length = 2048
+    max_out_len = 350
+    out_enc = tokenizer(output, truncation=True, max_length=max_out_len, add_special_tokens=False, return_offsets_mapping=True)
+    output_ids = out_enc["input_ids"]
+
+    max_prompt_len = max_length - len(output_ids)
+    if max_prompt_len <= 0:
+        max_prompt_len = 1
+        output_ids = output_ids[: max_length - 1]
+        # also trim out_enc consistently
+        out_enc["input_ids"] = output_ids
+        if "offset_mapping" in out_enc and out_enc["offset_mapping"] is not None:
+            out_enc["offset_mapping"] = out_enc["offset_mapping"][:len(output_ids)]
+
+    prompt_enc = tokenizer(prompt, truncation=True, max_length=max_prompt_len, add_special_tokens=False)
+    prompt_ids = prompt_enc["input_ids"]
+
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
-    max_length = 3500
+
     padding_length = max_length - len(input_ids)
-    if padding_length < 0:
-        input_ids = input_ids[:max_length]
-        attention_mask = attention_mask[:max_length]
-        labels = labels[:max_length]
-        padding_length = 0
     input_ids += [tokenizer.pad_token_id] * padding_length
     attention_mask += [0] * padding_length
     labels += [-100] * padding_length
+
     cat_masks = make_cat_masks_offsets(
         output_text=output,
         prompt_ids=prompt_ids,
         categories=categories,
         tokenizer=tokenizer,
         max_len=max_length,
-        mark_all_occurrences=True
+        mark_all_occurrences=False,
+        output_enc=out_enc
     )
     return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels, "cat_masks": cat_masks.tolist()}
 
@@ -289,7 +308,7 @@ def parse_pred_block(raw_pred):
     return {}
 
 normal_accuracy_categories = {
-    'cell_line', 'library_selection', 'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
+    'is_cancer', 'biopsy_type', 'sequencing_source', 'sex'
 }
 
 def normalize(x):
@@ -318,6 +337,21 @@ def _parse_duration_days(s: str):
     if mult is None:
         return None
     return val * mult
+
+THRESH = {
+    "age": 0.30,
+    "biopsy_site": 0.42,
+    "cell_type": 0.38,
+    "disease": 0.42,
+    "ethnicity": 0.38,
+    "localization": 0.38,
+    "organ": 0.45,
+    "treatment": 0.40,
+    "response": 0.42,
+    "treatment_time": 0.35,
+    "cell_line": 0.4,
+    "library_selection": 0.35,
+}
 
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
@@ -352,14 +386,17 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
 
             if not r_val:
                 continue
-            if (
-                cat in {"cell_line", "treatment_time", "response"}
-                and normalize(r_val) == "unknown"
-                and normalize(p_val) in NA_EQUIV
-            ):
+
+            if cat == "cell_line" and normalize(r_val) == "unknown" and normalize(p_val) in NA_EQUIV:
                 accs.append(True)
                 print("match (NA vs unknown override): True", flush=True)
                 continue
+            if cat in {"treatment_time", "response"}:
+                if normalize(r_dict.get("treatment","")) == "no treatment" and normalize(p_val) in NA_EQUIV:
+                    accs.append(True)
+                    print("match (NA vs unknown override, no treatment): True", flush=True)
+                    continue
+
             if not p_val or str(p_val).lower() == 'nan':
                 acc = False
             elif cat == "treatment_time":
@@ -372,15 +409,14 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
                     emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
                     emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                     cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
-                    acc = cos > threshold
-
+                    acc = cos > THRESH[cat]
             elif cat in normal_accuracy_categories:
                 acc = (normalize(p_val) == normalize(r_val))
             else:
                 emb_ref = model_sem.encode([r_val], convert_to_tensor=True)
                 emb_pred = model_sem.encode([p_val], convert_to_tensor=True)
                 cos = cosine_similarity(emb_ref.cpu().numpy(), emb_pred.cpu().numpy())[0][0]
-                acc = cos > threshold
+                acc = cos > THRESH[cat]
 
             accs.append(acc)
             print("match: ", acc, flush=True)
@@ -436,8 +472,6 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
         return control
 
 def add_category_adapters(peft_model: PeftModel, categories, base_config: LoraConfig):
-    if "shared" not in peft_model.peft_config:
-        peft_model.add_adapter("shared", base_config)
     for cat in categories:
         name = f"cat_{cat}"
         if name not in peft_model.peft_config:
@@ -497,31 +531,36 @@ _CAT_BANNED_IDS = {}
 _CAT_MAX_TOKENS = {
     "sex": 2,
     "is_cancer": 2,
-    "biopsy_type": 2,
-    "library_selection": 3,
-    "sequencing_source": 3,
-    "response": 3,
+    "biopsy_type": 6,
+    "library_selection": 6,
+    "sequencing_source": 6,
+    "response": 6,
     "age": 6,
     "treatment_time": 6,
-    "organ": 4,
+    "organ": 6,
     "biopsy_site": 4,
-    "cell_type": 6,
-    "disease": 6,
-    "ethnicity": 4,
-    "localization": 4,
+    "cell_type": 8,
+    "disease": 8,
+    "ethnicity": 6,
+    "localization": 10,
     "cell_line": 8,
     "treatment": 8,
 }
 CURRENT_CATEGORY = None
+_DISCOURAGED_IDS = None
+_CAT_HINT_IDS = {}
+_GEN_DEBUG_ONCE = False
 
 def _ensure_vocab_masks():
-    global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS, _ALWAYS_BANNED_IDS, _CAT_BANNED_IDS
-    if _BAD_NOQUOTE_IDS is not None and _ALWAYS_BANNED_IDS is not None:
+    global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS, _ALWAYS_BANNED_IDS, _CAT_BANNED_IDS, _DISCOURAGED_IDS, _CAT_HINT_IDS, _GEN_DEBUG_ONCE
+    if _BAD_NOQUOTE_IDS is not None and _ALWAYS_BANNED_IDS is not None and _DISCOURAGED_IDS is not None and _CAT_HINT_IDS:
         return
     bad_noquote = set()
     quote_any = set()
     always_banned = set()
     cat_banned = {k: set() for k in _CAT_MAX_TOKENS.keys()}
+    discouraged = set()
+    cat_hints = {k: set() for k in _CAT_MAX_TOKENS.keys()}
 
     vocab_size = getattr(tokenizer, 'vocab_size', None) or len(tokenizer)
     acc_substrings = [
@@ -539,10 +578,21 @@ def _ensure_vocab_masks():
             return True
         return False
 
+    numeric_ban_cats = set(list(CLOSED_SETS.keys()) + ["biopsy_type"])
+
+    hint_map = {
+        "sex": ["female","male"],
+        "is_cancer": ["true","false"],
+        "sequencing_source": ["bulk","spatial","single"],
+        "biopsy_type": ["metastasis","primary","blood"],
+        "library_selection": ["polya","inverse","rrna","hybrid","small","other"],
+    }
+
     for tid in range(vocab_size):
         piece = tokenizer.decode([tid], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         if not piece:
             continue
+        pl = piece.lower()
         if any(q in piece for q in QUOTE_CHARS):
             quote_any.add(tid)
         if any(ch in piece for ch in BAD_VALUE_CHARS_NO_QUOTE):
@@ -551,15 +601,30 @@ def _ensure_vocab_masks():
         if piece_has_accession(piece):
             always_banned.add(tid)
 
+        if "unknown" in pl or "not applicable" in pl or pl.strip() in {"n/a","na","none","unspecified"}:
+            discouraged.add(tid)
+
         if re.search(r'\d', piece):
-            for k in ["sex","is_cancer","biopsy_type","library_selection","sequencing_source",
-                      "response","organ","biopsy_site","cell_type","disease","ethnicity","localization"]:
+            for k in numeric_ban_cats:
                 cat_banned[k].add(tid)
+
+        for k, hints in hint_map.items():
+            if any(h in pl for h in hints):
+                cat_hints[k].add(tid)
 
     _BAD_NOQUOTE_IDS = bad_noquote
     _QUOTE_ANY_IDS = quote_any
     _ALWAYS_BANNED_IDS = always_banned
     _CAT_BANNED_IDS = cat_banned
+    _DISCOURAGED_IDS = discouraged
+    _CAT_HINT_IDS = cat_hints
+
+    if not _GEN_DEBUG_ONCE:
+        _GEN_DEBUG_ONCE = True
+        print(f"debug/vocab_masks: discouraged_tokens={len(_DISCOURAGED_IDS)} quote_tokens={len(_QUOTE_ANY_IDS)} "
+              f"always_banned={len(_ALWAYS_BANNED_IDS)}", flush=True)
+        for k in sorted(_CAT_BANNED_IDS.keys()):
+            print(f"debug/vocab_masks: numeric_banned_in[{k}]={len(_CAT_BANNED_IDS[k])}", flush=True)
 
 @torch.no_grad()
 def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, no_repeat_ngram_size=3):
@@ -581,6 +646,14 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         )
         logits = out.logits[:, -1, :]
 
+        if gen_buf:
+            logits[:, gen_buf[-1]] -= 1.2
+
+            import numpy as _np
+            uniq, counts = _np.unique(gen_buf, return_counts=True)
+            for u, c in zip(uniq.tolist(), counts.tolist()):
+                logits[:, u] -= 0.2 * max(0, c - 1)
+
         banned = set(_BAD_NOQUOTE_IDS)
         if not has_content:
             banned |= _QUOTE_ANY_IDS
@@ -593,6 +666,18 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
 
         if model.config.eos_token_id is not None:
             logits[:, model.config.eos_token_id] = -float("inf")
+
+        if not has_content and cat in _CAT_HINT_IDS and _CAT_HINT_IDS[cat]:
+            for tid in _CAT_HINT_IDS[cat]:
+                logits[:, tid] += 0.6
+
+        if _DISCOURAGED_IDS:
+            for tid in _DISCOURAGED_IDS:
+                logits[:, tid] -= 1.5
+
+        if has_content and _QUOTE_ANY_IDS:
+            for tid in _QUOTE_ANY_IDS:
+                logits[:, tid] += 0.5
 
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
@@ -651,12 +736,11 @@ class MyTrainer(Trainer):
             self.sem_model.get_sentence_embedding_dimension()
         ).to(self.model.device)
         self.categories = getattr(self.model.config, "categories", [])
-        self.cat_seen = [0 for _ in self.categories]
         self._cat_sum = torch.zeros(len(self.categories), dtype=torch.float64)
         self._cat_count = torch.zeros(len(self.categories), dtype=torch.float64)
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
-        self.guard_lambda = 0.005
+        self.guard_lambda = 0.001
         self.guard_margin = 0.01
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
@@ -664,8 +748,7 @@ class MyTrainer(Trainer):
         self.accept_revert_tolerance = 0.01
         self.min_revert_step = 100
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
-        self.shared_adapter = "shared"
-        self.max_cats_per_step = min(10, len(self.categories))
+        print(f"debug/trainer_init: label_smoothing={self.label_smoothing} guard_lambda={self.guard_lambda}", flush=True)
 
     def log(self, logs, *args, **kwargs):
         return super().log(logs)
@@ -704,41 +787,26 @@ class MyTrainer(Trainer):
         cat_masks = inputs.pop("cat_masks", None)
         labels = inputs['labels']
         total_loss = torch.zeros([], device=labels.device)
-        per_cat_losses = []
         if cat_masks is not None:
             cat_masks = torch.as_tensor(cat_masks, device=labels.device, dtype=torch.float32)
             self._print_masks_debug(inputs, cat_masks)
-        outputs_shared = self._forward_with_adapter(self.shared_adapter, inputs)
-        logits_shared = outputs_shared.logits
-        logits_shift = logits_shared[:, :-1, :].contiguous()
-        labels_shift = labels[:, 1:].contiguous()
-        loss_micro = self.loss_fct(logits_shift.view(-1, logits_shift.size(-1)), labels_shift.view(-1))
-        total_loss = total_loss + 0.4 * loss_micro
 
         if cat_masks is not None:
             masks_shift_all = cat_masks[:, :, 1:].contiguous()
             B, C, L = masks_shift_all.size()
-            tok_counts = masks_shift_all.sum(dim=(0,2))
-
+            tok_counts = masks_shift_all.sum(dim=(0, 2))
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten().tolist()
-            k = min(self.max_cats_per_step, len(present))
 
-            if k > 0:
-                seen_vals = [self.cat_seen[j] for j in present]
-                order = sorted(range(len(present)), key=lambda i: (seen_vals[i], random.random()))
-                active_idx = [present[i] for i in order[:k]]
+            active_idx = present
+            any_valid = False
+            per_cat_valid_tokens = []
+            cat_terms = []
 
-                if self.model.training:
-                    for j in active_idx:
-                        self.cat_seen[j] += 1
-            else:
-                active_idx = []
-
-            per_step_scale = 0.6 / max(1, len(active_idx))
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
                 if not m.any():
+                    per_cat_valid_tokens.append((cat, 0))
                     continue
                 outputs_cat = self._forward_with_adapter(self.cat2adapter[cat], inputs)
                 logits_cat = outputs_cat.logits
@@ -748,16 +816,61 @@ class MyTrainer(Trainer):
                 flat_logits = logits_cat_shift.view(B * L, V)
                 flat_labels = labels_shift.view(B * L)
                 valid = (flat_labels != -100) & m
+                vcount = int(valid.sum().item())
+                per_cat_valid_tokens.append((cat, vcount))
                 if valid.any():
+                    any_valid = True
                     loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
-                    per_cat_losses.append((j, loss_j))
                     if not self.guard_initialized[j]:
                         self.guard_ema[j] = loss_j.detach().float()
                         self.guard_initialized[j] = True
                     else:
-                        self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (1 - self.guard_ema_beta) * loss_j.detach().float()
+                        self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (
+                                    1 - self.guard_ema_beta) * loss_j.detach().float()
                     penalty = torch.relu(loss_j - (self.guard_ema[j].to(loss_j.device) + self.guard_margin))
-                    total_loss = total_loss + per_step_scale * loss_j + self.guard_lambda * per_step_scale * penalty
+                    cat_terms.append((loss_j, penalty, vcount, cat))
+
+            try:
+                summary = {c: v for c, v in per_cat_valid_tokens}
+                total_valid = sum(v for _, v in per_cat_valid_tokens)
+                num_present = len(active_idx)
+                print(
+                    f"debug/compute_loss: present_cats={num_present}/{C}, total_valid_tokens={total_valid}, per_cat_valid_tokens={summary}",
+                    flush=True)
+            except Exception:
+                total_valid = sum(v for _, v in per_cat_valid_tokens)
+
+            num_terms = len(cat_terms)
+            if num_terms > 0:
+                per_cat_scale = 1.0 / num_terms
+                for (loss_j, penalty, vcount, cat) in cat_terms:
+                    total_loss = total_loss + per_cat_scale * loss_j + self.guard_lambda * per_cat_scale * penalty
+
+            if not any_valid:
+                if len(self.categories) > 0:
+                    fallback_cat = random.choice(self.categories)
+                    print(f"debug/fallback_used: no valid category tokens; using '{fallback_cat}'", flush=True)
+                    outputs_cat = self._forward_with_adapter(self.cat2adapter[fallback_cat], inputs)
+                    logits_cat = outputs_cat.logits
+                    logits_shift = logits_cat[:, :-1, :].contiguous()
+                    labels_shift = labels[:, 1:].contiguous()
+                    valid = (labels_shift != -100).view(-1)
+                    if valid.any():
+                        total_loss = total_loss + self.loss_fct(logits_shift.view(-1, logits_shift.size(-1))[valid],
+                                                                labels_shift.view(-1)[valid])
+        else:
+            if len(self.categories) > 0:
+                fallback_cat = random.choice(self.categories)
+                print(f"debug/fallback_used: no cat_masks provided; using '{fallback_cat}'", flush=True)
+                outputs_cat = self._forward_with_adapter(self.cat2adapter[fallback_cat], inputs)
+                logits_cat = outputs_cat.logits
+                logits_shift = logits_cat[:, :-1, :].contiguous()
+                labels_shift = labels[:, 1:].contiguous()
+                valid = (labels_shift != -100).view(-1)
+                if valid.any():
+                    total_loss = total_loss + self.loss_fct(logits_shift.view(-1, logits_shift.size(-1))[valid],
+                                                            labels_shift.view(-1)[valid])
+
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
@@ -772,7 +885,7 @@ class MyTrainer(Trainer):
 
     def _generate_with_adapter(self, adapter_name, prompt):
         set_active_adapter(self.model, adapter_name)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(self.model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(self.model.device)
         with torch.no_grad():
             out_ids = self.model.generate(
                 input_ids=inputs["input_ids"],
@@ -805,7 +918,7 @@ class MyTrainer(Trainer):
         for _, row in df_eval.iterrows():
             prompt = row['prompt'].strip()
             expected = row['output'].strip()
-            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
+            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
             context_ids = ids["input_ids"]
             ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
             context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
@@ -826,7 +939,7 @@ class MyTrainer(Trainer):
                 else:
                     context_ids = torch.cat([context_ids, torch.tensor([brace_close_ids], device=device)], dim=1)
 
-            preds_json_str.append(json.dumps(merged, ensure_ascii=False))
+            preds_json_str.append(json.dumps(remap_closed_sets(merged), ensure_ascii=False))
             refs_json_str.append(expected)
 
         return preds_json_str, refs_json_str
@@ -850,7 +963,6 @@ class MyTrainer(Trainer):
             DO_FULL = (self.state.global_step % 500 == 0) or (self.state.global_step == 0)
             max_rows = None if DO_FULL else 64
             preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
-            # preds, refs = self._eval_per_category_generate(df_val_final)
             cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
             for k, v in cat_metrics.items():
                 key = f"{metric_key_prefix}_{k}"
@@ -955,8 +1067,8 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     eval_strategy="steps",
     eval_steps=50,
-    learning_rate=5e-4,
-    per_device_train_batch_size=2,
+    learning_rate=2e-4,
+    per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
     num_train_epochs=4,
     weight_decay=0.0,
@@ -975,15 +1087,17 @@ training_args_final = TrainingArguments(
     greater_is_better=True,
     warmup_ratio=0.1,
     lr_scheduler_type="linear",
-    max_grad_norm=0.3
+    max_grad_norm=0.3,
+    adam_beta2=0.95
 )
+print(f"debug/training_args: learning_rate={training_args_final.learning_rate}, adam_beta2={training_args_final.adam_beta2}", flush=True)
 
 trainer_final = MyTrainer(
     model=model_final,
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.2,
+    label_smoothing=0.1,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
@@ -1042,7 +1156,7 @@ for i, row in test_df.iterrows():
     expected = row["output"].strip()
     merged = {}
     device = model_final.device
-    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
+    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
     context_ids = ids["input_ids"]
 
     ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
@@ -1096,22 +1210,13 @@ for cat in categories:
 final_test_writer.close()
 
 ##########################################################################################
-# EVAL TEST OOV
+#EVAL TEST OOV
 
 if os.path.exists(prompt_test_oov_file):
     print("\nGenerating predictions on final OOV test set", flush=True)
     df_test_oov = pd.read_csv(prompt_test_oov_file)
     with torch.no_grad():
-        model_copy_oov = copy.deepcopy(model_final)
-    set_active_adapter(model_copy_oov, "shared")
-    base_shared_oov = model_copy_oov.merge_and_unload()
-    model_gen_oov = get_peft_model(base_shared_oov, final_peft_config)
-    add_category_adapters(model_gen_oov, categories, final_peft_config)
-    for c in categories:
-        sd = get_adapter_state_dict(model_final, f"cat_{c}")
-        load_adapter_state_dict_(model_gen_oov, f"cat_{c}", sd)
-    model_gen_oov.to(device)
-
+        model_gen_oov = copy.deepcopy(model_final)
     test_oov_preds, test_oov_refs = [], []
     oov_writer = SummaryWriter(os.path.join(tensorboard_log_dir, "final_predictions_oov"))
 
@@ -1121,7 +1226,7 @@ if os.path.exists(prompt_test_oov_file):
         expected = row["output"].strip()
         merged = {}
         device = model_gen_oov.device
-        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3500).to(device)
+        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
         context_ids = ids["input_ids"]
 
         ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
