@@ -137,7 +137,7 @@ metappuccino \
 
 ### PBS (qsub)
 
-Heredoc one-liner (no extra files):
+*e.g.:*
 
 ```bash
 qsub -N metappuccino -q <queue> \
@@ -162,7 +162,7 @@ SH
 
 ### Slurm (sbatch)
 
-`--wrap` one-liner:
+*e.g.:*
 
 ```bash
 sbatch -J metappuccino -p <partition> --time=100:00:00 \
