@@ -223,7 +223,6 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 | `--iteration_limit`      | int, default `1`, min `0`        | Max restarts of LLM inference if malformed JSON or <30% categories predicted.                                               |
 | `--metappuccino_dir`     | str                              | Absolute path to the Metappuccino repository in case of source installation (must contain `bin/Metappuccino.py`).           |
 | `--logan_path`           | str, default `""`                | Additional metadata extracted from Logan search (`ID` column expected).                                                     |
-| `--cuda`                 | str, default `"/usr/local/cuda"` | CUDA path for building CUDA backends if needed.                                                                             |
 | `--getmetadata`          | flag                             | Run the metadata preprocessing: download, clean, and summarize if needed.                                                   |
 | `--fillmetadata`         | flag                             | Run LLM inference based on `--model` for missing metadata.                                                                  |
 | `--associateinformation` | flag                             | Normalize terms with Cellosaurus, Disease Ontology and Uberon and clean outputs.                                            |

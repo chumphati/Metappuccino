@@ -1,6 +1,6 @@
 from huggingface_hub import snapshot_download
 
-HF_TOKEN = ""
+HF_TOKEN = "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"
 
 snapshot_download(
     repo_id="MaziyarPanahi/Meta-Llama-3-70B-Instruct-GGUF",

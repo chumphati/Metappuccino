@@ -48,8 +48,6 @@ def main():
                         help="Path to the Metappuccino directory (Use in case of installation from source).")
     parser.add_argument("--logan_path", type=str, default="",
                         help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")
-    parser.add_argument("--cuda", type=str, default="/usr/local/cuda",
-                        help="Path to CUDA installation if different from '/usr/local/cuda'")
     parser.add_argument("--getmetadata", action="store_true",
                         help="Download and clean metadata from NCBI [Input: List of run accessions]")
     parser.add_argument("--fillmetadata", action="store_true",
@@ -81,7 +79,6 @@ def main():
     res_dir = args.res_dir
     tmp_keep = args.tmp_keep
     env_dir = args.env_requirement
-    cuda_path = args.cuda
     model_path = args.model
     working_dir = args.working_dir
     logan_path = args.logan_path
