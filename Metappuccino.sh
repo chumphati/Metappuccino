@@ -41,6 +41,7 @@ TMP_KEEP=TRUE
 INSTALL_REQUIREMENTS=FALSE
 GET_METADATA=TRUE
 FILL_METADATA=TRUE
+GGUF=TRUE
 ASSOCIATE_INFORMATION=TRUE
 VISUALISATION=TRUE
 LOCAL=FALSE
@@ -59,6 +60,7 @@ ARGS=()
 [[ "$ASSOCIATE_INFORMATION" == "TRUE" ]] && ARGS+=("--associateinformation")
 [[ "$VISUALISATION" == "TRUE" ]] && ARGS+=("--visualisation")
 [[ "$LOCAL" == "TRUE" ]] && ARGS+=("--local")
+[[ "$GGUF" == "TRUE" ]] && ARGS+=("--gguf")
 
 python3 "$METAPPUCCINO_DIR/bin/Metappuccino.py" \
     --metappuccino_dir "$METAPPUCCINO_DIR" \

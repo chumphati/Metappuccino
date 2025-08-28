@@ -107,22 +107,73 @@ CLOSED_SETS = {
 }
 OPEN_CATS = ["cell_line","disease","treatment","organ","cell_type","localization","ethnicity","biopsy_site"]
 ALIASES = {
-  "library_selection": {
+    "library_selection": {
     "poly a":"polya","poly-a":"polya","poly a+":"polya",
     "rrna depletion":"inverse rrna","ribominus":"inverse rrna","ribo minus":"inverse rrna",
     "capture hybrid":"hybrid selection","hybrid capture":"hybrid selection",
-  },
-  "sex": {"m":"male","man":"male","male":"male","f":"female","woman":"female","M":"male","F":"female"},
-  "biopsy_type": {"primary tumor":"primary","metastatic":"metastasis","primary tissue":"primary"}
+    },
+    "sex": {"m":"male","man":"male","male":"male","f":"female","woman":"female","M":"male","F":"female"},
+    "biopsy_type": {"primary tumor":"primary","metastatic":"metastasis","primary tissue":"primary"},
+    "sequencing_source": {
+        "bulk": "bulk", "bulk rna": "bulk", "bulk rna seq": "bulk",
+        "bulk transcriptome": "bulk", "bulk transcriptom": "bulk",
+        "single cell": "single cell", "single-cell": "single cell",
+        "sc rna": "single cell", "scrna": "single cell",
+        "single cell sequencing": "single cell", "single cell rna": "single cell",
+        "spatial": "spatial", "spatial transcriptomics": "spatial",
+        "spatial transcriptome": "spatial", "spatial transcriptom": "spatial"
+      },
+      "is_cancer": {
+        "true":"True","false":"False",
+        "cancer":"True","oncologic":"True","tumor":"True","tumour":"True",
+        "non cancer":"False","non-cancer":"False","non oncologic":"False",
+        "benign":"False","healthy":"False","control":"False"
+      }
 }
+
+def _canonicalize_closed_value(cat: str, raw_val: str):
+    v = _normalize_text(raw_val or "")
+    v = v.replace("singlecell", "single cell")
+    v = ALIASES.get(cat, {}).get(v, v)
+    allowed = CLOSED_SETS.get(cat, set())
+
+    def _canon(x):
+        x = ALIASES.get(cat, {}).get(x, x)
+        if x in allowed:
+            return {"true":"True","false":"False"}.get(x, x)
+        return None
+
+    c = _canon(v)
+    if c is not None: return c
+    parts = v.split()
+    heads = []
+    if parts: heads.append(parts[0])
+    if len(parts) >= 2: heads.append(" ".join(parts[:2]))
+    drops = {"sequencing","rna","seq","kit","library","transcriptom","transcriptome","study","cells","cell"}
+    head_clean = " ".join([w for w in parts if w not in drops][:2]).strip()
+    if head_clean: heads.append(head_clean)
+
+    for h in heads:
+        c = _canon(h)
+        if c is not None: return c
+    for a in allowed:
+        if v.startswith(a):
+            return {"true":"True","false":"False"}.get(a, a)
+    return None
 
 def remap_closed_sets(d):
     print("debug/remap_closed_sets: entering", flush=True)
     for k, allowed in CLOSED_SETS.items():
         if k in d:
-            v = _normalize_text(d[k])
+            v_raw = d[k]
+            v = _normalize_text(v_raw)
             v = v.replace("singlecell","single cell")
             v = ALIASES.get(k, {}).get(v, v)
+            canon = _canonicalize_closed_value(k, v)
+            if canon is not None:
+                d[k] = canon
+                continue
+
             if v not in allowed:
                 if k == "library_selection":
                     d[k] = "other"
@@ -495,6 +546,9 @@ def load_adapter_state_dict_(peft_model: PeftModel, adapter_name: str, adapter_s
 def tok_ids(s):
     return tokenizer(s, add_special_tokens=False, return_tensors=None)["input_ids"]
 
+def stop_token_id_set():
+    return set()
+
 @torch.no_grad()
 def greedy_step(model, input_ids, attention_mask, past, temperature=0.0):
     out = model(input_ids=input_ids, attention_mask=attention_mask, past_key_values=past, use_cache=True)
@@ -648,7 +702,6 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
 
         if gen_buf:
             logits[:, gen_buf[-1]] -= 1.2
-
             import numpy as _np
             uniq, counts = _np.unique(gen_buf, return_counts=True)
             for u, c in zip(uniq.tolist(), counts.tolist()):
@@ -667,6 +720,10 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         if model.config.eos_token_id is not None:
             logits[:, model.config.eos_token_id] = -float("inf")
 
+        if has_content and cat in CLOSED_SETS and _QUOTE_ANY_IDS:
+            for tid_q in _QUOTE_ANY_IDS:
+                logits[:, tid_q] += 1.5
+
         if not has_content and cat in _CAT_HINT_IDS and _CAT_HINT_IDS[cat]:
             for tid in _CAT_HINT_IDS[cat]:
                 logits[:, tid] += 0.6
@@ -674,10 +731,6 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         if _DISCOURAGED_IDS:
             for tid in _DISCOURAGED_IDS:
                 logits[:, tid] -= 1.5
-
-        if has_content and _QUOTE_ANY_IDS:
-            for tid in _QUOTE_ANY_IDS:
-                logits[:, tid] += 0.5
 
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
@@ -695,26 +748,16 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         if any(c.isalnum() for c in piece):
             has_content = True
 
+        if cat in CLOSED_SETS:
+            partial = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+            canon = _canonicalize_closed_value(cat, partial)
+            if canon is not None:
+                return canon, input_ids
+
     value = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
     value = re.split(r'[";\n`,}:()\[\]]', value)[0]
     value = re.sub(r'\s+', ' ', value).strip(' ,;.-').strip()
     return value, input_ids
-
-def quote_token_id_set():
-    s = set()
-    for q in ['"', '”', '“']:
-        ids = tok_ids(q)
-        for i in ids:
-            s.add(i)
-    return s
-
-def stop_token_id_set():
-    s = set()
-    for q in ['"', '”', '“', '\n', '`', '}', ',']:
-        ids = tok_ids(q)
-        for i in ids:
-            s.add(i)
-    return s
 
 ##########################################################################################
 #CUSTOMED TRAINER
@@ -984,6 +1027,9 @@ class MyTrainer(Trainer):
                           flush=True)
                 else:
                     print(f"debug/no_updates: new_best={cur:.4f}, best = {best:.4f}", flush=True)
+
+            # make sure callbacks see these eval metrics (early stopping/saving)
+            self.control = self.callback_handler.on_evaluate(self.args, self.state, self.control, results)
             return results
         finally:
             if was_training:
@@ -1073,6 +1119,7 @@ training_args_final = TrainingArguments(
     num_train_epochs=4,
     weight_decay=0.0,
     save_strategy='steps',
+    save_steps=50,
     logging_strategy='steps',
     logging_steps=50,
     fp16=(not use_bf16),
@@ -1115,7 +1162,8 @@ init_val = trainer_final.evaluate(eval_dataset=tokenized_val_final, metric_key_p
 print("Initial val metrics - original model (step=0) →", init_val)
 
 for cat in categories:
-    final_writer_training.add_scalar(f"eval_accuracy_{cat.lower()}", init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else init_val[f"eval_accuracy_{cat.lower()}"] if f"eval_accuracy_{cat.lower()}" in init_val else 0.0, 0)
+    key = f"eval_accuracy_{cat.lower()}"
+    final_writer_training.add_scalar(key, init_val.get(key, 0.0), 0)
 
 trainer_final.train()
 final_writer_training.close()
