@@ -53,6 +53,22 @@ It can be used in Metappuccino by downloading it and providing the path to it in
 #### Open-source GGUF model
 You can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. This mode requires you to put the `--gguf` flag in Metappuccino, and requires a specific GPU configuration (see the “Additional setup” section).
 
+**Example of downloading a gguf model from Hugging Face**
+```python
+from huggingface_hub import snapshot_download
+
+HF_TOKEN = <HF_TOKEN>
+
+snapshot_download(
+    repo_id="<REPO_URL>",
+    local_dir="<OUT_DIR_URL>",
+    use_auth_token=HF_TOKEN,
+    resume_download=True,
+    max_workers=4
+)
+
+```
+
 ### Metappuccino installation
 *Please note: it is safer to install the tool from the release.*
 
@@ -98,7 +114,7 @@ pip install --index-url https://download.pytorch.org/whl/cu121 \
 
 **Optional: In case of use of GGUF external model**
 
-llama-cpp-python installation with CUDA:
+llama-cpp-python installation with CUDA (on the node where cuda is already installed):
 ```bash
 export CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=<CUDA_PATH> \
   -DCUDAToolkit_ROOT=<CUDA_PATH> \
@@ -108,7 +124,7 @@ export CUDACXX=<CUDA_PATH>/bin/nvcc
 pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
 ```
 
-This can be automatically done by Metappuccino with the `--requirements` flag. 
+This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
 
 ---
 
@@ -208,7 +224,6 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 | `--metappuccino_dir`     | str                              | Absolute path to the Metappuccino repository in case of source installation (must contain `bin/Metappuccino.py`).           |
 | `--logan_path`           | str, default `""`                | Additional metadata extracted from Logan search (`ID` column expected).                                                     |
 | `--cuda`                 | str, default `"/usr/local/cuda"` | CUDA path for building CUDA backends if needed.                                                                             |
-| `--requirements`         | flag                             | Install CUDA requirements on `--node` (requires proper privileges).                                                         |
 | `--getmetadata`          | flag                             | Run the metadata preprocessing: download, clean, and summarize if needed.                                                   |
 | `--fillmetadata`         | flag                             | Run LLM inference based on `--model` for missing metadata.                                                                  |
 | `--associateinformation` | flag                             | Normalize terms with Cellosaurus, Disease Ontology and Uberon and clean outputs.                                            |

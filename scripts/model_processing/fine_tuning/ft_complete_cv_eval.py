@@ -103,7 +103,7 @@ CLOSED_SETS = {
     "sequencing_source": {"spatial", "bulk", "single cell"},
     "biopsy_type": {"metastasis", "blood", "primary"},
     "sex": {"male", "female", "unknown"},
-    "is_cancer": {"true", "false"},
+    "is_cancer": {"True", "False"},
 }
 OPEN_CATS = ["cell_line","disease","treatment","organ","cell_type","localization","ethnicity","biopsy_site"]
 ALIASES = {
@@ -132,20 +132,37 @@ ALIASES = {
 }
 
 def _canonicalize_closed_value(cat: str, raw_val: str):
-    v = _normalize_text(raw_val or "")
-    v = v.replace("singlecell", "single cell")
-    v = ALIASES.get(cat, {}).get(v, v)
+    v_raw = raw_val or ""
+    v_norm = _normalize_text(v_raw)
+    v_norm = v_norm.replace("singlecell", "single cell")
+    v_alias = ALIASES.get(cat, {}).get(v_norm, v_norm)
     allowed = CLOSED_SETS.get(cat, set())
+    # normalized allowed lookup to accept case-insensitive and substring matches
+    allowed_norm_map = { _normalize_text(a): a for a in allowed }
 
-    def _canon(x):
-        x = ALIASES.get(cat, {}).get(x, x)
+    def _return_canon(x):
+        if cat == "is_cancer":
+            # ensure canonical capitalization
+            return {"true":"True","false":"False","True":"True","False":"False"}.get(x, x)
+        return x
+
+    def _canon_candidate(x):
+        # accept direct allowed (case-sensitive)
         if x in allowed:
-            return {"true":"True","false":"False"}.get(x, x)
+            return _return_canon(x)
+        # accept case-insensitive against allowed
+        x_norm = _normalize_text(x)
+        if x_norm in allowed_norm_map:
+            return _return_canon(allowed_norm_map[x_norm])
         return None
 
-    c = _canon(v)
-    if c is not None: return c
-    parts = v.split()
+    # direct checks on alias and normalized
+    c = _canon_candidate(v_alias)
+    if c is not None:
+        return c
+
+    # try heads / simplified tokens (keep original intent)
+    parts = v_norm.split()
     heads = []
     if parts: heads.append(parts[0])
     if len(parts) >= 2: heads.append(" ".join(parts[:2]))
@@ -154,11 +171,16 @@ def _canonicalize_closed_value(cat: str, raw_val: str):
     if head_clean: heads.append(head_clean)
 
     for h in heads:
-        c = _canon(h)
-        if c is not None: return c
-    for a in allowed:
-        if v.startswith(a):
-            return {"true":"True","false":"False"}.get(a, a)
+        h_alias = ALIASES.get(cat, {}).get(h, h)
+        c = _canon_candidate(h_alias)
+        if c is not None:
+            return c
+
+    # accept substring matches of any allowed token (prefer longest)
+    for key_norm, a in sorted(allowed_norm_map.items(), key=lambda kv: -len(kv[0])):
+        if key_norm and key_norm in v_norm:
+            return _return_canon(a)
+
     return None
 
 def remap_closed_sets(d):
@@ -172,9 +194,10 @@ def remap_closed_sets(d):
             canon = _canonicalize_closed_value(k, v)
             if canon is not None:
                 d[k] = canon
+                print(f"debug/remap_closed_sets: '{k}' canonicalized → '{canon}'", flush=True)
                 continue
 
-            if v not in allowed:
+            if v not in allowed and _normalize_text(v) not in {_normalize_text(a) for a in allowed}:
                 if k == "library_selection":
                     d[k] = "other"
                 elif k == "is_cancer":
@@ -184,8 +207,9 @@ def remap_closed_sets(d):
                 print(f"debug/remap_closed_sets: '{k}' value '{v}' not in allowed → mapped to '{d[k]}'", flush=True)
             else:
                 for a in allowed:
-                    if v == a:
-                        d[k] = {"true":"True","false":"False"}.get(a, a)
+                    if v == a or _normalize_text(v) == _normalize_text(a):
+                        d[k] = {"true":"True","false":"False","True":"True","False":"False"}.get(a, a)
+                        print(f"debug/remap_closed_sets: '{k}' normalized passthrough → '{d[k]}'", flush=True)
                         break
     return d
 
@@ -393,12 +417,12 @@ THRESH = {
     "age": 0.30,
     "biopsy_site": 0.42,
     "cell_type": 0.38,
-    "disease": 0.42,
+    "disease": 0.36,
     "ethnicity": 0.38,
     "localization": 0.38,
-    "organ": 0.45,
+    "organ": 0.42,
     "treatment": 0.40,
-    "response": 0.42,
+    "response": 0.34,
     "treatment_time": 0.35,
     "cell_line": 0.4,
     "library_selection": 0.35,
@@ -512,7 +536,11 @@ class GenerationEarlyStoppingCallback(TrainerCallback):
         self.best = -math.inf
         self.num_bad=0
     def on_evaluate(self, args, state, control, logs=None, **kwargs):
-        current = logs.get(self.metric_name)
+        # Hugging Face passes metrics via kwargs["metrics"] for on_evaluate
+        metrics = logs if logs is not None else kwargs.get("metrics")
+        if metrics is None:
+            return control
+        current = metrics.get(self.metric_name)
         if current and current>self.best:
             self.best=current; self.num_bad=0
             control.should_save=True
@@ -701,13 +729,15 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         logits = out.logits[:, -1, :]
 
         if gen_buf:
-            logits[:, gen_buf[-1]] -= 1.2
+            logits[:, gen_buf[-1]] -= 2.0
             import numpy as _np
             uniq, counts = _np.unique(gen_buf, return_counts=True)
             for u, c in zip(uniq.tolist(), counts.tolist()):
-                logits[:, u] -= 0.2 * max(0, c - 1)
+                logits[:, u] -= 0.25 * max(0, c - 1)
 
         banned = set(_BAD_NOQUOTE_IDS)
+        if gen_buf:
+            banned.add(gen_buf[-1])
         if not has_content:
             banned |= _QUOTE_ANY_IDS
         banned |= _ALWAYS_BANNED_IDS
@@ -729,8 +759,13 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
                 logits[:, tid] += 0.6
 
         if _DISCOURAGED_IDS:
-            for tid in _DISCOURAGED_IDS:
-                logits[:, tid] -= 1.5
+            if cat in CLOSED_SETS:
+                for tid in _DISCOURAGED_IDS:
+                    logits[:, tid] -= 1.5
+            else:
+                # stronger discouragement on open categories to avoid "unknown"/"not applicable" bias
+                for tid in _DISCOURAGED_IDS:
+                    logits[:, tid] -= 5.0
 
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
@@ -941,6 +976,7 @@ class MyTrainer(Trainer):
                 top_p=0.9,
                 temperature=0.0,
                 repetition_penalty=1.2,
+                no_repeat_ngram_size=3,
             )
         raw = tokenizer.decode(out_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         return raw

@@ -48,8 +48,6 @@ def main():
                         help="Path to the Metappuccino directory (Use in case of installation from source).")
     parser.add_argument("--logan_path", type=str, default="",
                         help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")
-    parser.add_argument("--requirements", action="store_true",
-                        help="Install requirements.txt and CUDA configuration for GPU. Warning: It is assumed that a venv was created and the path correctly given in --env_requirement. In the case a CUDA configuration is needed, please specify cuda path in --cuda_path if it is different from /usr/local/cuda.")
     parser.add_argument("--cuda", type=str, default="/usr/local/cuda",
                         help="Path to CUDA installation if different from '/usr/local/cuda'")
     parser.add_argument("--getmetadata", action="store_true",
@@ -113,7 +111,6 @@ def main():
     step7_flag = os.path.join(tmp_dir, "STEP4_2.flag")
     step8_flag = os.path.join(tmp_dir, "STEP4_3.flag")
 
-    install_requirements = str(resolve_path("bin/INSTALL_DOWNLOAD/install_requirements.sh", args.metappuccino_dir))
     init = str(resolve_path("bin/INSTALL_DOWNLOAD/init.sh", args.metappuccino_dir))
     download_metadata = str(resolve_path("bin/INSTALL_DOWNLOAD/download_metadata.sh", args.metappuccino_dir))
     clean_metadata = str(resolve_path("bin/PRE_PROCESSING/clean_metadata.sh", args.metappuccino_dir))
@@ -133,47 +130,12 @@ def main():
     verbose_env = "TRUE" if verbose else "FALSE"
     vprint = print if verbose else (lambda *a, **k: None)
 
-    ##INSTALL REQUIREMENTS
+    ##DOWNLOAD/CLEAN
     try:
         if not args.local:
             if not shutil.which("sbatch") and not shutil.which("qsub"):
                 print("Error: 'sbatch' or 'qsub' command not found", file=sys.stderr)
                 sys.exit(1)
-
-        if args.requirements:
-            if args.local:
-                subprocess.run(["bash", install_requirements,
-                                metappuccino_dir, res_dir, env_dir, cuda_path, working_dir],
-                               check=True, env=env)
-                vprint("✔ Installation requirements completed!", file=sys.stdout)
-            else:
-                if shutil.which("qsub"):
-                    cmd = ["qsub"]
-                    if queue_req:
-                        cmd += ["-q", queue_req]
-                    pbs_l = "select=1"
-                    if cpus_req:
-                        pbs_l += f":ncpus={cpus_req}"
-                    if mem_req:
-                        pbs_l += f":mem={mem_req}"
-                    cmd += ["-l", pbs_l,
-                            "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
-                    vprint("Submitting:", " ".join(cmd))
-                    subprocess.run(cmd, check=True, env=env)
-                    vprint("✔ Installation requirements completed!", file=sys.stdout)
-                elif shutil.which("sbatch"):
-                    sbatch_opts = []
-                    if partition_req:
-                        sbatch_opts += ["--partition", partition_req]
-                    if cpus_req:
-                        sbatch_opts += [f"--cpus-per-task={cpus_req}"]
-                    if mem_req:
-                        sbatch_opts += [f"--mem={mem_req}"]
-                    cmd = ["sbatch", *sbatch_opts,
-                           f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},PATH_CUDA={cuda_path},NODE_WORK_PATH={working_dir}", install_requirements]
-                    vprint("Submitting:", " ".join(cmd))
-                    subprocess.run(cmd, check=True, env=env)
-                    vprint("✔ Installation requirements completed!", file=sys.stdout)
 
         ##STEP 1: GET AND CLEAN METADATA
         if args.getmetadata:
