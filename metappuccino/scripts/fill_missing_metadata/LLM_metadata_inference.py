@@ -48,11 +48,6 @@ vprint = print if VERBOSE else (lambda *a, **k: None)
 ##########################################################################################
 #FUNCTIONS
 
-# def print_memory_usage(proc):
-#     m = proc.memory_info()
-#     v = psutil.virtual_memory()
-#     vprint(f"rss: {m.rss/1024**2:.2f} MB, virt used: {v.used/1024**2:.2f} MB")
-
 def get_llama_model(path, ctx):
     return Llama(
         model_path=path,
@@ -372,37 +367,6 @@ for idx, line in enumerate(metadata_lines):
 
         segment_logits = logprobs[start:end]
         entropy_dict[key] = calculate_entropy_optimized(segment_logits)
-
-    # for i, key in enumerate(ordered_keys):
-    #     pat = category_token_patterns[key]
-    #     idx = find_subsequence(tokens, pat)
-    #     start = idx + len(pat) if idx >= 0 else None
-    #     if start is None:
-    #         entropy_dict[key] = None
-    #         continue
-    #
-    #     if i + 1 < len(ordered_keys):
-    #         next_pat = category_token_patterns[ordered_keys[i + 1]]
-    #         next_idx = find_subsequence(tokens, next_pat)
-    #         end = next_idx if next_idx >= 0 else len(tokens)
-    #     else:
-    #         end = len(tokens)
-    #
-    #     if end <= start:
-    #         entropy_dict[key] = None
-    #         continue
-    #
-    #     segment_token_ids = tokens[start:end]
-    #     segment_text = ''.join(segment_token_ids)
-    #     segment_logits = logprobs[start:end]
-    #     vprint(f"-- Key «{key}»:")
-    #     vprint(f"    All tokens : \t{tokens}")
-    #     vprint(f"   Tokens ids : {segment_token_ids}")
-    #     vprint(f"   Tokens text: {segment_text!r}")
-    #     vprint(f"   Logits     : {segment_logits}")
-    #
-    #     segment = logprobs[start:end]
-    #     entropy_dict[key] = calculate_entropy_optimized(segment)
 
     output = {run: parsed_json, "entropy": entropy_dict}
     vprint("Final output:", flush=True)
