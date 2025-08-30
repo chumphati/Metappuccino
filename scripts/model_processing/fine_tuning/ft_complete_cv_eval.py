@@ -207,7 +207,7 @@ def find_subseq(seq, subseq):
             return i
     return -1
 
-def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=2048, mark_all_occurrences=True, output_enc=None):
+def make_cat_masks_offsets(output_text, prompt_ids, categories, tokenizer, max_len=3000, mark_all_occurrences=True, output_enc=None):
     masks = np.zeros((len(categories), max_len), dtype=np.float32)
     if output_enc is None:
         print("debug/make_cat_masks_offsets: WARNING no output_enc provided; falling back to independent encoding", flush=True)
@@ -285,7 +285,7 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    max_length = 2048
+    max_length = 3000
     max_out_len = 350
     out_enc = tokenizer(output, truncation=True, max_length=max_out_len, add_special_tokens=False, return_offsets_mapping=True)
     output_ids = out_enc["input_ids"]
@@ -585,14 +585,14 @@ _CAT_MAX_TOKENS = {
     "sequencing_source": 6,
     "response": 6,
     "age": 6,
-    "treatment_time": 6,
+    "treatment_time": 12,
     "organ": 6,
     "biopsy_site": 4,
     "cell_type": 8,
     "disease": 8,
     "ethnicity": 6,
     "localization": 10,
-    "cell_line": 8,
+    "cell_line": 16,
     "treatment": 8,
 }
 CURRENT_CATEGORY = None
@@ -600,6 +600,10 @@ _DISCOURAGED_IDS = None
 _CAT_HINT_IDS = {}
 _GEN_DEBUG_ONCE = False
 _OPEN_CAT_ALLOWED_IDS = {}
+_NOT_TOKEN_IDS = set()
+_APPLIC_TOKEN_IDS = set()
+_UNKNOWN_TOKEN_IDS = set()
+_NA_TOKEN_IDS = set()
 
 def _build_open_cat_allowed_ids(tokenizer):
     global _OPEN_CAT_ALLOWED_IDS
@@ -627,6 +631,28 @@ def _build_open_cat_allowed_ids(tokenizer):
             allowed_tt.add(tid); continue
     _OPEN_CAT_ALLOWED_IDS["treatment_time"] = allowed_tt
     print(f"debug/open_cat_allowed_ids[treatment_time]={len(allowed_tt)}", flush=True)
+
+def _populate_cell_line_hints_from_data(df):
+    names = []
+    for out in df["output"].dropna():
+        try:
+            obj = json.loads(out)
+            v = str(obj.get("cell_line", "")).strip()
+            if v and v.lower() not in {"unknown", "not applicable", "not_applicable"}:
+                names.append(v)
+        except Exception:
+            pass
+    freq = {}
+    for v in names:
+        freq[v] = freq.get(v, 0) + 1
+    top = sorted(freq.items(), key=lambda kv: -kv[1])[:200]
+    hint_ids = set()
+    for name, _ in top:
+        ids = tokenizer(name, add_special_tokens=False)["input_ids"]
+        for tid in ids:
+            hint_ids.add(tid)
+    _CAT_HINT_IDS.setdefault("cell_line", set()).update(hint_ids)
+    print(f"debug/cell_line_hints: {len(hint_ids)} token_ids from {len(top)} names", flush=True)
 
 def _canonicalize_tt_text(text: str) -> str:
     s = re.sub(r'\s+', ' ', str(text)).strip().lower()
@@ -657,19 +683,14 @@ def _ensure_vocab_masks():
     discouraged = set()
     cat_hints = {k: set() for k in _CAT_MAX_TOKENS.keys()}
     vocab_size = getattr(tokenizer, 'vocab_size', None) or len(tokenizer)
-    acc_substrings = [
-        "SRS", "SRR", "SRX", "SRP", "SAMN", "SAMD", "SAME",
-        "GSM", "GSE", "GPL",
-        "PRJ", "ERP", "DRR", "ERR", "E-",
-    ]
+
     def piece_has_accession(piece: str) -> bool:
-        if any(s in piece for s in acc_substrings):
-            return True
-        if re.search(r'[A-Z]{2,}\d{2,}', piece):
-            return True
-        if re.search(r'\d{5,}', piece):
-            return True
-        return False
+        p = piece.upper()
+        return any(s in p for s in [
+            "SRS", "SRR", "SRX", "SRP", "SAMN", "SAMD", "SAME",
+            "GSM", "GSE", "GPL", "PRJ", "ERP", "DRR", "ERR", "E-"
+        ])
+
     numeric_ban_cats = set(list(CLOSED_SETS.keys()) + ["biopsy_type"])
     hint_map = {
         "sex": ["female","male"],
@@ -679,6 +700,7 @@ def _ensure_vocab_masks():
         "library_selection": ["polya","inverse","rrna","hybrid","small","other"],
     }
     form_ban = {"question","user","assistant","prompt","output","json","category","value","answer","instruction","system"}
+
     for tid in range(vocab_size):
         piece = tokenizer.decode([tid], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         if not piece:
@@ -700,6 +722,15 @@ def _ensure_vocab_masks():
         for k, hints in hint_map.items():
             if any(h in pl for h in hints):
                 cat_hints[k].add(tid)
+        if pl.strip() == "not":
+            _NOT_TOKEN_IDS.add(tid)
+        if "applic" in pl:
+            _APPLIC_TOKEN_IDS.add(tid)
+        if "unknown" in pl:
+            _UNKNOWN_TOKEN_IDS.add(tid)
+        if "not applicable" in pl or "not_applicable" in pl:
+            _NA_TOKEN_IDS.add(tid)
+
     _BAD_NOQUOTE_IDS = bad_noquote
     _QUOTE_ANY_IDS = quote_any
     _ALWAYS_BANNED_IDS = always_banned
@@ -713,6 +744,8 @@ def _ensure_vocab_masks():
               f"always_banned={len(_ALWAYS_BANNED_IDS)}", flush=True)
         for k in sorted(_CAT_BANNED_IDS.keys()):
             print(f"debug/vocab_masks: numeric_banned_in[{k}]={len(_CAT_BANNED_IDS[k])}", flush=True)
+    print(f"debug/bigram_masks: not_ids={len(_NOT_TOKEN_IDS)} applic_ids={len(_APPLIC_TOKEN_IDS)}", flush=True)
+    print(f"debug/na_blocks: unknown_ids={len(_UNKNOWN_TOKEN_IDS)} na_ids={len(_NA_TOKEN_IDS)}", flush=True)
 
 @torch.no_grad()
 def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, no_repeat_ngram_size=3):
@@ -742,7 +775,8 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
             banned.add(gen_buf[-1])
         if not has_content:
             banned |= _QUOTE_ANY_IDS
-        banned |= _ALWAYS_BANNED_IDS
+        if cat in {"sex", "is_cancer", "sequencing_source", "biopsy_type", "library_selection"}:
+            banned |= _ALWAYS_BANNED_IDS
         banned |= _no_repeat_ngram_bans(gen_buf, no_repeat_ngram_size, logits.size(-1))
         if cat in _CAT_BANNED_IDS:
             banned |= _CAT_BANNED_IDS[cat]
@@ -770,15 +804,31 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
         if _DISCOURAGED_IDS:
             for tid in _DISCOURAGED_IDS:
                 logits[:, tid] -= 2.0
+
+        if cat == "cell_line":
+            if _UNKNOWN_TOKEN_IDS:
+                logits[:, list(_UNKNOWN_TOKEN_IDS)] = -float("inf")
+            if _NA_TOKEN_IDS:
+                logits[:, list(_NA_TOKEN_IDS)] = -float("inf")
+            if gen_buf and gen_buf[-1] in _NOT_TOKEN_IDS and _APPLIC_TOKEN_IDS:
+                logits[:, list(_APPLIC_TOKEN_IDS)] = -float("inf")
+            if not has_content and _NOT_TOKEN_IDS:
+                logits[:, list(_NOT_TOKEN_IDS)] -= 4.0
+            if not has_content and "cell_line" in _CAT_HINT_IDS and _CAT_HINT_IDS["cell_line"]:
+                for tid_hint in _CAT_HINT_IDS["cell_line"]:
+                    logits[:, tid_hint] += 1.2
+
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
         piece = tokenizer.decode([tid], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         if any(q in piece for q in QUOTE_CHARS) or any(ch in piece for ch in BAD_VALUE_CHARS_NO_QUOTE):
             break
-        if re.search(r'(SRS|SRR|SRX|SRP|SAMN|SAMD|SAME|GSM|GSE|GPL|PRJ|ERP|DRR|ERR|E-)[A-Za-z0-9_-]*', piece):
-            break
-        if re.search(r'[A-Z]{2,}\d{2,}', piece):
-            break
+
+        if CURRENT_CATEGORY in {"sex", "biopsy_type", "is_cancer", "sequencing_source", "library_selection"}:
+            if re.search(r'(SRS|SRR|SRX|SRP|SAMN|SAMD|SAME|GSM|GSE|GPL|PRJ|ERP|DRR|ERR|E-)[A-Za-z0-9_-]*', piece,
+                         flags=re.I):
+                break
+
         input_ids = torch.cat([input_ids, next_id], dim=1)
         gen_buf.append(tid)
         if any(c.isalnum() for c in piece):
@@ -807,7 +857,7 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
 #CUSTOMED TRAINER
 
 class MyTrainer(Trainer):
-    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.2, **kwargs):
+    def __init__(self, *args, sem_model=None, sem_loss_weight=0.05, label_smoothing=0.0, **kwargs):
         super().__init__(*args, **kwargs)
         self.sem_model = sem_model.eval()
         for p in self.sem_model.parameters():
@@ -837,6 +887,8 @@ class MyTrainer(Trainer):
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
         self.discouraged_lambda = 0.1
         self.treatment_time_lambda = 0.1
+        self._rr_ptr = 0
+        self._reg_warmup_steps = 200
         print(f"debug/trainer_init: label_smoothing={self.label_smoothing} guard_lambda={self.guard_lambda}", flush=True)
 
     def log(self, logs, *args, **kwargs):
@@ -887,50 +939,11 @@ class MyTrainer(Trainer):
             active_idx = present
             any_valid = False
             per_cat_valid_tokens = []
-            cat_terms = []
             for j in active_idx:
                 cat = self.categories[j]
                 m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
-                if not m.any():
-                    per_cat_valid_tokens.append((cat, 0))
-                    continue
-                outputs_cat = self._forward_with_adapter(self.cat2adapter[cat], inputs)
-                logits_cat = outputs_cat.logits
-                logits_cat_shift = logits_cat[:, :-1, :].contiguous()
-                labels_shift = labels[:, 1:].contiguous()
-                V = logits_cat_shift.size(-1)
-                flat_logits = logits_cat_shift.view(B * L, V)
-                flat_labels = labels_shift.view(B * L)
-                valid = (flat_labels != -100) & m
-                vcount = int(valid.sum().item())
+                vcount = int(m.sum().item())
                 per_cat_valid_tokens.append((cat, vcount))
-                if valid.any():
-                    any_valid = True
-                    loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
-                    with torch.no_grad():
-                        probs_valid = torch.softmax(flat_logits[valid], dim=-1)
-                    if _DISCOURAGED_IDS:
-                        disc_ids = list(_DISCOURAGED_IDS)
-                        if len(disc_ids) > 0:
-                            disc_p = probs_valid[:, disc_ids].sum(dim=-1).mean()
-                            loss_j = loss_j + self.discouraged_lambda * disc_p
-                            if random.random() < 0.01:
-                                print(f"debug/regularizer_disc[{cat}]: {float(disc_p.detach().cpu())}", flush=True)
-                    if cat == "treatment_time" and "treatment_time" in _OPEN_CAT_ALLOWED_IDS:
-                        keep = list(_OPEN_CAT_ALLOWED_IDS["treatment_time"])
-                        if len(keep) > 0:
-                            keep_p = probs_valid[:, keep].sum(dim=-1).mean()
-                            other_p = 1.0 - keep_p
-                            loss_j = loss_j + self.treatment_time_lambda * other_p
-                            if random.random() < 0.01:
-                                print(f"debug/regularizer_tt_allow: keep_p={float(keep_p.detach().cpu())} other_p={float(other_p.detach().cpu())}", flush=True)
-                    if not self.guard_initialized[j]:
-                        self.guard_ema[j] = loss_j.detach().float()
-                        self.guard_initialized[j] = True
-                    else:
-                        self.guard_ema[j] = self.guard_ema_beta * self.guard_ema[j] + (1 - self.guard_ema_beta) * loss_j.detach().float()
-                    penalty = torch.relu(loss_j - (self.guard_ema[j].to(loss_j.device) + self.guard_margin))
-                    cat_terms.append((loss_j, penalty, vcount, cat))
             try:
                 summary = {c: v for c, v in per_cat_valid_tokens}
                 total_valid = sum(v for _, v in per_cat_valid_tokens)
@@ -939,36 +952,68 @@ class MyTrainer(Trainer):
                     f"debug/compute_loss: present_cats={num_present}/{C}, total_valid_tokens={total_valid}, per_cat_valid_tokens={summary}",
                     flush=True)
             except Exception:
-                total_valid = sum(v for _, v in per_cat_valid_tokens)
-            num_terms = len(cat_terms)
-            if num_terms > 0:
-                per_cat_scale = 1.0 / num_terms
-                for (loss_j, penalty, vcount, cat) in cat_terms:
-                    total_loss = total_loss + per_cat_scale * loss_j + self.guard_lambda * per_cat_scale * penalty
-            if not any_valid:
-                if len(self.categories) > 0:
-                    fallback_cat = random.choice(self.categories)
-                    print(f"debug/fallback_used: no valid category tokens; using '{fallback_cat}'", flush=True)
-                    outputs_cat = self._forward_with_adapter(self.cat2adapter[fallback_cat], inputs)
-                    logits_cat = outputs_cat.logits
-                    logits_shift = logits_cat[:, :-1, :].contiguous()
-                    labels_shift = labels[:, 1:].contiguous()
-                    valid = (labels_shift != -100).view(-1)
-                    if valid.any():
-                        total_loss = total_loss + self.loss_fct(logits_shift.view(-1, logits_shift.size(-1))[valid],
-                                                                labels_shift.view(-1)[valid])
-        else:
-            if len(self.categories) > 0:
-                fallback_cat = random.choice(self.categories)
-                print(f"debug/fallback_used: no cat_masks provided; using '{fallback_cat}'", flush=True)
-                outputs_cat = self._forward_with_adapter(self.cat2adapter[fallback_cat], inputs)
+                pass
+            if len(active_idx) == 0:
+                print(f"debug/skip_batch: no valid category tokens", flush=True)
+            else:
+                pick = active_idx[self._rr_ptr % len(active_idx)]
+                self._rr_ptr += 1
+                cat = self.categories[pick]
+                print(f"debug/chosen_category_for_step: {cat}", flush=True)
+                m = masks_shift_all[:, pick, :].reshape(B * L) > 0.5
+                outputs_cat = self._forward_with_adapter(self.cat2adapter[cat], inputs)
                 logits_cat = outputs_cat.logits
-                logits_shift = logits_cat[:, :-1, :].contiguous()
+                logits_cat_shift = logits_cat[:, :-1, :].contiguous()
                 labels_shift = labels[:, 1:].contiguous()
-                valid = (labels_shift != -100).view(-1)
+                V = logits_cat_shift.size(-1)
+                flat_logits = logits_cat_shift.view(B * L, V)
+                flat_labels = labels_shift.view(B * L)
+                valid = (flat_labels != -100) & m
                 if valid.any():
-                    total_loss = total_loss + self.loss_fct(logits_shift.view(-1, logits_shift.size(-1))[valid],
-                                                            labels_shift.view(-1)[valid])
+                    any_valid = True
+                    loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
+
+                    apply_reg = (self.state.global_step >= self._reg_warmup_steps)
+                    if apply_reg:
+                        with torch.no_grad():
+                            probs_valid = torch.softmax(flat_logits[valid], dim=-1)
+                        if _DISCOURAGED_IDS:
+                            disc_ids = list(_DISCOURAGED_IDS)
+                            if len(disc_ids) > 0:
+                                disc_p = probs_valid[:, disc_ids].sum(dim=-1).mean()
+                                disc_w = self.discouraged_lambda * (2.5 if cat == "cell_line" else 1.0)
+                                loss_j = loss_j + disc_w * disc_p
+                        if cat == "treatment_time" and "treatment_time" in _OPEN_CAT_ALLOWED_IDS:
+                            keep = list(_OPEN_CAT_ALLOWED_IDS["treatment_time"])
+                            if len(keep) > 0:
+                                keep_p = probs_valid[:, keep].sum(dim=-1).mean()
+                                other_p = 1.0 - keep_p
+                                loss_j = loss_j + self.treatment_time_lambda * other_p
+
+                        if cat == "cell_line":
+                            pen_ids = list(_NOT_TOKEN_IDS | _APPLIC_TOKEN_IDS | _UNKNOWN_TOKEN_IDS | _NA_TOKEN_IDS)
+                            if len(pen_ids) > 0:
+                                pen_p = probs_valid[:, pen_ids].sum(dim=-1).mean()
+                                loss_j = loss_j + 0.1 * pen_p
+                                if random.random() < 0.01:
+                                    print(f"debug/regularizer_cell_line_not_applic: {float(pen_p.detach().cpu())}",
+                                          flush=True)
+
+                    j_idx = pick
+                    if not self.guard_initialized[j_idx]:
+                        self.guard_ema[j_idx] = loss_j.detach().float()
+                        self.guard_initialized[j_idx] = True
+                    else:
+                        self.guard_ema[j_idx] = self.guard_ema_beta * self.guard_ema[j_idx] + (1 - self.guard_ema_beta) * loss_j.detach().float()
+                    penalty = torch.relu(loss_j - (self.guard_ema[j_idx].to(loss_j.device) + self.guard_margin))
+                    total_loss = total_loss + loss_j + self.guard_lambda * penalty
+                else:
+                    print(f"debug/skip_batch: chosen cat has no valid tokens", flush=True)
+        else:
+            print(f"debug/skip_batch: no cat_masks provided", flush=True)
+        if not torch.isfinite(total_loss):
+            print("debug/nonfinite_loss_skip: loss is non-finite, skipping batch", flush=True)
+            total_loss = torch.zeros([], device=labels.device)
         step_loss = float(total_loss.detach().cpu())
         print(f"train/loss_step_{self.state.global_step}: {step_loss}", flush=True)
         self.loss_ma.append(step_loss)
@@ -983,7 +1028,7 @@ class MyTrainer(Trainer):
 
     def _generate_with_adapter(self, adapter_name, prompt):
         set_active_adapter(self.model, adapter_name)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(self.model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(self.model.device)
         with torch.no_grad():
             out_ids = self.model.generate(
                 input_ids=inputs["input_ids"],
@@ -1016,7 +1061,7 @@ class MyTrainer(Trainer):
         for _, row in df_eval.iterrows():
             prompt = row['prompt'].strip()
             expected = row['output'].strip()
-            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+            ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
             context_ids = ids["input_ids"]
             ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
             context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
@@ -1105,6 +1150,8 @@ for out in df_train_final["output"].dropna():
         continue
 categories = sorted(all_cats)
 print("Detected categories:", categories)
+if "cell_line" in categories:
+    _populate_cell_line_hints_from_data(df_train_final)
 
 metric_names = [f"eval_accuracy_{c.lower()}" for c in categories]
 
@@ -1137,10 +1184,10 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=8,
-    lora_alpha=2*8,
+    r=16,
+    lora_alpha=32,
     lora_dropout=0.05,
-    target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj']
+    target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 
 model_final = get_peft_model(model_base, final_peft_config)
@@ -1161,10 +1208,10 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     eval_strategy="steps",
     eval_steps=50,
-    learning_rate=2e-4,
+    learning_rate=1e-5,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
-    num_train_epochs=3,
+    num_train_epochs=4,
     weight_decay=0.0,
     save_strategy='steps',
     save_steps=50,
@@ -1172,7 +1219,7 @@ training_args_final = TrainingArguments(
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=8,
+    gradient_accumulation_steps=16,
     gradient_checkpointing=True,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
@@ -1180,10 +1227,10 @@ training_args_final = TrainingArguments(
     metric_for_best_model="eval_accuracy_overall",
     remove_unused_columns=False,
     greater_is_better=True,
-    warmup_ratio=0.1,
-    lr_scheduler_type="linear",
+    warmup_ratio=0.3,
+    lr_scheduler_type="cosine",
     max_grad_norm=0.3,
-    adam_beta2=0.95
+    adam_beta2=0.999
 )
 print(f"debug/training_args: learning_rate={training_args_final.learning_rate}, adam_beta2={training_args_final.adam_beta2}", flush=True)
 
@@ -1192,7 +1239,7 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.1,
+    label_smoothing=0.0,
     tokenizer=tokenizer,
     data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
     callbacks=[
@@ -1252,7 +1299,7 @@ for i, row in test_df.iterrows():
     expected = row["output"].strip()
     merged = {}
     device = model_final.device
-    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+    ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
     context_ids = ids["input_ids"]
     ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
     context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)
@@ -1315,7 +1362,7 @@ if os.path.exists(prompt_test_oov_file):
         expected = row["output"].strip()
         merged = {}
         device = model_gen_oov.device
-        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(device)
+        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=3000).to(device)
         context_ids = ids["input_ids"]
         ks = tok_ids("{") or tok_ids("{\n") or tok_ids("{ ")
         context_ids = torch.cat([context_ids, torch.tensor([ks], device=device)], dim=1)

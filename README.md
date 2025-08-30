@@ -110,6 +110,8 @@ pip install --index-url https://download.pytorch.org/whl/cu121 \
   "torch==<version+cu121>" "torchvision==<version+cu121>"
 ```
 
+3. Metappuccino's model requires at least **40 GB of VRAM**.
+
 ### Additional setup
 
 **Optional: In case of use of GGUF external model**
