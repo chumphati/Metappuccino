@@ -5,21 +5,21 @@ import re
 import pandas as pd
 from collections import Counter
 
-TRAIN_DATA_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_train_withoutkeys.json'
-TRAIN_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_train_expanded.json'
-TRAIN_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/train_metadata_replaced_table.csv'
-
-EVAL_DATA_PATH  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_val_withoutkeys.json'
-EVAL_EXPANDED   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_val_expanded.json'
-EVAL_CSV        = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/val_metadata_replaced_table.csv'
+# TRAIN_DATA_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_train_withoutkeys.json'
+# TRAIN_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/new_all/metadata_templates_train_expanded.json'
+# TRAIN_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/new_all/train_metadata_replaced_table.csv'
+#
+# EVAL_DATA_PATH  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_val_withoutkeys.json'
+# EVAL_EXPANDED   = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/new_all/metadata_templates_val_expanded.json'
+# EVAL_CSV        = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/new_all/val_metadata_replaced_table.csv'
 
 TEST1_DATA_PATH = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/data/data_templates_training/metadata_templates_test_withoutkeys.json'
-TEST1_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_test_expanded.json'
-TEST1_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test_metadata_replaced_table.csv'
+TEST1_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/metadata_templates_test_expanded.json'
+TEST1_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/test_metadata_replaced_table.csv'
 
 TEST2_DATA_PATH = TEST1_DATA_PATH
-TEST2_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/metadata_templates_test2_expanded.json'
-TEST2_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/test2_metadata_replaced_table.csv'
+TEST2_EXPANDED  = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/metadata_templates_test2_expanded.json'
+TEST2_CSV       = '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/test2_metadata_replaced_table.csv'
 
 def eq_quota(values, total):
     k=len(values); base=total//k; r=total-base*k
@@ -1053,15 +1053,15 @@ def make_dataset(config, targets, data_path, expanded_path, out_csv, ctx_wrap=CT
     df.to_csv(out_csv, index=False)
 
 if __name__=='__main__':
-    make_dataset(TRAIN, 1500, TRAIN_DATA_PATH, TRAIN_EXPANDED, TRAIN_CSV, ctx_wrap=CTX_WRAP)
+    # make_dataset(TRAIN, 1500, TRAIN_DATA_PATH, TRAIN_EXPANDED, TRAIN_CSV, ctx_wrap=CTX_WRAP)
 
-    EVAL = {**BASE_EVAL}
-    EVAL['SEM'] = json.loads(json.dumps(BASE_EVAL['SEM']))
-    EVAL['SYNONYMS'] = json.loads(json.dumps(BASE_EVAL['SYNONYMS']))
-    EVAL['NOISE']=BASE_EVAL['NOISE']
-    EVAL['CANCER_DISEASES']=set(BASE_EVAL['CANCER_DISEASES'])
-    EVAL['LABELS']=BASE_EVAL['LABELS']
-    make_dataset(EVAL, 300, EVAL_DATA_PATH, EVAL_EXPANDED, EVAL_CSV, ctx_wrap=CTX_WRAP)
+    # EVAL = {**BASE_EVAL}
+    # EVAL['SEM'] = json.loads(json.dumps(BASE_EVAL['SEM']))
+    # EVAL['SYNONYMS'] = json.loads(json.dumps(BASE_EVAL['SYNONYMS']))
+    # EVAL['NOISE']=BASE_EVAL['NOISE']
+    # EVAL['CANCER_DISEASES']=set(BASE_EVAL['CANCER_DISEASES'])
+    # EVAL['LABELS']=BASE_EVAL['LABELS']
+    # make_dataset(EVAL, 300, EVAL_DATA_PATH, EVAL_EXPANDED, EVAL_CSV, ctx_wrap=CTX_WRAP)
 
     TEST1 = {**BASE_EVAL}
     TEST1['SEM'] = json.loads(json.dumps(BASE_EVAL['SEM']))
@@ -1069,5 +1069,5 @@ if __name__=='__main__':
     TEST1['NOISE']=BASE_EVAL['NOISE']
     TEST1['CANCER_DISEASES']=set(BASE_EVAL['CANCER_DISEASES'])
     TEST1['LABELS']=BASE_EVAL['LABELS']
-    make_dataset(TEST1, 1000, TEST1_DATA_PATH, TEST1_EXPANDED, TEST1_CSV, ctx_wrap=CTX_WRAP)
-    make_dataset(TEST2, 1000, TEST2_DATA_PATH, TEST2_EXPANDED, TEST2_CSV, ctx_wrap=CTX_WRAP)
+    make_dataset(TEST1, 2500, TEST1_DATA_PATH, TEST1_EXPANDED, TEST1_CSV, ctx_wrap=CTX_WRAP)
+    make_dataset(TEST2, 2500, TEST2_DATA_PATH, TEST2_EXPANDED, TEST2_CSV, ctx_wrap=CTX_WRAP)

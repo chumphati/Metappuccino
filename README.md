@@ -42,22 +42,23 @@ To install Metappuccino, three steps have to be completed: fetching the LLM mode
 
 ### Download the LLM Model
 
-#### Metappuccino's LLM
-A specific model based on Mistral 7B has been fine-tuned to achieve better performance than open source models. 
-It can be used in Metappuccino by downloading it and providing the path to it in the settings when launching.
+#### MetappucinoLLModel: Metappuccino's LLM
+A specific model based on Mistral 7B has been fine-tuned to achieve better performance than open source models (by Sept. 2025). 
+It can be used in Metappuccino by downloading it and providing the path to it in the settings when launching (`--model`).
 
 ```bash
 
 ```
 
 #### Open-source GGUF model
-You can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. This mode requires you to put the `--gguf` flag in Metappuccino, and requires a specific GPU configuration (see the “Additional setup” section).
+If you don't want to use MetappucinoLLModel, you can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. 
+>Warning: This mode requires you to put the `--gguf` flag in Metappuccino, and requires a specific GPU configuration (see the [Additional setup](#additional-setup) section).
 
-**Example of downloading a gguf model from Hugging Face**
+*Example of downloading a gguf model from Hugging Face:*
 ```python
 from huggingface_hub import snapshot_download
 
-HF_TOKEN = <HF_TOKEN>
+HF_TOKEN = <HF_TOKEN> #key you have to create on hugging face
 
 snapshot_download(
     repo_id="<REPO_URL>",
@@ -72,6 +73,18 @@ snapshot_download(
 ### Metappuccino installation
 *Please note: it is safer to install the tool from the release.*
 
+#### Install from wheel (*RECOMMENDED*)
+*pip* must be available on your machine.
+
+```bash
+wget https://github.com/chumphati/Metappuccino/releases/download/<VERSION>/metappuccino-VERSION-py3-none-any.whl
+python3 -m venv .venv && source .venv/bin/activate #create a python virtual environment
+pip install metappuccino-<VERSION>-py3-none-any.whl
+metappuccino --help
+```
+
+>Warning: if the model used is different from MetappucinoLLModel, an additional installation in the same python environment will be required (see section [Additional setup](#additional-setup)).
+
 #### Install from source
 ```bash
 #SSH
@@ -81,15 +94,6 @@ git clone https://github.com/chumphati/Metappuccino.git
 cd metappuccino
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-#### Install from wheel
-
-```bash
-wget https://github.com/chumphati/Metappuccino/releases/download/<VERSION>/metappuccino-VERSION-py3-none-any.whl
-python3 -m venv .venv && source .venv/bin/activate
-pip install metappuccino-<VERSION>-py3-none-any.whl
-metappuccino --help
 ```
 
 > **Python**: 3.10+ recommended (3.9 works only if your packaged wheel declares it).
@@ -110,7 +114,7 @@ pip install --index-url https://download.pytorch.org/whl/cu121 \
   "torch==<version+cu121>" "torchvision==<version+cu121>"
 ```
 
-3. Metappuccino's model requires at least **40 GB of VRAM**.
+3. Metappuccino's model requires at least **40 GB of VRAM** to be fully loaded on GPU.
 
 ### Additional setup
 
@@ -128,6 +132,8 @@ pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
 
 This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
 
+>If you don't have a GPU available and you want to use an external model, you can only run the last line without exports and the model will be automatically loaded on CPU. Please note, however, that this will increase the calculation time considerably.
+
 ---
 
 ## Minimal usage
@@ -136,7 +142,6 @@ Run locally (single machine):
 
 ```bash
 metappuccino \
-  --metappuccino_dir "/abs/path/Metappuccino" \
   --res_dir "/abs/path/results" \
   --sample_input "/abs/path/runs.txt" \
   --env_requirement "/abs/path/.venv" \
@@ -209,29 +214,29 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 
 ## Arguments
 
-| Argument                 | Type / Default                   | Description                                                                                                                 |
-|--------------------------|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `--sample_input`         | str, **required**                | `.txt`/`.csv` with one **run accession number** per line.                                                                   |
-| `--res_dir`              | str, **required**                | Output/results directory.                                                                                                   |
-| `--env_requirement`      | str, **required**                | Path to Python **venv** (activated inside jobs).                                                                            |
-| `--working_dir`          | str, **required**                | Scratch dir on the compute node (fast local disk preferred).                                                                |
-| `--model [--gguf]`       | str, **required**                | Path to model (e.g., `.../model.gguf` or HF model path used by your scripts). If gguf model used, add `--gguf`              |
-| `--partition`            | str                              | Queue/partition **if a scheduler is used** (PBS: queue via `-q`, Slurm: `--partition`).                                     |
-| `--node`                 | str, default `""`                | Node name to send the jobs on **if a scheduler is used** .                                                                  |
-| `--gpus`                 | int, default `1`, min `0`        | Number of GPUs to use/request. With `--per_gpu_jobs`, spawns per-GPU shards. If 0, LLM inference will be conducted on CPUS. |
-| `--cpus`                 | int, default `30`, min `8`       | Number of CPUs to request.                                                                                                  |
-| `--mem`                  | str, default `"50gb"`            | Memory request (e.g., `50gb`, `80G`).                                                                                       |
-| `--per_gpu_jobs`         | flag                             | Submit one job per GPU (sharded inference).                                                                                 |
-| `--iteration_limit`      | int, default `1`, min `0`        | Max restarts of LLM inference if malformed JSON or <30% categories predicted.                                               |
-| `--metappuccino_dir`     | str                              | Absolute path to the Metappuccino repository in case of source installation (must contain `bin/Metappuccino.py`).           |
-| `--logan_path`           | str, default `""`                | Additional metadata extracted from Logan search (`ID` column expected).                                                     |
-| `--getmetadata`          | flag                             | Run the metadata preprocessing: download, clean, and summarize if needed.                                                   |
-| `--fillmetadata`         | flag                             | Run LLM inference based on `--model` for missing metadata.                                                                  |
-| `--associateinformation` | flag                             | Normalize terms with Cellosaurus, Disease Ontology and Uberon and clean outputs.                                            |
-| `--visualisation`        | flag                             | Build figures from curated metadata (model confidence, summaries, etc).                                                     |
-| `--tmp_keep`             | flag                             | Keep temporary files.                                                                                                       |
-| `--local`                | flag                             | Force local execution (no scheduler).                                                                                       |
-| `--verbose`              | flag                             | Verbose logging.                                                                                                            |
+| Argument                 | Type / Default                                                                       | Description                                                                                                                 |
+|--------------------------|--------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `--sample_input`         | str, **required**                                                                    | `.txt`/`.csv` with one **run accession number** per line.                                                                   |
+| `--res_dir`              | str, **required**                                                                    | Output/results directory.                                                                                                   |
+| `--env_requirement`      | str, **required**                                                                    | Path to Python **venv** (activated inside jobs).                                                                            |
+| `--model [--gguf]`       | str, **required**                                                                    | Path to model (e.g., `.../model.gguf` or HF model path used by your scripts). If gguf model used, add `--gguf`              |
+| `--getmetadata`          | flag, **required, see [Typical pipeline steps](#typical-pipeline-steps) section**            | Run the metadata preprocessing: download, clean, and summarize if needed.                                                   |
+| `--fillmetadata`         | flag, **required, see [Typical pipeline steps](#typical-pipeline-steps) section**    | Run LLM inference based on `--model` for missing metadata.                                                                  |
+| `--associateinformation` | flag, **required, see [Typical pipeline steps](#typical-pipeline-steps) section**    | Normalize terms with Cellosaurus, Disease Ontology and Uberon and clean outputs.                                            |
+| `--visualisation`        | flag, **required, see [Typical pipeline steps](#typical-pipeline-steps) section**    | Build figures from curated metadata (model confidence, summaries, etc).                                                     |
+| `--partition`            | str (**required if scheduler submission**)                                           | Queue/partition **if a scheduler is used** (PBS: queue via `-q`, Slurm: `--partition`).                                     |
+| `--working_dir`          | str (**required if scheduler submission**)                                           | Scratch dir on the compute node (fast local disk preferred).                                                                |
+| `--node`                 | str, default `""` (**required if scheduler submission**)                             | Node name to send the jobs on **if a scheduler is used** .                                                                  |
+| `--metappuccino_dir`     | str (**required if installation from source**)                                       | Absolute path to the Metappuccino repository in case of source installation (must contain `bin/Metappuccino.py`).           |
+| `--gpus`                 | int, default `1`, min `0`                                                            | Number of GPUs to use/request. With `--per_gpu_jobs`, spawns per-GPU shards. If 0, LLM inference will be conducted on CPUS. |
+| `--cpus`                 | int, default `30`, min `8`                                                           | Number of CPUs to request.                                                                                                  |
+| `--mem`                  | str, default `"50gb"`                                                                | Memory request (e.g., `50gb`, `80G`).                                                                                       |
+| `--per_gpu_jobs`         | flag                                                                                 | Submit one job per GPU (sharded inference).                                                                                 |
+| `--iteration_limit`      | int, default `1`, min `0`                                                            | Max restarts of LLM inference if malformed JSON or <30% categories predicted.                                               |
+| `--logan_path`           | str, default `""`                                                                    | Additional metadata extracted from Logan search (`ID` column expected).                                                     |
+| `--tmp_keep`             | flag                                                                                 | Keep temporary files.                                                                                                       |
+| `--local`                | flag                                                                                 | Force local execution (no scheduler).                                                                                       |
+| `--verbose`              | flag                                                                                 | Verbose logging.                                                                                                            |
 
 ---
 
@@ -266,6 +271,8 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
    Produce graphs/figures from curated metadata and model confidence.
 
 > Provide all four flags to run the full pipeline in one go, or run step-by-step.
+> If the analyses are interrupted, simply restart the same command and the analysis will resume from the cut. 
+> It is possible to run only specific steps, or to execute them one by one. However, running an intermediate step requires ensuring that the corresponding intermediate files and the latest output are placed in the appropriate folders, as they would be during the normal execution of the pipeline. So, this option is mainly limited to resuming an analysis or stopping it before completion.
 
 ---
 

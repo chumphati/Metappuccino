@@ -285,32 +285,24 @@ def tokenize_function(example):
     prompt = example["prompt"].strip()
     output = example["output"].strip()
     output = apply_label_dropout(output)
-    max_length = 3000
+    # --- Dynamic length (no global pad to 3000) ---
+    max_length = 2048
     max_out_len = 350
     out_enc = tokenizer(output, truncation=True, max_length=max_out_len, add_special_tokens=False, return_offsets_mapping=True)
     output_ids = out_enc["input_ids"]
-    max_prompt_len = max_length - len(output_ids)
-    if max_prompt_len <= 0:
-        max_prompt_len = 1
-        output_ids = output_ids[: max_length - 1]
-        out_enc["input_ids"] = output_ids
-        if "offset_mapping" in out_enc and out_enc["offset_mapping"] is not None:
-            out_enc["offset_mapping"] = out_enc["offset_mapping"][:len(output_ids)]
+    max_prompt_len = max(1, max_length - len(output_ids))
     prompt_enc = tokenizer(prompt, truncation=True, max_length=max_prompt_len, add_special_tokens=False)
     prompt_ids = prompt_enc["input_ids"]
     input_ids = prompt_ids + output_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prompt_ids) + output_ids
-    padding_length = max_length - len(input_ids)
-    input_ids += [tokenizer.pad_token_id] * padding_length
-    attention_mask += [0] * padding_length
-    labels += [-100] * padding_length
+    # no manual padding here; the collator will pad input_ids/attention_mask/labels/cat_masks
     cat_masks = make_cat_masks_offsets(
         output_text=output,
         prompt_ids=prompt_ids,
         categories=categories,
         tokenizer=tokenizer,
-        max_len=max_length,
+        max_len=len(input_ids),  # align mask length with current example length
         mark_all_occurrences=False,
         output_enc=out_enc
     )
@@ -403,7 +395,7 @@ THRESH = {
 def compute_categorical_metrics(pred_texts, ref_texts, categories):
     metrics = {}
     print("List categories: ", categories, flush=True)
-    NA_EQUIV = {"not applicable", "not_applicable"}
+    NA_EQUIV = {"not applicable", "not_applicable", "other"}
     def _is_incomplete_phrase(s: str) -> bool:
         s = str(s).strip()
         if not s:
@@ -427,6 +419,8 @@ def compute_categorical_metrics(pred_texts, ref_texts, categories):
             print("r_dict: ", r_dict, flush=True)
             p_val = norm_val(p_dict.get(cat, ""))
             r_val = norm_val(r_dict.get(cat, ""))
+            if cat == "cell_line":
+                p_val = _trim_cell_line_noise(p_val)
             p_val = re.sub(r'\b(is|are|was|were|include|including|means|defines)\b.*$', '', p_val, flags=re.I).strip(" ,;.-")
             print("--------------------")
             print("category: ", cat, flush=True)
@@ -498,6 +492,39 @@ def _no_repeat_ngram_bans(gen_ids, no_repeat_ngram_size, vocab_size):
         idx.setdefault(prev, set()).add(nxt)
     prev = tuple(gen_ids[-(n-1):])
     return idx.get(prev, set())
+
+
+class GradNormLogger(TrainerCallback):
+    def __init__(self, every=1):
+        self.every = every
+    def on_step_end(self, args, state, control, **kwargs):
+        model = kwargs.get("model", None)
+        if model is None:
+            return control
+        total_sq = 0.0
+        max_g = 0.0
+        n = 0
+        for p in model.parameters():
+            if p.grad is not None:
+                g = p.grad.data
+                param_norm = float(g.float().norm(2).item())
+                total_sq += param_norm * param_norm
+                if param_norm > max_g:
+                    max_g = param_norm
+                n += 1
+        total_norm = math.sqrt(total_sq) if n > 0 else 0.0
+        if state.global_step % self.every == 0:
+            print(f"debug/grad_norm_total={total_norm:.6f} max_grad_norm={max_g:.6f} params_with_grad={n} step={state.global_step}", flush=True)
+        return control
+
+class ForceEvalEveryNSteps(TrainerCallback):
+    def __init__(self, n: int):
+        self.n = int(n)
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step > 0 and (state.global_step % self.n == 0):
+            control.should_evaluate = True
+            control.should_save = True
+        return control
 
 class GenerationEarlyStoppingCallback(TrainerCallback):
     def __init__(self, metric_name: str, patience: int=3, verbose: bool=True):
@@ -592,7 +619,7 @@ _CAT_MAX_TOKENS = {
     "disease": 8,
     "ethnicity": 6,
     "localization": 10,
-    "cell_line": 16,
+    "cell_line": 24,  # ↑ 16 → 24
     "treatment": 8,
 }
 CURRENT_CATEGORY = None
@@ -638,7 +665,7 @@ def _populate_cell_line_hints_from_data(df):
         try:
             obj = json.loads(out)
             v = str(obj.get("cell_line", "")).strip()
-            if v and v.lower() not in {"unknown", "not applicable", "not_applicable"}:
+            if v and v.lower() not in {"unknown", "not applicable", "not_applicable", "other"}:
                 names.append(v)
         except Exception:
             pass
@@ -671,6 +698,17 @@ def _canonicalize_tt_text(text: str) -> str:
     if float(val) == 1.0 and unit_canon.endswith("s"):
         unit_canon = unit_canon[:-1]
     return f"{val} {unit_canon}".strip()
+
+def _trim_cell_line_noise(text: str) -> str:
+    t = re.sub(r'\s+', ' ', str(text)).strip()
+    t = re.split(r'\b(cells?|cell\s*line|qc\b|rin\b|for\b|from\b|passed\b|sample\b|organ\b|tissue\b|male\b|female\b)\b',
+                 t, flags=re.I)[0]
+    t = t.strip(' ,;.-')
+    t = re.split(r'["`}\])]', t)[0].strip(' ,;.-')
+    if re.match(r'^(not|unknown)\b', t, flags=re.I):
+        return ""
+    return t
+
 
 def _ensure_vocab_masks():
     global _BAD_NOQUOTE_IDS, _QUOTE_ANY_IDS, _ALWAYS_BANNED_IDS, _CAT_BANNED_IDS, _DISCOURAGED_IDS, _CAT_HINT_IDS, _GEN_DEBUG_ONCE
@@ -712,7 +750,7 @@ def _ensure_vocab_masks():
             bad_noquote.add(tid)
         if piece_has_accession(piece):
             always_banned.add(tid)
-        if "unknown" in pl or "not applicable" in pl or pl.strip() in {"n/a","na","none","unspecified","not_applicable"}:
+        if "unknown" in pl or "not applicable" in pl or "other" in pl or pl.strip() in {"n/a","na","none","unspecified","not_applicable"}:
             discouraged.add(tid)
         if any(w in pl for w in form_ban):
             always_banned.add(tid)
@@ -728,7 +766,7 @@ def _ensure_vocab_masks():
             _APPLIC_TOKEN_IDS.add(tid)
         if "unknown" in pl:
             _UNKNOWN_TOKEN_IDS.add(tid)
-        if "not applicable" in pl or "not_applicable" in pl:
+        if "not applicable" in pl or "not_applicable" in pl or "other" in pl:
             _NA_TOKEN_IDS.add(tid)
 
     _BAD_NOQUOTE_IDS = bad_noquote
@@ -817,6 +855,10 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
             if not has_content and "cell_line" in _CAT_HINT_IDS and _CAT_HINT_IDS["cell_line"]:
                 for tid_hint in _CAT_HINT_IDS["cell_line"]:
                     logits[:, tid_hint] += 1.2
+            if _APPLIC_TOKEN_IDS:
+                logits[:, list(_APPLIC_TOKEN_IDS)] = -float("inf")
+            if _NOT_TOKEN_IDS:
+                logits[:, list(_NOT_TOKEN_IDS)] -= 3.0
 
         next_id = torch.argmax(logits, dim=-1, keepdim=True)
         tid = next_id.item()
@@ -839,19 +881,71 @@ def gen_until_quote_fullctx(model, tokenizer, context_ids, max_value_tokens=64, 
             if canon is not None:
                 canon = re.sub(r'\b(is|are|was|were|include|including|means|defines)\b.*$', '', canon, flags=re.I).strip(" ,;.-")
                 return canon, input_ids
+
         if cat == "treatment_time":
             partial = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
             val = _canonicalize_tt_text(partial)
             if re.search(r'^\d+(?:\.\d+)?\s+(days?|weeks?|months?|years?|hours?)$', val):
                 print(f"debug/treatment_time_early_return: {val}", flush=True)
                 return val, input_ids
+        if cat == "cell_line":
+            partial = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+            trimmed = _trim_cell_line_noise(partial)
+            if trimmed and (len(trimmed) < len(partial)):
+                return trimmed, input_ids
+
     value = tokenizer.decode(gen_buf, skip_special_tokens=True, clean_up_tokenization_spaces=False)
     value = re.split(r'[";\n`,}:()\[\]]', value)[0]
     value = re.sub(r'\s+', ' ', value).strip(' ,;.-').strip()
     value = re.sub(r'\b(is|are|was|were|include|including|means|defines)\b.*$', '', value, flags=re.I).strip(" ,;.-")
     if cat == "treatment_time":
         value = _canonicalize_tt_text(value)
+    if cat == "cell_line":
+        value = _trim_cell_line_noise(value)
+
     return value, input_ids
+
+##########################################################################################
+# CUSTOM COLLATOR (dynamic padding incl. cat_masks)
+class DataCollatorWithCatMasks:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        self._padder = DataCollatorWithPadding(self.tokenizer, return_tensors="pt")
+
+    def __call__(self, features):
+        # Extract cat_masks and keep labels for manual padding
+        cat_masks = [torch.tensor(f.pop("cat_masks")) for f in features]
+        raw_labels = [f["labels"] for f in features]  # will be used to re-pad labels with -100
+
+        # Pad input_ids/attention_mask normally
+        batch = self._padder(features)
+
+        # Ensure labels are padded to max_len with -100
+        max_len = batch["input_ids"].size(1)
+        padded_labels = []
+        for l in raw_labels:
+            t = torch.tensor(l, dtype=torch.long)
+            if t.size(0) < max_len:
+                pad = torch.full((max_len - t.size(0),), -100, dtype=torch.long)
+                t = torch.cat([t, pad], dim=0)
+            else:
+                t = t[:max_len]
+            padded_labels.append(t)
+        batch["labels"] = torch.stack(padded_labels, dim=0)
+
+        # Pad cat_masks to [B, C, max_len]
+        C = cat_masks[0].size(0) if len(cat_masks) > 0 else 0
+        padded = []
+        for m in cat_masks:
+            L = m.size(1)
+            if L < max_len:
+                pad = torch.zeros((C, max_len - L), dtype=torch.float32)
+                m = torch.cat([m, pad], dim=1)
+            else:
+                m = m[:, :max_len]
+            padded.append(m)
+        batch["cat_masks"] = torch.stack(padded, dim=0)
+        return batch
 
 ##########################################################################################
 #CUSTOMED TRAINER
@@ -878,18 +972,26 @@ class MyTrainer(Trainer):
         self.guard_ema = torch.zeros(len(self.categories), dtype=torch.float32)
         self.guard_initialized = torch.zeros(len(self.categories), dtype=torch.bool)
         self.guard_lambda = 0.001
-        self.guard_margin = 0.01
+        self.guard_margin = 0.03  # ↑ un peu plus large
         self.guard_ema_beta = 0.9
         self.best_cat_acc = {c: -1.0 for c in self.categories}
         self.best_cat_adapter_sd = {c: None for c in self.categories}
-        self.accept_revert_tolerance = 0.01
-        self.min_revert_step = 100
+        self.accept_revert_tolerance = 0.025  # 0.02–0.03
+        self.min_revert_step = 1000          # désactive revert 1ère epoch
         self.cat2adapter = {c: f"cat_{c}" for c in self.categories}
-        self.discouraged_lambda = 0.1
+        self.discouraged_lambda = 0.0        # démarrage à 0.0 → scheduling linéaire vers 0.1
+        self.discouraged_lambda_max = 0.1
         self.treatment_time_lambda = 0.1
         self._rr_ptr = 0
-        self._reg_warmup_steps = 200
+        self._reg_warmup_steps = 900         # ↑ retarde les régularisations
         print(f"debug/trainer_init: label_smoothing={self.label_smoothing} guard_lambda={self.guard_lambda}", flush=True)
+
+    def _discouraged_lambda_at_step(self):
+        # linéaire de 0 → 0.1 pendant la 1ère epoch
+        ep = getattr(self.state, "epoch", 0.0) or 0.0
+        ep = float(ep)
+        frac = max(0.0, min(1.0, ep / 1.0))
+        return self.discouraged_lambda_max * frac
 
     def log(self, logs, *args, **kwargs):
         return super().log(logs)
@@ -920,6 +1022,41 @@ class MyTrainer(Trainer):
         except Exception as e:
             print("debug/mask_print_error:", str(e), flush=True)
 
+    def _eval_per_category_generate_plain(self, df_eval, max_rows=None):
+        device = self.model.device
+        if max_rows is not None and len(df_eval) > max_rows:
+            df_eval = df_eval.sample(max_rows, random_state=SEED)
+        preds, refs = [], []
+        for _, row in df_eval.iterrows():
+            prompt = row["prompt"].strip()
+            expected = row["output"].strip()
+            merged = {}
+            for cat in self.categories:
+                set_active_adapter(self.model, f"cat_{cat}")
+                inp = tokenizer(prompt + f'{{"{cat}": "', return_tensors="pt",
+                                truncation=True, max_length=3000).to(device)
+                with torch.no_grad():
+                    out = self.model.generate(
+                        input_ids=inp["input_ids"],
+                        attention_mask=inp["attention_mask"],
+                        max_new_tokens=24,
+                        do_sample=False, temperature=0.0, top_p=1.0,
+                        no_repeat_ngram_size=3, eos_token_id=tokenizer.eos_token_id,
+                        pad_token_id=tokenizer.pad_token_id
+                    )
+                val = tokenizer.decode(out[0][inp["input_ids"].size(1):],
+                                       skip_special_tokens=True,
+                                       clean_up_tokenization_spaces=False)
+                val = re.split(r'[";\n`,}:()\[\]]', val)[0].strip(' ,;.-')
+                if cat == "treatment_time":
+                    val = _canonicalize_tt_text(val)
+                if cat == "cell_line":
+                    val = _trim_cell_line_noise(val)
+                merged[cat] = val
+            preds.append(json.dumps(remap_closed_sets(merged), ensure_ascii=False))
+            refs.append(expected)
+        return preds, refs
+
     def _forward_with_adapter(self, adapter_name, inputs):
         set_active_adapter(self.model, adapter_name)
         return self.model(**inputs, output_hidden_states=False)
@@ -937,7 +1074,6 @@ class MyTrainer(Trainer):
             tok_counts = masks_shift_all.sum(dim=(0, 2))
             present = (tok_counts > 0).nonzero(as_tuple=False).flatten().tolist()
             active_idx = present
-            any_valid = False
             per_cat_valid_tokens = []
             for j in active_idx:
                 cat = self.categories[j]
@@ -956,57 +1092,86 @@ class MyTrainer(Trainer):
             if len(active_idx) == 0:
                 print(f"debug/skip_batch: no valid category tokens", flush=True)
             else:
+                # conserver le print existant (round-robin), à titre d'info
                 pick = active_idx[self._rr_ptr % len(active_idx)]
                 self._rr_ptr += 1
                 cat = self.categories[pick]
                 print(f"debug/chosen_category_for_step: {cat}", flush=True)
-                m = masks_shift_all[:, pick, :].reshape(B * L) > 0.5
-                outputs_cat = self._forward_with_adapter(self.cat2adapter[cat], inputs)
-                logits_cat = outputs_cat.logits
-                logits_cat_shift = logits_cat[:, :-1, :].contiguous()
-                labels_shift = labels[:, 1:].contiguous()
-                V = logits_cat_shift.size(-1)
-                flat_logits = logits_cat_shift.view(B * L, V)
-                flat_labels = labels_shift.view(B * L)
-                valid = (flat_labels != -100) & m
-                if valid.any():
-                    any_valid = True
+
+                # --- NOUVEAU: update TOUTES les catégories présentes ---
+                cat_losses = []
+                apply_reg = (self.state.global_step >= self._reg_warmup_steps)
+                eff_disc_lambda = self._discouraged_lambda_at_step() if apply_reg else 0.0
+
+                for j in active_idx:
+                    cat_j = self.categories[j]
+                    m = masks_shift_all[:, j, :].reshape(B * L) > 0.5
+
+                    outputs_cat = self._forward_with_adapter(self.cat2adapter[cat_j], inputs)
+                    logits_cat = outputs_cat.logits
+                    logits_cat_shift = logits_cat[:, :-1, :].contiguous()
+                    labels_shift = labels[:, 1:].contiguous()
+                    V = logits_cat_shift.size(-1)
+                    flat_logits = logits_cat_shift.view(B * L, V)
+                    flat_labels = labels_shift.view(B * L)
+                    valid = (flat_labels != -100) & m
+                    if not valid.any():
+                        continue
+
                     loss_j = self.loss_fct(flat_logits[valid], flat_labels[valid])
 
-                    apply_reg = (self.state.global_step >= self._reg_warmup_steps)
+                    if random.random() < 0.1:
+                        try:
+                            self.log({f"train/ce_{cat_j}": float(loss_j.detach().cpu())})
+                        except Exception:
+                            pass
+
                     if apply_reg:
                         with torch.no_grad():
                             probs_valid = torch.softmax(flat_logits[valid], dim=-1)
+
                         if _DISCOURAGED_IDS:
                             disc_ids = list(_DISCOURAGED_IDS)
                             if len(disc_ids) > 0:
                                 disc_p = probs_valid[:, disc_ids].sum(dim=-1).mean()
-                                disc_w = self.discouraged_lambda * (2.5 if cat == "cell_line" else 1.0)
+                                disc_w = eff_disc_lambda * (2.5 if cat_j == "cell_line" else 1.0)
                                 loss_j = loss_j + disc_w * disc_p
-                        if cat == "treatment_time" and "treatment_time" in _OPEN_CAT_ALLOWED_IDS:
+
+                        if cat_j == "treatment_time" and "treatment_time" in _OPEN_CAT_ALLOWED_IDS:
                             keep = list(_OPEN_CAT_ALLOWED_IDS["treatment_time"])
                             if len(keep) > 0:
                                 keep_p = probs_valid[:, keep].sum(dim=-1).mean()
                                 other_p = 1.0 - keep_p
                                 loss_j = loss_j + self.treatment_time_lambda * other_p
 
-                        if cat == "cell_line":
+                        if cat_j == "cell_line":
                             pen_ids = list(_NOT_TOKEN_IDS | _APPLIC_TOKEN_IDS | _UNKNOWN_TOKEN_IDS | _NA_TOKEN_IDS)
                             if len(pen_ids) > 0:
                                 pen_p = probs_valid[:, pen_ids].sum(dim=-1).mean()
-                                loss_j = loss_j + 0.1 * pen_p
+                                pen_w = 0.1
+                                try:
+                                    ep = float(getattr(self.state, "epoch", 0.0) or 0.0)
+                                    pen_w = min(0.2, 0.1 + 0.1 * ep)
+                                except Exception:
+                                    pass
+                                loss_j = loss_j + pen_w * pen_p
                                 if random.random() < 0.01:
                                     print(f"debug/regularizer_cell_line_not_applic: {float(pen_p.detach().cpu())}",
                                           flush=True)
 
-                    j_idx = pick
+                    # guard EMA par catégorie (non bloquant)
+                    j_idx = j
                     if not self.guard_initialized[j_idx]:
                         self.guard_ema[j_idx] = loss_j.detach().float()
                         self.guard_initialized[j_idx] = True
                     else:
                         self.guard_ema[j_idx] = self.guard_ema_beta * self.guard_ema[j_idx] + (1 - self.guard_ema_beta) * loss_j.detach().float()
                     penalty = torch.relu(loss_j - (self.guard_ema[j_idx].to(loss_j.device) + self.guard_margin))
-                    total_loss = total_loss + loss_j + self.guard_lambda * penalty
+
+                    cat_losses.append(loss_j + self.guard_lambda * penalty)
+
+                if len(cat_losses) > 0:
+                    total_loss = torch.stack(cat_losses).mean()
                 else:
                     print(f"debug/skip_batch: chosen cat has no valid tokens", flush=True)
         else:
@@ -1101,27 +1266,56 @@ class MyTrainer(Trainer):
             self.log(results)
             DO_FULL = (self.state.global_step % 500 == 0) or (self.state.global_step == 0)
             max_rows = None if DO_FULL else 64
-            preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
-            cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
-            for k, v in cat_metrics.items():
-                key = f"{metric_key_prefix}_{k}"
+
+            # preds, refs = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
+            # cat_metrics = compute_categorical_metrics(preds, refs, self.categories)
+            # for k, v in cat_metrics.items():
+            #     key = f"{metric_key_prefix}_{k}"
+            #     self.log({key: v})
+            #     results[key] = v
+
+            preds_gated, refs_gated = self._eval_per_category_generate(df_val_final, max_rows=max_rows)
+            m_gated = compute_categorical_metrics(preds_gated, refs_gated, self.categories)
+            for k, v in m_gated.items():
+                key = f"{metric_key_prefix}_gated_{k}"
                 self.log({key: v})
                 results[key] = v
+
+            preds_plain, refs_plain = self._eval_per_category_generate_plain(df_val_final, max_rows=max_rows)
+            m_plain = compute_categorical_metrics(preds_plain, refs_plain, self.categories)
+            for c in self.categories:
+                v = m_plain.get(f"accuracy_{c.lower()}", 0.0)
+                key = f"{metric_key_prefix}_accuracy_{c.lower()}"
+                self.log({key: v})
+                results[key] = v
+            for k, v in m_plain.items():
+                key = f"{metric_key_prefix}_plain_{k}"
+                self.log({key: v})
+                results[key] = v
+
+            cat_metrics = m_plain
+
+            plain_overall = m_plain.get("accuracy_overall", 0.0)
+            self.log({f"{metric_key_prefix}_accuracy_overall": plain_overall})
+            results[f"{metric_key_prefix}_accuracy_overall"] = plain_overall
+
             for cat in self.categories:
                 acc_key = f"accuracy_{cat.lower()}"
                 cur = cat_metrics.get(acc_key, 0.0)
                 best = self.best_cat_acc.get(cat, -1.0)
+                epoch_allow_revert = (getattr(self.state, "epoch", 0.0) or 0.0) >= 1.0
                 if cur > best + self.accept_revert_tolerance:
                     self.best_cat_acc[cat] = cur
                     sd = get_adapter_state_dict(self.model, self.cat2adapter[cat])
                     self.best_cat_adapter_sd[cat] = {k: v.detach().cpu().clone() for k, v in sd.items()}
                     print(f"debug/accept_adapter: {self.cat2adapter[cat]} new_best={cur:.4f}", flush=True)
-                elif cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(cat) is not None and self.state.global_step >= getattr(self, "min_revert_step", 0):
+                elif epoch_allow_revert and cur < best - self.accept_revert_tolerance and self.best_cat_adapter_sd.get(
+                        cat) is not None and self.state.global_step >= getattr(self, "min_revert_step", 0):
                     load_adapter_state_dict_(self.model, self.cat2adapter[cat], self.best_cat_adapter_sd[cat])
                     print(f"debug/revert_adapter: {self.cat2adapter[cat]} revert_to_best={best:.4f} cur={cur:.4f}",
                           flush=True)
                 else:
-                    print(f"debug/no_updates: new_best={cur:.4f}, best = {best:.4f}", flush=True)
+                    print(f"debug/no_updates: new_value={cur:.4f}, best = {best:.4f}", flush=True)
             self.control = self.callback_handler.on_evaluate(self.args, self.state, self.control, results)
             return results
         finally:
@@ -1184,9 +1378,9 @@ tokenized_val_final = val_dataset_final.map(
 final_peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.05,
+    r=32,             
+    lora_alpha=64,     
+    lora_dropout=0.1,
     target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 
@@ -1208,18 +1402,19 @@ training_args_final = TrainingArguments(
     output_dir=train_model + "_final",
     eval_strategy="steps",
     eval_steps=50,
-    learning_rate=1e-5,
+    do_eval=True,
+    learning_rate=1e-4,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
-    num_train_epochs=4,
-    weight_decay=0.0,
+    num_train_epochs=6,
+    weight_decay=0.01, 
     save_strategy='steps',
     save_steps=50,
     logging_strategy='steps',
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=12,
     gradient_checkpointing=True,
     report_to=["tensorboard"],
     logging_dir=os.path.join(tensorboard_log_dir, "final_training"),
@@ -1227,10 +1422,10 @@ training_args_final = TrainingArguments(
     metric_for_best_model="eval_accuracy_overall",
     remove_unused_columns=False,
     greater_is_better=True,
-    warmup_ratio=0.3,
+    warmup_ratio=0.1,                
     lr_scheduler_type="cosine",
-    max_grad_norm=0.3,
-    adam_beta2=0.999
+    max_grad_norm=0.5,              
+    adam_beta2=0.99            
 )
 print(f"debug/training_args: learning_rate={training_args_final.learning_rate}, adam_beta2={training_args_final.adam_beta2}", flush=True)
 
@@ -1239,11 +1434,12 @@ trainer_final = MyTrainer(
     args=training_args_final,
     train_dataset=tokenized_train_final,
     eval_dataset=tokenized_val_final,
-    label_smoothing=0.0,
+    label_smoothing=0.05,
     tokenizer=tokenizer,
-    data_collator=DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt", padding=True),
+    data_collator=DataCollatorWithCatMasks(tokenizer),
     callbacks=[
             GenerationEarlyStoppingCallback("eval_accuracy_overall", patience=2),
+            GradNormLogger(every=1),
         ],
     sem_model=model_sem,
     compute_metrics=compute_metrics

@@ -31,7 +31,13 @@ OUTPUT_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
 
+# INPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/cleaned_metadata_sra.txt"
+# OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/cell_line/metadata_sra_summarized.txt"
+# FLAG_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/STEP2_2.flag"
+# AMBIG_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/ambiguous_cell_lines.csv"
+
 VERBOSE = args.verbose
+# VERBOSE = False
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
 MAX_TOKENS = 1200

@@ -42,3 +42,7 @@ df = pd.read_csv(sys.argv[1], dtype=str)
 df['output'] = df['output'].apply(lambda s: re.sub(r':\s*nan\\b', ': \"unknown\"', s, flags=re.IGNORECASE) if isinstance(s, str) else s)
 df.to_csv(sys.argv[1], index=False)
 " /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING/all_raw/finetune_data_test_corrected.csv
+
+#are files same
+cmp -s "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/synt_summary.txt" "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/synt_summary2.txt" \
+  && echo "identiques" || echo "différents"

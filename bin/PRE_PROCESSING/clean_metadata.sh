@@ -17,6 +17,11 @@ RES=${2:-$RES}
 NODE_WORK_PATH=${3:-$NODE_WORK_PATH}
 ENV_REQUIREMENT=${4:-$ENV_REQUIREMENT}
 
+#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
+#RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT"
+#NODE_WORK_PATH="/scratchlocal/$USER"
+#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
+
 source $ENV_REQUIREMENT/bin/activate
 
 LOG_DIR=$RES/logs
@@ -49,6 +54,7 @@ echo "Begin date: $(date)"
 
 #necessary files
 cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
+#cp "$RES/cell_line/metadata_sra.txt" $SCRATCH_DIR/
 
 awk -F'\t' '{
   for (i=NF-1; i<=NF; i++) {

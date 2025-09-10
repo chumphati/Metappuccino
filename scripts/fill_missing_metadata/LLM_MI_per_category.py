@@ -37,7 +37,7 @@ model = args.model
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir = os.path.join(base_path, "METADATA_LLM_INFERENCE")
 skipped_runs_path = os.path.join(base_path, "skipped_runs.txt")
-ambi_cl_path   = os.path.join(base_path, "ambiguous_cell_lines.csv")
+ambi_cl_path = os.path.join(base_path, "ambiguous_cell_lines.csv")
 model_peft_dir = model if os.path.isabs(model) else os.path.join(base_path, model)
 model_base_dir = args.base_model_dir
 error_file_header = "run_accession\tsummary"
@@ -128,12 +128,15 @@ def load_ambiguous_map(fp):
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
         except csv.Error:
-            class _D: delimiter = ","
+            class _D:
+                delimiter = ","
+
             dialect = _D()
         reader = csv.reader(f, dialect)
         header_peek = next(reader, None)
         if header_peek is None:
             return {}
+
         def _push(row):
             if not row or len(row) < 2:
                 return
@@ -141,6 +144,7 @@ def load_ambiguous_map(fp):
             val = row[1].strip()
             if run_id and val:
                 ambi[run_id].append(val)
+
         if header_peek and not re.search(r"run|accession", " ".join(header_peek), re.I):
             _push(header_peek)
         for row in reader:
@@ -170,8 +174,12 @@ if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({'pad_token': '<pad>'})
     tokenizer.pad_token = '<pad>'
 model_base = AutoModelForCausalLM.from_pretrained(model_base_dir,
-                                                  torch_dtype=torch.float16 if use_gpu else torch.float32,
-                                                  device_map="auto")
+                                                  torch_dtype=(
+                                                      torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else (
+                                                          torch.float16 if use_gpu else torch.float32)),
+                                                  device_map={"": 0},
+                                                  attn_implementation="flash_attention_2" if hasattr(
+                                                      AutoModelForCausalLM, "__call__") else None)
 
 try:
     model_base.resize_token_embeddings(len(tokenizer))
@@ -277,90 +285,109 @@ if len(brace_close_ids) == 0:
     brace_close_ids = tok_ids('" }')
 max_value_tokens = 64
 
-for idx, line in enumerate(metadata_lines):
-    if not line.strip():
-        write_reload_file(error_file_path, error_file_header, [f"LINE_{idx}", "empty line"])
-        skipped_runs.append(f"LINE_{idx}")
-        continue
+# Accélérations GPU
+try:
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.set_float32_matmul_precision("high")
+except Exception:
+    pass
 
-    parts = line.rstrip("\n").split("\t", 1)
-    if len(parts) < 2 or not parts[0].strip():
-        bad_run = parts[0].strip() if parts and parts[0].strip() else f"LINE_{idx}"
-        write_reload_file(error_file_path, error_file_header, [bad_run, "malformed: missing tab/summary"])
-        skipped_runs.append(bad_run)
-        continue
+# Classe d'arrêt sur le prochain guillemet fermant (pour stopper au plus tôt)
+from transformers import StoppingCriteria, StoppingCriteriaList
 
-    run, summary = parts[0].strip(), parts[1].strip()
-    vprint(run)
 
-    if run not in raw_data:
-        skipped_runs.append(run)
-        continue
+class StopOnQuote(StoppingCriteria):
+    def __init__(self, quote_id):
+        self.quote_id = quote_id
 
-    na_columns = categories.copy()
-    vprint(na_columns)
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        if self.quote_id is None:
+            return False
+        return input_ids[0, -1].item() == self.quote_id
 
-    raw_vals = raw_data[run]
-    extra_info = []
-    for col, val in zip(raw_headers, raw_vals):
-        if val and val != "":
-            extra_info.append(f"- {col}: {val}")
 
-    ambi_val = ambi_map.get(run)
-    if ambi_val:
-        extra_info.append(f"{ambi_val}")
+with torch.inference_mode():
+    for idx, line in enumerate(metadata_lines):
+        if not line.strip():
+            write_reload_file(error_file_path, error_file_header, [f"LINE_{idx}", "empty line"])
+            skipped_runs.append(f"LINE_{idx}")
+            continue
 
-    extra_info_str = " ".join(extra_info) if extra_info else ""
+        parts = line.rstrip("\n").split("\t", 1)
+        if len(parts) < 2 or not parts[0].strip():
+            bad_run = parts[0].strip() if parts and parts[0].strip() else f"LINE_{idx}"
+            write_reload_file(error_file_path, error_file_header, [bad_run, "malformed: missing tab/summary"])
+            skipped_runs.append(bad_run)
+            continue
 
-    vprint(f"\n[{idx + 1}/{len(metadata_lines)}] {run}", flush=True)
+        run, summary = parts[0].strip(), parts[1].strip()
+        vprint(run)
 
-    inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
-    fmt_keys = ", ".join(f'"{c}": "<value>"' for c in na_columns)
+        if run not in raw_data:
+            skipped_runs.append(run)
+            continue
 
-    prompt = f"""Run accession: {run}
-            Summary: {summary} {extra_info_str} 
-            
-            Categories and definitions:
-            - library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'
-            - sequencing_source: one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context
-            - biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
-            - biopsy_type: state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES
-            - cell_line: exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text
-            - cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.
-            - organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
-            - disease: report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
-            - treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, search from meaning. DON'T STATE the disease, get info just from treatment
-            - treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)
-            - response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to search from meaning from context the stage of the disease after treatment if possible
-            - age: sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)
-            - sex: sample donor sex
-            - ethnicity: sample donor ethnicity (origins, genetics)
-            - localization: all geographical information available, if several list them all
-            - is_cancer: return 'True' if the disease is cancer related, 'False' otherwise
-            
-            For each category below:
-            - Extract information from the summary if possible
-            - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
-            - If one value is impossible to extract, even by deducing it, return "unknown", applicable for all categories
-                        
-            BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
-            FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
-            
-            Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
-            
-            Here is the output:
-            """
+        na_columns = categories.copy()
+        vprint(na_columns)
 
-    vprint("PROMPT:", flush=True)
-    vprint(prompt, flush=True)
+        raw_vals = raw_data[run]
+        extra_info = []
+        for col, val in zip(raw_headers, raw_vals):
+            if val and val != "":
+                extra_info.append(f"- {col}: {val}")
 
-    device = model.device
-    with torch.no_grad():
-        ids = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=initial_n_ctx).to(device)
-        input_ids = ids["input_ids"]
-        attention_mask = ids["attention_mask"]
-        out0 = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
-        past = out0.past_key_values
+        ambi_val = ambi_map.get(run)
+        if ambi_val:
+            extra_info.append(f"{ambi_val}")
+
+        extra_info_str = " ".join(extra_info) if extra_info else ""
+
+        vprint(f"\n[{idx + 1}/{len(metadata_lines)}] {run}", flush=True)
+
+        inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
+        fmt_keys = ", ".join(f'"{c}": "<value>"' for c in na_columns)
+
+        prompt = f"""Run accession: {run}
+                Summary: {summary} {extra_info_str} 
+
+                Categories and definitions:
+                - library_selection: one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'
+                - sequencing_source: one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context
+                - biopsy_site: organ, body part or fluid WHERE TISSUE WAS SAMPLED
+                - biopsy_type: state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES
+                - cell_line: exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text
+                - cell_type: extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.
+                - organ: organ studied or affected (not where the sample is from, very different from biopsy_site)
+                - disease: report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)
+                - treatment: treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, search from meaning. DON'T STATE the disease, get info just from treatment
+                - treatment_time: time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)
+                - response: treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to search from meaning from context the stage of the disease after treatment if possible
+                - age: sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)
+                - sex: sample donor sex
+                - ethnicity: sample donor ethnicity (origins, genetics)
+                - localization: all geographical information available, if several list them all
+                - is_cancer: return 'True' if the disease is cancer related, 'False' otherwise
+
+                For each category below:
+                - Extract information from the summary if possible
+                - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
+                - If one value is impossible to extract, even by deducing it, return "unknown", applicable for all categories
+
+                BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+                FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
+
+                Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
+
+                Here is the output:
+                """
+
+        vprint("PROMPT:", flush=True)
+        vprint(prompt, flush=True)
+
+        device = model.device
+        ids_prompt = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=initial_n_ctx)
+        prompt_input_ids = ids_prompt["input_ids"].to(device)
+        prompt_attention_mask = ids_prompt["attention_mask"].to(device)
 
         generated_map = {}
         entropy_dict = {}
@@ -371,12 +398,13 @@ for idx, line in enumerate(metadata_lines):
         if len(ks) == 0:
             ks = tok_ids("{ ")
         ks_t = torch.tensor([ks], device=device)
-        input_ids = torch.cat([input_ids, ks_t], dim=1)
-        attention_mask = torch.ones_like(input_ids, device=device)
-        past = prime_tokens(model, ks_t, past)
+
+        # Pré-calcul du cache DU PROMPT par adapter (1 seul forward long par catégorie)
+        past_by_adapter = {}
+
+        loaded = getattr(model, "_loaded_adapters", set())
 
         for ci, key in enumerate(categories):
-            loaded = getattr(model, "_loaded_adapters", set())
             name = f"cat_{key}" if f"cat_{key}" in loaded else ("cat_all" if "cat_all" in loaded else None)
             if name is None:
                 raise RuntimeError(f"Aucun adapter chargé pour la catégorie '{key}'")
@@ -389,57 +417,71 @@ for idx, line in enumerate(metadata_lines):
             else:
                 model.set_adapter(name)
 
+            if name not in past_by_adapter:
+                out_prompt = model(input_ids=prompt_input_ids, attention_mask=prompt_attention_mask, use_cache=True)
+                past_by_adapter[name] = out_prompt.past_key_values
+
             curr = getattr(model, "active_adapter", None)
             vprint(
                 f"[{run}] {key} -> using adapter(s): {(['shared', name] if 'shared' in loaded else [name])} | active_adapter={curr}")
+
+            # Reprise depuis le cache du prompt, puis amorçage "{", puis '"key": "'
+            pkv = past_by_adapter[name]
+            att_mask = torch.ones((1, prompt_input_ids.size(1)), dtype=torch.long, device=device)
+
+            pkv = prime_tokens(model, ks_t, pkv)
+            att_mask = torch.ones((1, att_mask.size(1) + ks_t.size(1)), dtype=torch.long, device=device)
+
             prefix = f'"{key}": "'
             key_ids = tok_ids(prefix)
             if len(key_ids) == 0:
                 key_ids = tok_ids(f'"{key}": "')
             kid = torch.tensor([key_ids], device=device)
-            input_ids = torch.cat([input_ids, kid], dim=1)
-            attention_mask = torch.ones_like(input_ids, device=device)
-            past = prime_tokens(model, kid, past)
+            pkv = prime_tokens(model, kid, pkv)
+            att_mask = torch.ones((1, att_mask.size(1) + kid.size(1)), dtype=torch.long, device=device)
 
-            val_tokens = []
-            val_logprobs = []
-            t = 0
-            while t < max_value_tokens:
-                next_id, lp, past = greedy_step(model, input_ids[:, -1:], attention_mask[:, -1:], past, temperature=0.0)
-                input_ids = torch.cat([input_ids, next_id], dim=1)
-                attention_mask = torch.ones_like(input_ids, device=device)
-                tok = next_id.item()
-                if quote_id is not None and tok == quote_id:
-                    break
-                val_tokens.append(tok)
-                val_logprobs.append(lp)
-                t += 1
+            stop_criteria = StoppingCriteriaList([StopOnQuote(quote_id)])
 
-            text_val = tokenizer.decode(val_tokens, skip_special_tokens=True).strip()
+            gen = model.generate(
+                input_ids=torch.empty((1, 0), dtype=torch.long, device=device),
+                max_new_tokens=max_value_tokens,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=None,
+                use_cache=True,
+                output_scores=True,
+                return_dict_in_generate=True,
+                stopping_criteria=stop_criteria,
+                past_key_values=pkv,
+                attention_mask=att_mask
+            )
+
+            gen_ids = gen.sequences
+            if gen_ids.size(1) > 0 and quote_id is not None and gen_ids[0, -1].item() == quote_id:
+                val_ids = gen_ids[0, :-1]
+            else:
+                val_ids = gen_ids[0]
+
+            text_val = tokenizer.decode(val_ids, skip_special_tokens=True).strip()
             text_val = _clean_generated_value(text_val)
             generated_map[key] = text_val
-            entropy_dict[key] = calculate_entropy_optimized(val_logprobs)
 
-            if ci < len(categories) - 1:
-                cid = torch.tensor([comma_ids], device=device)
-                input_ids = torch.cat([input_ids, cid], dim=1)
-                attention_mask = torch.ones_like(input_ids, device=device)
-                past = prime_tokens(model, cid, past)
-            else:
-                bid = torch.tensor([brace_close_ids], device=device)
-                input_ids = torch.cat([input_ids, bid], dim=1)
-                attention_mask = torch.ones_like(input_ids, device=device)
-                past = prime_tokens(model, bid, past)
+            lps = []
+            seq_tokens = val_ids.tolist()
+            for t, scores in enumerate(gen.scores[:len(seq_tokens)]):
+                lp = torch.log_softmax(scores, dim=-1)[0, seq_tokens[t]].item()
+                lps.append(lp)
+            entropy_dict[key] = calculate_entropy_optimized(lps)
 
-    parsed_json = generated_map
-    vprint("Json good format: ", parsed_json)
+        parsed_json = generated_map
+        vprint("Json good format: ", parsed_json)
 
-    output = {run: parsed_json, "entropy": entropy_dict}
-    vprint("Final output:", flush=True)
-    vprint(output)
-    out_fp = os.path.join(output_dir, f"{run}.json")
-    with open(out_fp, "w") as of:
-        json.dump(output, of, indent=2)
+        output = {run: parsed_json, "entropy": entropy_dict}
+        vprint("Final output:", flush=True)
+        vprint(output)
+        out_fp = os.path.join(output_dir, f"{run}.json")
+        with open(out_fp, "w") as of:
+            json.dump(output, of, indent=2)
 
 with open(skipped_runs_path, "w") as sf:
     for r in skipped_runs:

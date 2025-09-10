@@ -118,8 +118,8 @@ def extract_and_save_metadata(run_accession):
         #get xml
         tree = ET.parse(xml_file)
         root = tree.getroot()
-        sample_metadata = "".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
-        study_metadata = "".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
+        sample_metadata = " ".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
+        study_metadata = " ".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
 
         time.sleep(4)
 
