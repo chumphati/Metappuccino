@@ -22,12 +22,18 @@ source $ENV_REQUIREMENT/bin/activate
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
 
+#create dir
+mkdir -p $RES/logs
+mkdir -p $RES/tmp
+mkdir -p $RES/ORIGINAL_METADATA
+mkdir -p $RES/COMPLETED_INFERENCE/VISUALISATION
+
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "init")"
+  SCRATCH_DIR="$TMP_DIR"
 fi
 
 mkdir -p $SCRATCH_DIR
@@ -64,11 +70,5 @@ print_metappuccino_logo
 echo "Beginning of Metappuccino analysis"
 echo "Beginning date: $(date)"
 echo "Please wait while your data ara analyzed..."
-
-#create dir
-mkdir -p $RES/logs
-mkdir -p $RES/tmp
-mkdir -p $RES/ORIGINAL_METADATA
-mkdir -p $RES/COMPLETED_INFERENCE/VISUALISATION
 
 touch "$SCRATCH_DIR/STEP1_0.flag"

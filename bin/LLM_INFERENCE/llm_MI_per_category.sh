@@ -11,6 +11,8 @@
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
 
+set -euo pipefail
+
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
@@ -20,21 +22,21 @@ N_GPUS=${6:-${N_GPUS:-1}}
 NODE_WORK_PATH=${7:-$NODE_WORK_PATH}
 BASE_MODEL="$MODEL/Mistral-7B-Instruct-v0.3"
 
-source $ENV_REQUIREMENT/bin/activate
-
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
+mkdir -p "$LOG_DIR" "$TMP_DIR"
+
+source "$ENV_REQUIREMENT/bin/activate" || true
 
 exec > "$LOG_DIR/llm_inference.out" 2> "$LOG_DIR/llm_inference.err"
 
-#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "llm_inference")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/llm_inference.XXXXXX")"
 fi
 
 mkdir -p "$SCRATCH_DIR"
@@ -42,7 +44,7 @@ cd "$SCRATCH_DIR"
 
 cleanup() {
     cp -r "$SCRATCH_DIR/METADATA_LLM_INFERENCE" "$RESULTS_DIR/COMPLETED_INFERENCE/" 2>/dev/null || true
-    if [[ -n "$PBS_JOBID" ]]; then jid=".$PBS_JOBID"; elif [[ -n "$SLURM_JOB_ID" ]]; then jid=".$SLURM_JOB_ID"; else jid=""; fi
+    if [[ -n "${PBS_JOBID:-}" ]]; then jid=".$PBS_JOBID"; elif [[ -n "${SLURM_JOB_ID:-}" ]]; then jid=".$SLURM_JOB_ID"; else jid=""; fi
     [[ -f "$SCRATCH_DIR/llm_log_SB.txt" ]] && cp "$SCRATCH_DIR/llm_log_SB.txt" "$LOG_DIR/llm_log_SB${jid}.txt" 2>/dev/null || true
     [[ -s "$SCRATCH_DIR/reload_model_bio_info.txt" ]] && cp "$SCRATCH_DIR/reload_model_bio_info.txt" "$TMP_DIR/reload_model_bio_info.txt" 2>/dev/null || true
     [[ -f "$SCRATCH_DIR/skipped_runs.txt" ]] && cp "$SCRATCH_DIR/skipped_runs.txt" "$LOG_DIR/skipped_runs${jid}.txt" 2>/dev/null || true
@@ -65,7 +67,6 @@ if [[ ! -s "$DB_SRC" ]]; then
   exit 3
 fi
 
-#cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
 MODEL_BASENAME="$(basename "$MODEL")"
 ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$META_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy metadata_sra_summarized.txt"; exit 5; }
@@ -79,15 +80,17 @@ MODEL_BASENAME="$(basename "$MODEL")"
 echo "Start $(date)"
 
 PY_VERBOSE=()
-if [[ "${VERBOSE^^}" == "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
+VERBOSE_UP=$(printf '%s' "${VERBOSE:-}" | tr '[:lower:]' '[:upper:]')
+if [[ "$VERBOSE_UP" = "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
 
 SHARD_TOTAL=${SHARD_TOTAL:-0}
 SHARD_ID=${SHARD_ID:-0}
 
-if [[ -n "$CUDA_VISIBLE_DEVICES" ]]; then
-  IFS=',' read -r -a ALL_GPU_IDS <<< "$CUDA_VISIBLE_DEVICES"
+if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+  OLDIFS=$IFS
+  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
 else
-  mapfile -t ALL_GPU_IDS < <(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0)
+  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
 fi
 TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
 if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi
@@ -179,7 +182,7 @@ def main():
 if __name__=="__main__": main()
 PYCODE
 
-if [[ "$SHARD_TOTAL" -ge 2 ]]; then
+if [[ "${SHARD_TOTAL}" -ge 2 ]]; then
   N_GPUS=1
   python3 "$SCRATCH_DIR/split_llm_inputs.py" --db "$DB_ABS" --meta "$META_ABS" --out "$SCRATCH_DIR" --chunks "$SHARD_TOTAL" || { echo "FATAL: splitter failed" >&2; exit 8; }
   CHUNK_DIR="$SCRATCH_DIR/CHUNK_${SHARD_ID}"

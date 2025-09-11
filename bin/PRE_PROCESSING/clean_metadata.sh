@@ -12,39 +12,35 @@
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
+set -euo pipefail
+
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 NODE_WORK_PATH=${3:-$NODE_WORK_PATH}
 ENV_REQUIREMENT=${4:-$ENV_REQUIREMENT}
 
-#METAPPUCCINO="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino"
-#RES="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT"
-#NODE_WORK_PATH="/scratchlocal/$USER"
-#ENV_REQUIREMENT="/store/EQUIPES/SSFA/MEMBERS/fiona.hak/clean_sra_ena_records/venv"
-
-source $ENV_REQUIREMENT/bin/activate
-
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
+mkdir -p "$LOG_DIR" "$TMP_DIR"
 
-#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+source "$ENV_REQUIREMENT/bin/activate" || true
+
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "clean_metadata")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/clean_metadata")"
 fi
 
-mkdir -p $SCRATCH_DIR
-cd $SCRATCH_DIR
+mkdir -p "$SCRATCH_DIR"
+cd "$SCRATCH_DIR"
 
-exec > "$LOG_DIR/clean_metadata.out" 2> "$LOG_DIR/clean_metadata.err"
+exec >"$LOG_DIR/clean_metadata.out" 2>"$LOG_DIR/clean_metadata.err"
 
-#clean and copy in case of fail
 cleanup() {
-    cp $SCRATCH_DIR/cleaned_metadata_sra.txt $TMP_DIR 2>/dev/null || echo "Cleaned metadata file not found, skipping."
-    cp $SCRATCH_DIR/STEP2_0.flag $TMP_DIR/ 2>/dev/null || echo "Flag not found, skipping."
+    cp "$SCRATCH_DIR/cleaned_metadata_sra.txt" "$TMP_DIR" 2>/dev/null || echo "Cleaned metadata file not found, skipping."
+    cp "$SCRATCH_DIR/STEP2_0.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
 }
@@ -52,9 +48,7 @@ trap cleanup EXIT
 
 echo "Begin date: $(date)"
 
-#necessary files
-cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" $SCRATCH_DIR/
-#cp "$RES/cell_line/metadata_sra.txt" $SCRATCH_DIR/
+cp "$RES/ORIGINAL_METADATA/metadata_sra.txt" "$SCRATCH_DIR/"
 
 awk -F'\t' '{
   for (i=NF-1; i<=NF; i++) {

@@ -8,7 +8,6 @@ scikit-learn
 nltk
 transformers
 torch
-llama-cpp-python
 openpyxl
 pyarrow
 fastparquet

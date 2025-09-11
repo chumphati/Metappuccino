@@ -11,30 +11,32 @@
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
 
-METAPPUCCINO=${1:-$METAPPUCCINO}
-RES=${2:-$RES}
-ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
-MODEL=${4:-$MODEL}
-ITERATION_LIMIT=${5:-$ITERATION_LIMIT}
+set -euo pipefail
+
+METAPPUCCINO=${1:-${METAPPUCCINO:-}}
+RES=${2:-${RES:-}}
+ENV_REQUIREMENT=${3:-${ENV_REQUIREMENT:-}}
+MODEL=${4:-${MODEL:-}}
+ITERATION_LIMIT=${5:-${ITERATION_LIMIT:-}}
 VERBOSE=${6:-${VERBOSE:-FALSE}}
 N_GPUS=${7:-${N_GPUS:-1}}
-NODE_WORK_PATH=${8:-$NODE_WORK_PATH}
+NODE_WORK_PATH=${8:-${NODE_WORK_PATH:-}}
 BASE_MODEL="$MODEL/Mistral-7B-Instruct-v0.3"
-
-source $ENV_REQUIREMENT/bin/activate
 
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
 LOG_DIR=$RESULTS_DIR/logs
+mkdir -p "$LOG_DIR" "$TMP_DIR"
+
+source "$ENV_REQUIREMENT/bin/activate" || true
 exec > "$LOG_DIR/reload_context_llm.out" 2> "$LOG_DIR/reload_context_llm.err"
 
-#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "reload_context_llm")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/reload_context_llm.XXXXXX")"
 fi
 
 mkdir -p "$SCRATCH_DIR"
@@ -50,7 +52,7 @@ cleanup() {
             base="$(basename "$f")"; dest="$RES/COMPLETED_INFERENCE/METADATA_LLM_INFERENCE/$base"; [[ -e "$dest" ]] || cp "$f" "$dest"
         done
     fi
-    if [[ -n "$PBS_JOBID" ]]; then jid=".$PBS_JOBID"; elif [[ -n "$SLURM_JOB_ID" ]]; then jid=".$SLURM_JOB_ID"; else jid=""; fi
+    if [[ -n "${PBS_JOBID:-}" ]]; then jid=".$PBS_JOBID"; elif [[ -n "${SLURM_JOB_ID:-}" ]]; then jid=".$SLURM_JOB_ID"; else jid=""; fi
     [[ -f "$SCRATCH_DIR/llm_log_reload.txt" ]] && cp "$SCRATCH_DIR/llm_log_reload.txt" "$LOG_DIR/llm_log_reload${jid}.txt" 2>/dev/null || true
     [[ -s "$SCRATCH_DIR/reload_model_bio_info.txt" ]] && cp "$SCRATCH_DIR/reload_model_bio_info.txt" "$TMP_DIR/reload_model_bio_info.txt" 2>/dev/null || true
     [[ -f "$SCRATCH_DIR/skipped_runs.txt" ]] && cp "$SCRATCH_DIR/skipped_runs.txt" "$LOG_DIR/skipped_runs_reload${jid}.txt" 2>/dev/null || true
@@ -66,7 +68,6 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] ; then
     exit 0
 fi
 
-#cp "$MODEL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy MODEL"; exit 4; }
 MODEL_BASENAME="$(basename "$MODEL")"
 ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$TMP_DIR/reload_model_bio_info.txt" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy reload_model_bio_info.txt"; exit 5; }
@@ -75,15 +76,17 @@ cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_MI_per_category.py" "$SCRATC
 echo "Begin date: $(date)"
 
 PY_VERBOSE=()
-if [[ "${VERBOSE^^}" == "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
+VERBOSE_UP=$(printf '%s' "${VERBOSE:-}" | tr '[:lower:]' '[:upper:]')
+if [[ "$VERBOSE_UP" = "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
 
 SHARD_TOTAL=${SHARD_TOTAL:-0}
 SHARD_ID=${SHARD_ID:-0}
 
-if [[ -n "$CUDA_VISIBLE_DEVICES" ]]; then
-  IFS=',' read -r -a ALL_GPU_IDS <<< "$CUDA_VISIBLE_DEVICES"
+if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+  OLDIFS=$IFS
+  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
 else
-  mapfile -t ALL_GPU_IDS < <(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0)
+  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
 fi
 TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
 if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi

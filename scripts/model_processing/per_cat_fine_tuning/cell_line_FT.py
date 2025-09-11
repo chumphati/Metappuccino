@@ -224,7 +224,7 @@ def tokenize_fn(example):
         "labels": labels,
         "split_idx": len(in_enc["input_ids"]),
         "cls_label": int(example.get("cls_label", -1)),
-        "value_mask": value_mask,  # <<< ajouté
+        "value_mask": value_mask,
     }
 
 tokenized = {
@@ -244,7 +244,6 @@ class CausalLMPadCollator:
         split_idx  = []
         cls_label  = []
         value_masks = []
-        # récupère d'abord ce qu'il faut, en prévoyant un fallback pour value_mask
         for f in features:
             lab = torch.tensor(f["labels"], dtype=torch.long)
             labels.append(lab)
@@ -252,10 +251,8 @@ class CausalLMPadCollator:
             cls_label.append(int(f.get("cls_label", -1)))
             vm = f.get("value_mask", None)
             if vm is None:
-                # fallback : pondère toutes les positions supervisées (labels != -100)
                 vm = [1 if t != -100 else 0 for t in f["labels"]]
             value_masks.append(torch.tensor(vm, dtype=torch.long))
-            # on nettoie pour laisser DataCollatorWithPadding bosser
             f.pop("labels", None); f.pop("split_idx", None); f.pop("cls_label", None); f.pop("value_mask", None)
 
         batch = self._padder(features)
@@ -516,7 +513,7 @@ trainer = MultiTaskTrainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     callbacks=[
-        EarlyStoppingCallback(early_stopping_patience=2),  # <<< patience ↑
+        EarlyStoppingCallback(early_stopping_patience=2),
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),

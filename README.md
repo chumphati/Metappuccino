@@ -42,7 +42,7 @@ To install Metappuccino, three steps have to be completed: fetching the LLM mode
 
 ### Download the LLM Model
 
-#### MetappucinoLLModel: Metappuccino's LLM
+#### MetappuccinoLLModel: Metappuccino's LLM
 A specific model based on Mistral 7B has been fine-tuned to achieve better performance than open source models (by Sept. 2025). 
 It can be used in Metappuccino by downloading it and providing the path to it in the settings when launching (`--model`).
 
@@ -51,7 +51,7 @@ It can be used in Metappuccino by downloading it and providing the path to it in
 ```
 
 #### Open-source GGUF model
-If you don't want to use MetappucinoLLModel, you can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. 
+If you don't want to use MetappuccinoLLModel, you can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. 
 >Warning: This mode requires you to put the `--gguf` flag in Metappuccino, and requires a specific GPU configuration (see the [Additional setup](#additional-setup) section).
 
 *Example of downloading a gguf model from Hugging Face:*
@@ -83,7 +83,7 @@ pip install metappuccino-<VERSION>-py3-none-any.whl
 metappuccino --help
 ```
 
->Warning: if the model used is different from MetappucinoLLModel, an additional installation in the same python environment will be required (see section [Additional setup](#additional-setup)).
+>Warning: if the model used is different from MetappuccinoLLModel, an additional installation in the same python environment will be required (see section [Additional setup](#additional-setup)).
 
 #### Install from source
 ```bash
@@ -130,6 +130,12 @@ export CUDACXX=<CUDA_PATH>/bin/nvcc
 pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
 ```
 
+or directly from a precompiled CUDA wheel
+```bash
+#if CUDA 12.1
+pip install --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121 llama-cpp-python
+```
+
 This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
 
 >If you don't have a GPU available and you want to use an external model, you can only run the last line without exports and the model will be automatically loaded on CPU. Please note, however, that this will increase the calculation time considerably.
@@ -145,8 +151,7 @@ metappuccino \
   --res_dir "/abs/path/results" \
   --sample_input "/abs/path/runs.txt" \
   --env_requirement "/abs/path/.venv" \
-  --working_dir "/abs/path/work" \
-  --model "/abs/path/model.gguf" \
+  --model "/abs/path/MetappuccinoLLModel" \
   --iteration_limit 1 --gpus 0 --cpus 4 --mem "8gb" \
   --getmetadata --fillmetadata --associateinformation --visualisation \
   --local --verbose

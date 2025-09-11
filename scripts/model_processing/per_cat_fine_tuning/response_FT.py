@@ -31,19 +31,14 @@ model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 ALLOWED_CATS = ["no treatment", "unknown", "stable", "progressive", "success"]
 
 SYN2CANON = {
-    # no treatment
     "no treatment": "no treatment", "no tx": "no treatment", "none": "no treatment", "untreated": "no treatment",
     "treatment naive": "no treatment", "no therapy": "no treatment", "baseline": "no treatment",
-    # unknown
     "unknown": "unknown", "not applicable": "unknown", "n/a": "unknown", "na": "unknown", "none specified": "unknown",
     "not reported": "unknown", "unavailable": "unknown", "missing": "unknown", "dose-limiting toxicity": "unknown",
-    # stable
     "stable": "stable", "stable disease": "stable", "sd": "stable", "no change": "stable", "unchanged": "stable",
-    # progressive
     "progressive": "progressive", "progression": "progressive", "progressive disease": "progressive", "pd": "progressive",
     "worsened": "progressive", "worsening": "progressive", "relapse": "progressive", "no response": "progressive",
     "refractory": "progressive",
-    # success
     "success": "success", "responder": "success", "responded": "success", "response": "success",
     "effective": "success", "efficacy": "success", "benefit": "success", "improved": "success", "improvement": "success",
     "remission": "success", "partial response": "success", "complete response": "success", "cr": "success", "pr": "success",
@@ -109,12 +104,10 @@ for _df in (df_train, df_val, df_test):
     _df["response_cat"] = _df["output_raw"].apply(_canonize_label)
     _df["output_json"]  = _df["response_cat"].apply(lambda v: f'{{"response": "{_escape_json_val(v)}"}}')
 
-# filter empties
 before = len(df_train)
 df_train = df_train[df_train["response_cat"].astype(str).str.strip() != ""].copy()
 print(f"filter/train_dropped={before - len(df_train)}", flush=True)
 
-# show distributions
 from collections import Counter
 for name, _df in ("train", df_train), ("val", df_val), ("test", df_test):
     counts = Counter(_df["response_cat"].tolist())
@@ -360,7 +353,6 @@ cls_head = nn.Sequential(
 )
 cls_head.to(next(peft_model.parameters()).device)
 
-# class weights
 def _weights_from_counts(df):
     counts = np.array([(df["cls_label"]==i).sum() for i in range(num_classes)], dtype=np.float32)
     counts = np.maximum(counts, 1.0)

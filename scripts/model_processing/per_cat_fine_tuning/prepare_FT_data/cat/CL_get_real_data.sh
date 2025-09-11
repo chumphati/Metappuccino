@@ -45,8 +45,6 @@ echo "[2/3] Filter not empty"
     if (study_c[study] >= MPS) next
     if (sample_c[sample] >= MPA) next
     if (cell_c[cell] >= MPCL) next
-
-    # accept
     seen[run]=1
     study_c[study]++
     sample_c[sample]++

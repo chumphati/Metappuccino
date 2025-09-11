@@ -12,29 +12,39 @@
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
-METAPPUCCINO=${1:-$METAPPUCCINO}
-RES=${2:-$RES}
-ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
+set -euo pipefail
+
+METAPPUCCINO=${1:-${METAPPUCCINO:-}}
+RES=${2:-${RES:-}}
+ENV_REQUIREMENT=${3:-${ENV_REQUIREMENT:-}}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
-NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
-RUNS_INPUTS=${6:-$RUNS_INPUTS}
+NODE_WORK_PATH=${5:-${NODE_WORK_PATH:-}}
+RUNS_INPUTS=${6:-${RUNS_INPUTS:-}}
 
-source $ENV_REQUIREMENT/bin/activate
+if [[ -z "${RES:-}" ]]; then
+  echo "RES (results dir) is required" >&2
+  exit 1
+fi
 
-LOG_DIR=$RES/logs
-TMP_DIR=$RES/tmp
+LOG_DIR="$RES/logs"
+TMP_DIR="$RES/tmp"
+mkdir -p "$LOG_DIR" "$TMP_DIR"
 
-#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
+if [[ -n "${ENV_REQUIREMENT:-}" && -d "$ENV_REQUIREMENT" ]]; then
+  source "$ENV_REQUIREMENT/bin/activate" || true
+fi
+
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "download_metadata")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/download_metadata")"
 fi
 
-mkdir -p $SCRATCH_DIR
-cd $SCRATCH_DIR
+mkdir -p "$SCRATCH_DIR"
+cd "$SCRATCH_DIR"
+
 exec >"$LOG_DIR/download_metadata.out" 2>"$LOG_DIR/download_metadata.err"
 
 cleanup() {
@@ -46,14 +56,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cp "$METAPPUCCINO/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" $SCRATCH_DIR/
+if [[ -z "${METAPPUCCINO:-}" ]]; then
+  echo "METAPPUCCINO path is required" >&2
+  exit 1
+fi
+if [[ -z "${RUNS_INPUTS:-}" || ! -f "$RUNS_INPUTS" ]]; then
+  echo "RUNS_INPUTS file is missing: $RUNS_INPUTS" >&2
+  exit 1
+fi
+
+cp "$METAPPUCCINO/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" "$SCRATCH_DIR/"
 cp "$RUNS_INPUTS" "$SCRATCH_DIR/runs.txt"
 
 echo "Start $(date)"
 
-PY_VERBOSE=()
-if [[ "${VERBOSE^^}" == "TRUE" ]]; then
-  PY_VERBOSE+=(--verbose)
+VERBOSE_UP=$(printf '%s' "${VERBOSE:-}" | tr '[:lower:]' '[:upper:]')
+PY_VERBOSE=""
+if [[ "$VERBOSE_UP" = "TRUE" ]]; then
+  PY_VERBOSE="--verbose"
 fi
 
-python3 -u get_metadata_ncbi_ena.py --base_path $SCRATCH_DIR "${PY_VERBOSE[@]}"
+python3 -u get_metadata_ncbi_ena.py --base_path "$SCRATCH_DIR" $PY_VERBOSE
