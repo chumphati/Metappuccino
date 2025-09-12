@@ -12,3 +12,5 @@ openpyxl
 pyarrow
 fastparquet
 matplotlib
+sentence_transformers
+datasets

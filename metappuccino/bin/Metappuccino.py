@@ -36,8 +36,6 @@ def main():
                         help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
                         help="Path to the venv build with requirement.txt")
-    parser.add_argument("--partition", type=str, default="", required=True,
-                        help="Partition to request (required).")
     parser.add_argument("--working_dir", type=str, required=True,
                         help="Absolute path to the working directory on the compute node—preferably a local scratch location—with sufficient writable space. Examples: $SLURM_TMPDIR, $TMPDIR, /scratchlocal/$USER/$PBS_JOBID. Contents are temporary and may be cleaned up at job end.")
     parser.add_argument("--model", type=str, required=True,
@@ -60,10 +58,12 @@ def main():
                         help="Verbose output")
     parser.add_argument("--tmp_keep", action="store_true",
                         help="Keep final temporary file. Default = deleted.")
-    parser.add_argument("--iteration_limit", type=int, default=1, help="Number of attempts to restart inference if less than 30%% of categories have been predicted or if the JSON is malformed.")
+    parser.add_argument("--iteration_limit", type=int, default=0, help="Number of attempts to restart inference if less than 30%% of categories have been predicted or if the JSON is malformed.")
     parser.add_argument("--local", action="store_true",
                         help="Run steps locally (sequentially) instead of submitting to PBS/Slurm.")
     parser.add_argument("--node", type=str, default="", help="Specific node name to request (optional).")
+    parser.add_argument("--partition", type=str, default="",
+                        help="Partition to request.")
     parser.add_argument("--gpus", type=int, default=1, help="GPUs to use/request for LLM inference (passed to scheduler and as N_GPUS).")
     parser.add_argument("--cpus", type=int, default=30, help="CPUs to request from scheduler.")
     parser.add_argument("--mem", type=str, default="50gb", help="Memory to request from scheduler for LLM steps (e.g., '80gb').")
@@ -135,40 +135,39 @@ def main():
                 sys.exit(1)
 
         ##STEP 1: GET AND CLEAN METADATA
-        if args.getmetadata:
-            if not os.path.isfile(step1_0_flag):
-                if args.local:
-                    subprocess.run(["bash", init,
-                                    metappuccino_dir, res_dir, working_dir, env_dir],
-                                   check=True, env=env)
-                else:
-                    if shutil.which("qsub"):
-                        cmd = ["qsub"]
-                        if queue_req:
-                            cmd += ["-q", queue_req]
-                        pbs_l = "select=1"
-                        if cpus_req:
-                            pbs_l += f":ncpus={cpus_req}"
-                        if mem_req:
-                            pbs_l += f":mem={mem_req}"
-                        cmd += ["-l", pbs_l,
-                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir},ENV_REQUIREMENT={env_dir}", init]
-                        vprint("Submitting:", " ".join(cmd))
-                        subprocess.run(cmd, check=True, env=env)
-                    elif shutil.which("sbatch"):
-                        sbatch_opts = []
-                        if partition_req:
-                            sbatch_opts += ["--partition", partition_req]
-                        if cpus_req:
-                            sbatch_opts += [f"--cpus-per-task={cpus_req}"]
-                        if mem_req:
-                            sbatch_opts += [f"--mem={mem_req}"]
-                        cmd = ["sbatch", *sbatch_opts,
-                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir},ENV_REQUIREMENT={env_dir}", init]
-                        vprint("Submitting:", " ".join(cmd))
-                        subprocess.run(cmd, check=True, env=env)
-            wait_for_flag_file(step1_0_flag)
-            vprint("✔ Setup initialisation done!", file=sys.stdout)
+        if not os.path.isfile(step1_0_flag):
+            if args.local:
+                subprocess.run(["bash", init,
+                                metappuccino_dir, res_dir, working_dir, env_dir],
+                               check=True, env=env)
+            else:
+                if shutil.which("qsub"):
+                    cmd = ["qsub"]
+                    if queue_req:
+                        cmd += ["-q", queue_req]
+                    pbs_l = "select=1"
+                    if cpus_req:
+                        pbs_l += f":ncpus={cpus_req}"
+                    if mem_req:
+                        pbs_l += f":mem={mem_req}"
+                    cmd += ["-l", pbs_l,
+                            "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir},ENV_REQUIREMENT={env_dir}", init]
+                    vprint("Submitting:", " ".join(cmd))
+                    subprocess.run(cmd, check=True, env=env)
+                elif shutil.which("sbatch"):
+                    sbatch_opts = []
+                    if partition_req:
+                        sbatch_opts += ["--partition", partition_req]
+                    if cpus_req:
+                        sbatch_opts += [f"--cpus-per-task={cpus_req}"]
+                    if mem_req:
+                        sbatch_opts += [f"--mem={mem_req}"]
+                    cmd = ["sbatch", *sbatch_opts,
+                           f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},NODE_WORK_PATH={working_dir},ENV_REQUIREMENT={env_dir}", init]
+                    vprint("Submitting:", " ".join(cmd))
+                    subprocess.run(cmd, check=True, env=env)
+        wait_for_flag_file(step1_0_flag)
+        vprint("✔ Setup initialisation done!", file=sys.stdout)
 
         if args.getmetadata:
             if not os.path.isfile(step1_flag):

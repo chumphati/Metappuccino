@@ -12,24 +12,26 @@
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
 
+set -euo pipefail
+
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
 
-source $ENV_REQUIREMENT/bin/activate
+LOG_DIR="$RES/logs"
+TMP_DIR="$RES/tmp"
+mkdir -p "$LOG_DIR" "$TMP_DIR"
 
-LOG_DIR=$RES/logs
-TMP_DIR=$RES/tmp
+source "$ENV_REQUIREMENT/bin/activate" || true
 
-#SCRATCH_DIR="/scratchlocal/$USER/${PBS_JOBID:-$SLURM_JOB_ID}"
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d -p "${TMP_DIR}" "normalize_final")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/normalize_final")"
 fi
 
 mkdir -p "$SCRATCH_DIR"
@@ -50,17 +52,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cp "$TMP_DIR/database_metadata_curated.csv" $SCRATCH_DIR/
-cp -r "$RES/COMPLETED_INFERENCE/METADATA_LLM_INFERENCE" $SCRATCH_DIR/
-cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" $SCRATCH_DIR/
-cp "$METAPPUCCINO/scripts/normalize_graph/norm_complete.py" $SCRATCH_DIR/
+cp "$TMP_DIR/database_metadata_curated.csv" "$SCRATCH_DIR/"
+cp -r "$RES/COMPLETED_INFERENCE/METADATA_LLM_INFERENCE" "$SCRATCH_DIR/"
+cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" "$SCRATCH_DIR/"
+cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" "$SCRATCH_DIR/"
+cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" "$SCRATCH_DIR/"
+cp "$METAPPUCCINO/scripts/normalize_graph/norm_complete.py" "$SCRATCH_DIR/"
 
 echo "Start $(date)"
 
 PY_VERBOSE=()
-if [[ "${VERBOSE^^}" == "TRUE" ]]; then
+VERBOSE_UP=$(printf '%s' "${VERBOSE:-}" | tr '[:lower:]' '[:upper:]')
+if [[ "$VERBOSE_UP" = "TRUE" ]]; then
   PY_VERBOSE+=(--verbose)
 fi
 

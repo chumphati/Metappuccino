@@ -6,14 +6,14 @@ from llama_cpp import Llama
 import torch
 import sys
 import argparse
-import math
+import time
 import numpy as np
 import re
 import json
 import csv
 from collections import defaultdict
 
-parser = argparse.ArgumentParser(description="Process metadata with LLM")
+parser = argparse.ArgumentParser(description="Process metadata with LLM (corrected)")
 parser.add_argument("--base_path", type=str, required=True)
 parser.add_argument("--input_metadata_path", type=str, required=True)
 parser.add_argument("--error_file_path", type=str, required=True)
@@ -21,6 +21,8 @@ parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
+parser.add_argument("--max_value_tokens", type=int, default=128)
+parser.add_argument("--strict_match_training", action="store_true", help="Per-category prompting aligned with training format")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -31,17 +33,18 @@ log_file_path       = args.log_file_path
 FLAG_FILE           = args.flag_file
 initial_n_ctx       = args.initial_n_ctx
 model               = args.model
+max_value_tokens    = args.max_value_tokens
+STRICT_MATCH_TRAINING = args.strict_match_training
 
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir          = os.path.join(base_path, "METADATA_LLM_INFERENCE")
 skipped_runs_path   = os.path.join(base_path, "skipped_runs.txt")
-ambi_cl_path   = os.path.join(base_path, "ambiguous_cell_lines.csv")
+ambi_cl_path        = os.path.join(base_path, "ambiguous_cell_lines.csv")
 model_path          = os.path.join(base_path, model)
 error_file_header   = "run_accession\tsummary"
 
-sys.stdout = open(log_file_path, "a")
+sys.stdout = open(log_file_path, "a", encoding="utf-8")
 sys.stderr = sys.stdout
-
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
@@ -61,8 +64,9 @@ def get_llama_model(path, ctx):
         use_mmap=True,
         n_threads=4,
         logits_all=True,
-        flash_attn=True
+        flash_attn=True,
     )
+
 
 def write_reload_file(fp, header, parts):
     dirpath = os.path.dirname(fp)
@@ -70,39 +74,13 @@ def write_reload_file(fp, header, parts):
         os.makedirs(dirpath, exist_ok=True)
     entry = "\t".join(parts)
     if not os.path.exists(fp):
-        with open(fp, "w") as f:
+        with open(fp, "w", encoding="utf-8") as f:
             f.write(header + "\n")
-    with open(fp, "r+") as f:
+    # Avoid duplicates
+    with open(fp, "r+", encoding="utf-8") as f:
         content = f.read()
         if entry not in content:
             f.write(entry + "\n")
-
-def calculate_entropy_optimized(logprobs):
-    arr = np.array(logprobs)
-    arr -= np.max(arr)
-    probs = np.exp(arr)
-    probs /= probs.sum()
-    return float(-np.sum(probs * np.log(probs + 1e-10)))
-
-def find_subsequence(full, sub):
-    L, l = len(full), len(sub)
-    for i in range(L - l + 1):
-        if full[i:i+l] == sub:
-            return i
-    return -1
-
-def get_token_spans(text, tokens):
-    spans = []
-    offset = 0
-    for tok in tokens:
-        decoded = llm.detokenize([tok]).decode("utf-8", errors="ignore")
-        offset = text.find(decoded, offset)
-        if offset == -1:
-            spans.append(None)
-        else:
-            spans.append(offset)
-            offset += len(decoded)
-    return spans
 
 
 def load_ambiguous_map(fp):
@@ -115,12 +93,13 @@ def load_ambiguous_map(fp):
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
         except csv.Error:
-            class _D: delimiter = ","
+            class _D: delimiter = ","  # fallback
             dialect = _D()
         reader = csv.reader(f, dialect)
         header_peek = next(reader, None)
         if header_peek is None:
             return {}
+
         def _push(row):
             if not row or len(row) < 2:
                 return
@@ -128,6 +107,7 @@ def load_ambiguous_map(fp):
             val = row[1].strip()
             if run_id and val:
                 ambi[run_id].append(val)
+
         if header_peek and not re.search(r"run|accession", " ".join(header_peek), re.I):
             _push(header_peek)
         for row in reader:
@@ -135,72 +115,29 @@ def load_ambiguous_map(fp):
     return {k: "; ".join(v) for k, v in ambi.items()}
 
 
-def tokenize_pieces(llm, text):
-    ids = llm.tokenize(text.encode("utf-8"), add_bos=False)  # IMPORTANT: pas de BOS
-    return [llm.detokenize([tid]).decode("utf-8", errors="ignore") for tid in ids]
+def clean_val(t: str) -> str:
+    t = (t or "").replace("\r", " ").replace("\n", " ")
+    t = re.sub(r"\s+", " ", t)
+    if '"' in t:
+        t = t.split('"', 1)[0]
+    t = re.sub(r"\s*[,;}\]]\s*$", "", t)
+    t = t.strip()
+    return t if t else "unknown"
 
 
-def build_category_token_patterns(keys, llm):
-    patterns = {}
-    suffixes = ['"', '":', '": ', '": "']
-    prefixes = ['', ' ', '\n', ', ', '\n  ']
-
-    for k in keys:
-        variants = []
-        for suf in suffixes:
-            s = f'"{k}{suf}'
-            variants.append(tokenize_pieces(llm, s))
-            for pref in prefixes[1:]:
-                variants.append(tokenize_pieces(llm, pref + s))
-        dedup = []
-        seen = set()
-        for v in variants:
-            tup = tuple(v)
-            if tup not in seen:
-                seen.add(tup)
-                dedup.append(v)
-        patterns[k] = dedup
-    return patterns
-
-
-def find_subsequence_any(full_tokens, list_of_patterns):
-    for pat in list_of_patterns:
-        idx = find_subsequence(full_tokens, pat)
-        if idx >= 0:
-            return idx
-    return -1
+def calc_entropy_from_logprobs(lp_list):
+    vals = [x for x in (lp_list or []) if x is not None]
+    if not vals:
+        return 0.0
+    arr = np.array(vals, dtype=np.float64)
+    arr -= np.max(arr)
+    probs = np.exp(arr)
+    probs /= probs.sum()
+    ent = -np.sum(probs * np.log(probs + 1e-12))
+    return float(ent)
 
 ##########################################################################################
-#MAIN
-process = psutil.Process(os.getpid())
-
-use_gpu = torch.cuda.is_available()
-vprint(f"use_gpu: {use_gpu}")
-gpu_count = torch.cuda.device_count() if use_gpu else 0
-vprint(f"Used GPU count: {gpu_count}")
-
-if use_gpu and gpu_count > 0:
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
-    vprint(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
-else:
-    vprint("No GPU detected → using CPU only")
-
-llm = get_llama_model(model_path, initial_n_ctx)
-
-with open(input_metadata_path) as mf:
-    header = mf.readline()
-    metadata_lines = mf.readlines()
-
-with open(raw_final_info_path) as rf:
-    raw = rf.readlines()
-    raw_headers = raw[0].strip().split("\t")
-    raw_data = {r.split("\t")[0]: r.strip().split("\t") for r in raw[1:]}
-    vprint(raw_data)
-
-ambi_map = load_ambiguous_map(ambi_cl_path)
-
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+# DATA & CAT
 
 categories = [
     "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
@@ -227,8 +164,88 @@ definitions = {
     "is_cancer": "return 'True' if the disease is cancer related, 'False' otherwise"
 }
 
+##########################################################################################
+#MAIN
+process = psutil.Process(os.getpid())
+
+use_gpu = torch.cuda.is_available()
+vprint(f"use_gpu: {use_gpu}")
+gpu_count = torch.cuda.device_count() if use_gpu else 0
+vprint(f"Used GPU count: {gpu_count}")
+
+if use_gpu and gpu_count > 0:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
+    vprint(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
+else:
+    vprint("No GPU detected → using CPU only")
+
+llm = get_llama_model(model_path, initial_n_ctx)
+
+with open(input_metadata_path, "r", encoding="utf-8") as mf:
+    header = mf.readline()
+    metadata_lines = mf.readlines()
+
+with open(raw_final_info_path, "r", encoding="utf-8") as rf:
+    raw = rf.readlines()
+    raw_headers = raw[0].rstrip("\n").split("\t")
+    raw_data = {r.split("\t")[0]: r.rstrip("\n").split("\t") for r in raw[1:]}
+    vprint(f"Loaded curated rows: {len(raw_data)}")
+
+ambi_map = load_ambiguous_map(ambi_cl_path)
+
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
 skipped_runs = []
 
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint("[INFO] Model (gguf):", model_path)
+
+# Helper to build prompts (single-category when STRICT_MATCH_TRAINING, otherwise multi-cat JSON like production)
+
+def build_prompt_single_category(run, summary, extra_info_str, key):
+    return f"""Run accession: {run}
+Summary: {summary} {extra_info_str}
+
+Categories and definitions:
+- {key}: {definitions[key]}
+
+For each category below:
+- Extract information from the summary if possible
+- If one value is impossible to extract, even by deducing it, return "unknown"
+
+BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
+
+Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
+
+Here is the output:
+{{\n"{key}": """  # we will stop at the closing quote
+
+
+def build_prompt_multi_category(run, summary, extra_info_str):
+    inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in categories)
+    return f"""Run accession: {run}
+Summary: {summary} {extra_info_str}
+
+Categories and definitions:
+{inst_lines}
+
+For each category below:
+- Infer from the summary if possible
+- The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
+- If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
+
+BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
+
+Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
+
+Here is the output:
+"""
+
+
+# Process each run
 for idx, line in enumerate(metadata_lines):
     if not line.strip():
         write_reload_file(error_file_path, error_file_header, [f"LINE_{idx}", "empty line"])
@@ -249,57 +266,55 @@ for idx, line in enumerate(metadata_lines):
         skipped_runs.append(run)
         continue
 
-    na_columns = categories.copy()
-    vprint(na_columns)
-
     raw_vals = raw_data[run]
     extra_info = []
     for col, val in zip(raw_headers, raw_vals):
-        if val and val != "":
+        if val:
             extra_info.append(f"- {col}: {val}")
-
     ambi_val = ambi_map.get(run)
     if ambi_val:
         extra_info.append(f"{ambi_val}")
-
     extra_info_str = " ".join(extra_info) if extra_info else ""
 
     vprint(f"\n[{idx+1}/{len(metadata_lines)}] {run}", flush=True)
     # print_memory_usage(process)
 
-    inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in na_columns)
-    fmt_keys   = ", ".join(f'"{c}": "<value>"' for c in na_columns)
+    if STRICT_MATCH_TRAINING:
+        out = {}
+        entropies = {}
+        for key in categories:
+            prefix_text = build_prompt_single_category(run, summary, extra_info_str, key)
+            vprint(f"[PEFT] {run} | {key:16s} -> active: (none; llama.cpp)")
+            vprint(f"[PROMPT] {run} | {key}\n{prefix_text}")
+            tcat0 = time.perf_counter()
+            resp = llm(prefix_text, max_tokens=max_value_tokens, stop=['"'], logprobs=True, echo=False)
+            text = resp["choices"][0]["text"]
+            logp = resp["choices"][0].get("logprobs", {}).get("token_logprobs", [])
+            out[key] = clean_val(text)
+            entropies[key] = calc_entropy_from_logprobs(logp)
+            vprint(f"[OUT] {run} | {key}: {out[key]} | H={entropies[key]:.6f}")
+            vprint(f"[TIMING][cat] {run} | {key}: {time.perf_counter() - tcat0:.4f}s")
+            vprint("----------------------------------------------------------------------------")
 
-    prompt = f"""Run accession: {run}
-            Summary: {summary} {extra_info_str} 
-            
-            Categories and definitions:
-            {inst_lines}
-            
-            For each category below:
-            - Infer from the summary if possible
-            - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
-            - If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
-            
-            BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
-            FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
-            
-            Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
-            
-            Here is the output:
-            """
+        output_payload = {run: out, "entropy": entropies}
 
-    vprint("PROMPT:", flush=True)
-    vprint(prompt, flush=True)
+    else:
+        prompt = build_prompt_multi_category(run, summary, extra_info_str)
+        vprint("PROMPT:", flush=True)
+        vprint(prompt, flush=True)
+        vprint("BEGIN:", flush=True)
+        resp = llm(prompt, max_tokens=350, logprobs=True)
+        vprint("ANSWER:", flush=True)
+        vprint(resp["choices"][0]["text"])
+        text = resp["choices"][0]["text"].strip()
 
-    vprint("BEGIN:", flush=True)
-    resp      = llm(prompt, max_tokens=350, logprobs=True)
-    vprint("ANSWER:", flush=True)
-    vprint(resp["choices"][0]["text"])
-    text      = resp["choices"][0]["text"].strip()
+        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+        if not m:
+            vprint("No json bloc in the answer")
+            write_reload_file(error_file_path, error_file_header, [run, summary])
+            skipped_runs.append(run)
+            continue
 
-    m = re.search(r'\{.*\}', text, flags=re.DOTALL)
-    if m:
         json_str = m.group(0)
         try:
             parsed_json = json.loads(json_str)
@@ -309,112 +324,91 @@ for idx, line in enumerate(metadata_lines):
             write_reload_file(error_file_path, error_file_header, [run, summary])
             skipped_runs.append(run)
             continue
-    else:
-        vprint("No json bloc in the answer")
-        write_reload_file(error_file_path, error_file_header, [run, summary])
-        skipped_runs.append(run)
-        continue
 
-    category_token_patterns = build_category_token_patterns(categories, llm)
+        tokens = resp["choices"][0]["logprobs"]["tokens"]
+        logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
+        ordered_keys = list(parsed_json.keys())
+        entropy_dict = {}
 
-    tokens = resp["choices"][0]["logprobs"]["tokens"]
-    logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
+        def tokenize_pieces(llm_obj, text_):
+            ids = llm_obj.tokenize(text_.encode("utf-8"), add_bos=False)
+            return [llm_obj.detokenize([tid]).decode("utf-8", errors="ignore") for tid in ids]
 
-    ordered_keys = list(parsed_json.keys())
-    entropy_dict = {}
+        def build_category_token_patterns(keys_, llm_obj):
+            patterns_ = {}
+            suffixes = ['"', '":', '": ', '": "']
+            prefixes = ['', ' ', '\n', ', ', '\n  ']
+            for k in keys_:
+                variants = []
+                for suf in suffixes:
+                    s = f'"{k}{suf}'
+                    variants.append(tokenize_pieces(llm_obj, s))
+                    for pref in prefixes[1:]:
+                        variants.append(tokenize_pieces(llm_obj, pref + s))
+                dedup = []
+                seen = set()
+                for v in variants:
+                    tup = tuple(v)
+                    if tup not in seen:
+                        seen.add(tup)
+                        dedup.append(v)
+                patterns_[k] = dedup
+            return patterns_
 
-    for key in ordered_keys:
-        pats = category_token_patterns.get(key, [])
-        if not pats:
-            entropy_dict[key] = None
-            continue
+        def find_subsequence(full, sub):
+            L, l = len(full), len(sub)
+            for i in range(L - l + 1):
+                if full[i:i + l] == sub:
+                    return i
+            return -1
 
-        idx = find_subsequence_any(tokens, pats)
-        start = idx + len(pats[0]) if idx >= 0 else None
-        if idx >= 0:
-            matched_len = None
-            for pat in pats:
-                if find_subsequence(tokens, pat) == idx:
-                    matched_len = len(pat)
-                    break
-            start = idx + (matched_len or len(pats[0]))
-        else:
-            start = None
+        def find_subsequence_any(full_tokens, list_of_patterns):
+            for pat in list_of_patterns:
+                idx = find_subsequence(full_tokens, pat)
+                if idx >= 0:
+                    return idx, len(pat)
+            return -1, 0
 
-        start = idx + len(pat) if idx >= 0 else None
-        if start is None:
-            entropy_dict[key] = None
-            continue
+        category_token_patterns = build_category_token_patterns(categories, llm)
 
-        end = len(tokens)
-        next_idx = ordered_keys.index(key) + 1
-        while next_idx < len(ordered_keys):
-            next_pat = category_token_patterns.get(ordered_keys[next_idx])
-            if next_pat is not None:
-                ni = find_subsequence(tokens, next_pat)
+        for key in ordered_keys:
+            pats = category_token_patterns.get(key, [])
+            if not pats:
+                entropy_dict[key] = None
+                continue
+
+            idx, matched_len = find_subsequence_any(tokens, pats)
+            if idx < 0:
+                entropy_dict[key] = None
+                continue
+            start = idx + matched_len
+
+            end = len(tokens)
+            for next_key in ordered_keys[ordered_keys.index(key) + 1:]:
+                next_pats = category_token_patterns.get(next_key, [])
+                if not next_pats:
+                    continue
+                ni, _ = find_subsequence_any(tokens, next_pats)
                 if ni >= 0:
                     end = ni
-                break
-            next_idx += 1
+                    break
 
-        if end <= start:
-            entropy_dict[key] = None
-            continue
+            if end <= start:
+                entropy_dict[key] = None
+                continue
 
-        segment_token_ids = tokens[start:end]
-        segment_text = ''.join(segment_token_ids)
-        segment_logits = logprobs[start:end]
-        vprint(f"-- Key «{key}»:")
-        vprint(f"    All tokens : \t{tokens}")
-        vprint(f"   Tokens ids : {segment_token_ids}")
-        vprint(f"   Tokens text: {segment_text!r}")
-        vprint(f"   Logits     : {segment_logits}")
+            segment_logprobs = logprobs[start:end]
+            entropy_dict[key] = calc_entropy_from_logprobs(segment_logprobs)
 
-        segment_logits = logprobs[start:end]
-        entropy_dict[key] = calculate_entropy_optimized(segment_logits)
+        output_payload = {run: parsed_json, "entropy": entropy_dict}
 
-    # for i, key in enumerate(ordered_keys):
-    #     pat = category_token_patterns[key]
-    #     idx = find_subsequence(tokens, pat)
-    #     start = idx + len(pat) if idx >= 0 else None
-    #     if start is None:
-    #         entropy_dict[key] = None
-    #         continue
-    #
-    #     if i + 1 < len(ordered_keys):
-    #         next_pat = category_token_patterns[ordered_keys[i + 1]]
-    #         next_idx = find_subsequence(tokens, next_pat)
-    #         end = next_idx if next_idx >= 0 else len(tokens)
-    #     else:
-    #         end = len(tokens)
-    #
-    #     if end <= start:
-    #         entropy_dict[key] = None
-    #         continue
-    #
-    #     segment_token_ids = tokens[start:end]
-    #     segment_text = ''.join(segment_token_ids)
-    #     segment_logits = logprobs[start:end]
-    #     vprint(f"-- Key «{key}»:")
-    #     vprint(f"    All tokens : \t{tokens}")
-    #     vprint(f"   Tokens ids : {segment_token_ids}")
-    #     vprint(f"   Tokens text: {segment_text!r}")
-    #     vprint(f"   Logits     : {segment_logits}")
-    #
-    #     segment = logprobs[start:end]
-    #     entropy_dict[key] = calculate_entropy_optimized(segment)
-
-    output = {run: parsed_json, "entropy": entropy_dict}
-    vprint("Final output:", flush=True)
-    vprint(output)
     out_fp = os.path.join(output_dir, f"{run}.json")
-    with open(out_fp, "w") as of:
-        json.dump(output, of, indent=2)
+    with open(out_fp, "w", encoding="utf-8") as of:
+        json.dump(output_payload, of, indent=2, ensure_ascii=False)
 
-with open(skipped_runs_path, "w") as sf:
+with open(skipped_runs_path, "w", encoding="utf-8") as sf:
     for r in skipped_runs:
         sf.write(r + "\n")
-
 
 sys.stdout.close()
 

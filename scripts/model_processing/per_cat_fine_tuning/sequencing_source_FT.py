@@ -12,6 +12,7 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from collections import Counter
 
 parser = argparse.ArgumentParser(description="Fine-tune sequencing_source (multitask) exact 3-class classification with closed-set scoring")
@@ -64,7 +65,8 @@ peft_config = LoraConfig(
 peft_model = get_peft_model(base_model, peft_config)
 peft_model.train()
 
-RULES = "\nTask: Determine sequencing_source among ['spatial','bulk','single cell'] from transcriptomics context. Choose 'single cell' for single-cell or single-nucleus RNA-seq (scRNA-seq, snRNA-seq, 10x Chromium, SMART-Seq, Drop-seq, inDrops, SPLiT-seq). Choose 'spatial' for spatial transcriptomics (10x Visium, Xenium, CosMx, GeoMx, Slide-seq, MERFISH, seqFISH, Stereo-seq, HDST). Otherwise choose 'bulk'. Return strictly JSON.\n"
+# NOTE: consigne neutre (pas de "otherwise choose bulk")
+RULES = "\nTask: Determine sequencing_source among ['spatial','bulk','single cell'] from transcriptomics context. Choose 'single cell' for single-cell or single-nucleus RNA-seq (scRNA-seq, snRNA-seq, 10x Chromium, SMART-Seq, Drop-seq, inDrops, SPLiT-seq). Choose 'spatial' for spatial transcriptomics (10x Visium, Xenium, CosMx, GeoMx, Slide-seq, MERFISH, seqFISH, Stereo-seq, HDST). Choose 'bulk' when the context explicitly indicates bulk RNA-seq or lacks single-cell/spatial cues. Return strictly JSON.\n"
 
 print("Load datasets", flush=True)
 
@@ -142,12 +144,28 @@ for _df in (df_train, df_val, df_test):
     _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"sequencing_source": "{_escape_json_val(v)}"}}')
     _df["cls_label"]   = _df["output_raw"].map(lambda x: label2id.get(x, label2id["bulk"]))
 
+# distribution + poids (Class-Balanced Loss)
 class_counts = Counter(df_train["output_raw"].tolist())
-weights = torch.tensor([1.0 / math.sqrt(max(1, class_counts.get(id2label[i], 1))) for i in range(len(id2label))], dtype=torch.float32)
-weights = weights / weights.mean()
 print("Train distribution:", dict(class_counts), flush=True)
-print("CE class weights:", weights.tolist(), flush=True)
-print(f"Label space (train) size = {len(ALLOWED)}", flush=True)
+
+beta = 0.999
+cb_weights = []
+for i in range(len(ALLOWED)):
+    n = max(1, class_counts.get(id2label[i], 1))
+    w = (1.0 - beta) / (1.0 - (beta ** n))
+    cb_weights.append(1.0 / w)
+cb_weights = torch.tensor(cb_weights, dtype=torch.float32)
+cb_weights = cb_weights / cb_weights.mean()
+print("CE class weights (CBLoss):", cb_weights.tolist(), flush=True)
+
+# sampler équilibré
+inv_freq = {k: 1.0 / max(1, class_counts.get(k, 1)) for k in ALLOWED}
+train_sample_weights = np.array([inv_freq[row.output_raw] for row in df_train.itertuples(index=False)], dtype=np.float64)
+
+# priors pour calibration du mode génératif fermé
+total_n = sum(class_counts.values())
+train_priors = {k: class_counts.get(k, 0)/max(1,total_n) for k in ALLOWED}
+print("Train priors:", train_priors, flush=True)
 
 datasets = {
     "train": Dataset.from_pandas(df_train[["prompt","output_json","cls_label"]]),
@@ -231,7 +249,7 @@ def _score_candidate_logprob(model, context_ids, candidate_ids):
             ids = torch.cat([ids, torch.tensor([[tid]], device=dev)], dim=1)
     return total / max(1, len(candidate_ids))
 
-def _predict_closed_set(model, prompt):
+def _predict_closed_set(model, prompt, prior=None, tau=1.0):
     dev = next(model.parameters()).device
     prefix = prompt + RULES + '{"sequencing_source": "'
     ids = tokenizer(prefix, return_tensors="pt", truncation=True, max_length=3500, add_special_tokens=False).to(dev)["input_ids"]
@@ -239,27 +257,59 @@ def _predict_closed_set(model, prompt):
     for lab in ALLOWED:
         cand_ids = tokenizer(lab, add_special_tokens=False)["input_ids"]
         s = _score_candidate_logprob(model, ids, cand_ids)
+        if prior is not None and lab in prior:
+            s = s - tau * math.log(max(prior[lab], 1e-8))
         scores[lab] = s
     best = max(scores.items(), key=lambda kv: kv[1])[0]
-    print("debug/scores:", scores, flush=True)
+    print("debug/gen_scores:", scores, flush=True)
     return best
 
-def gen_eval_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
+def _predict_head(model, cls_head, prompt):
+    dev = next(model.parameters()).device
+    text = prompt + RULES
+    enc = tokenizer(text, return_tensors="pt", truncation=True, max_length=3500, add_special_tokens=False).to(dev)
+    with torch.no_grad():
+        out = model(**enc, output_hidden_states=True)
+        hidden = out.hidden_states[-1]  # [1, T, H]
+        vec = hidden[:, -1, :]          # last token of input (no labels appended)
+        if next(cls_head.parameters()).device != vec.device:
+            cls_head.to(vec.device)
+        logits = cls_head(vec)
+        probs = torch.softmax(logits.float(), dim=-1)[0].tolist()
+    pred_id = int(np.argmax(probs))
+    pred = id2label[pred_id]
+    print("debug/head_probs:", {id2label[i]: float(probs[i]) for i in range(len(ALLOWED))}, flush=True)
+    return pred
+
+def gen_eval_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval", mode="head", cls_head=None, prior=None):
     model.eval()
     n_ok, n_all = 0, 0
+    per_class = {k: {"tp":0, "tot":0} for k in ALLOWED}
     rows = hf_dataset.to_pandas()
     if max_examples is not None:
         rows = rows.sample(min(max_examples, len(rows)), random_state=42)
-    for i, r in rows.iterrows():
+    for _, r in rows.iterrows():
         prompt   = r["prompt"].strip()
         expected = r["output_json"]
         ref_val  = _extract_value(expected)
-        pred_val = _predict_closed_set(model, prompt)
+        if mode == "gen":
+            pred_val = _predict_closed_set(model, prompt, prior=prior, tau=1.0)
+        else:
+            pred_val = _predict_head(model, cls_head, prompt)
         ok = (pred_val == ref_val)
         n_ok += int(ok); n_all += 1
+        per_class[ref_val]["tp"] += int(ok); per_class[ref_val]["tot"] += 1
         print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" match={ok}', flush=True)
     model.train()
-    return (n_ok / max(1, n_all))
+    acc = (n_ok / max(1, n_all))
+    recalls = []
+    for k in ALLOWED:
+        tot = max(1, per_class[k]["tot"])
+        rec = per_class[k]["tp"] / tot
+        recalls.append(rec)
+    bal_acc = float(np.mean(recalls))
+    print(f"{tag}/accuracy={acc:.4f} balanced_accuracy={bal_acc:.4f}", flush=True)
+    return acc, bal_acc, {k: per_class[k]["tp"]/max(1,per_class[k]["tot"]) for k in ALLOWED}
 
 writer = SummaryWriter(tb_dir)
 
@@ -295,23 +345,26 @@ class GradNormLogger(TrainerCallback):
             writer.add_scalar("grads/max_norm",   max_g,   state.global_step)
 
 class GenEvalCallback(TrainerCallback):
-    def __init__(self, eval_ds, max_examples=128):
-        self.eval_ds = eval_ds; self.max_examples = max_examples
+    def __init__(self, eval_ds, max_examples=128, cls_head=None, prior=None):
+        self.eval_ds = eval_ds; self.max_examples = max_examples; self.cls_head = cls_head; self.prior = prior
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
         model     = kwargs.get("model", None)
         tokenizer = kwargs.get("tokenizer", None)
         if model is None or tokenizer is None: return
-        acc = gen_eval_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
-        print(f"eval/accuracy_sequencing_source={acc:.4f} at step={state.global_step}", flush=True)
+        acc, bal_acc, _ = gen_eval_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval", mode="head", cls_head=self.cls_head, prior=self.prior)
+        print(f"eval/accuracy_sequencing_source={acc:.4f} eval/balanced_accuracy={bal_acc:.4f} at step={state.global_step}", flush=True)
         writer.add_scalar("eval/accuracy_sequencing_source", acc, state.global_step)
+        writer.add_scalar("eval/balanced_accuracy", bal_acc, state.global_step)
         if isinstance(metrics, dict):
             metrics["eval_accuracy_sequencing_source"] = float(acc)
+            metrics["eval_balanced_accuracy"] = float(bal_acc)
 
-print("Initial evaluation on validation with BASE model (closed-set scoring)", flush=True)
+print("Initial evaluation on validation with BASE model (closed-set scoring, prior-calibrated)", flush=True)
 base_model.eval()
-init_val_acc = gen_eval_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
-print(f"initial/validation_accuracy_sequencing_source={init_val_acc:.4f}", flush=True)
-writer.add_scalar("initial/validation_accuracy_sequencing_source", init_val_acc, 0)
+init_val_acc_gen, init_val_bal_gen, _ = gen_eval_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial_gen", mode="gen", prior=train_priors)
+print(f"initial/validation_gen_accuracy={init_val_acc_gen:.4f} initial/validation_gen_balanced_accuracy={init_val_bal_gen:.4f}", flush=True)
+writer.add_scalar("initial/validation_gen_accuracy", init_val_acc_gen, 0)
+writer.add_scalar("initial/validation_gen_balanced_accuracy", init_val_bal_gen, 0)
 writer.flush()
 
 hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None)
@@ -325,16 +378,14 @@ cls_head = nn.Sequential(
 cls_head.to(next(peft_model.parameters()).device)
 
 class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.7, class_weights=None, **kwargs):
+    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.7, class_weights=None, train_sample_weights=None, **kwargs):
         super().__init__(**kwargs)
         self.cls_head = cls_head
         self.cls_weight = float(cls_weight)
         self.label_smoothing = 0.05
-        if class_weights is None:
-            self.class_weights = torch.ones(num_classes, dtype=torch.float32)
-        else:
-            self.class_weights = class_weights.detach().clone().float().cpu()
-        print("debug/class_weights:", self.class_weights.tolist(), flush=True)
+        self.class_weights = (class_weights.detach().clone().float().cpu() if class_weights is not None else torch.ones(num_classes, dtype=torch.float32))
+        self.train_sample_weights = torch.tensor(train_sample_weights, dtype=torch.double) if train_sample_weights is not None else None
+        print("debug/class_weights(CB):", self.class_weights.tolist(), flush=True)
 
     def create_optimizer(self):
         if self.optimizer is None:
@@ -347,14 +398,23 @@ class MultiTaskTrainer(Trainer):
             self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
         return self.optimizer
 
+    def get_train_dataloader(self):
+        if self.train_dataset is None:
+            return None
+        if self.train_sample_weights is not None:
+            sampler = WeightedRandomSampler(weights=self.train_sample_weights, num_samples=len(self.train_sample_weights), replacement=True)
+            return DataLoader(self.train_dataset, batch_size=self.args.train_batch_size, sampler=sampler, collate_fn=self.data_collator, drop_last=self.args.dataloader_drop_last, num_workers=self.args.dataloader_num_workers, pin_memory=self.args.dataloader_pin_memory)
+        return super().get_train_dataloader()
+
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
         metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
         try:
             ds = datasets.get("validation", None)
-            acc = gen_eval_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=256, tag=metric_key_prefix)
+            acc, bal_acc, per_cls = gen_eval_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=256, tag=metric_key_prefix, mode="head", cls_head=self.cls_head, prior=train_priors)
             metrics[f"{metric_key_prefix}_accuracy_sequencing_source"] = float(acc)
+            metrics[f"{metric_key_prefix}_balanced_accuracy"] = float(bal_acc)
             step = getattr(self.state, "global_step", -1)
-            print(f"{metric_key_prefix}/accuracy_sequencing_source={acc:.4f} at step={step}", flush=True)
+            print(f"{metric_key_prefix}/accuracy_sequencing_source={acc:.4f} {metric_key_prefix}/balanced_accuracy={bal_acc:.4f} at step={step}", flush=True)
         except Exception as e:
             print(f"warn/eval_callback_exception: {e}", flush=True)
         return metrics
@@ -375,10 +435,10 @@ class MultiTaskTrainer(Trainer):
         if mask.any():
             ce = nn.CrossEntropyLoss(
                 reduction='mean',
-                weight=self.class_weights.to(logits.device, dtype=logits.dtype),
+                weight=self.class_weights.to(logits.device, dtype=torch.float32),
                 label_smoothing=self.label_smoothing
             )
-            cls_loss = ce(logits[mask], cls_label[mask])
+            cls_loss = ce(logits.float()[mask], cls_label[mask])
         else:
             cls_loss = torch.tensor(0.0, device=hidden.device, dtype=logits.dtype)
         loss = lm_loss + self.cls_weight * cls_loss
@@ -406,7 +466,7 @@ training_args = TrainingArguments(
     report_to=["tensorboard"],
     logging_dir=tb_dir,
     load_best_model_at_end=True,
-    metric_for_best_model="eval_accuracy_sequencing_source",
+    metric_for_best_model="eval_balanced_accuracy",
     greater_is_better=True,
     warmup_ratio=0.06,
     lr_scheduler_type="cosine",
@@ -425,11 +485,12 @@ trainer = MultiTaskTrainer(
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),
-        GenEvalCallback(datasets["validation"], max_examples=256)
+        GenEvalCallback(datasets["validation"], max_examples=256, cls_head=cls_head, prior=train_priors)
     ],
     cls_head=cls_head,
     cls_weight=args.cls_loss_weight,
-    class_weights=weights
+    class_weights=cb_weights,
+    train_sample_weights=train_sample_weights
 )
 
 print("Begin training", flush=True)
@@ -440,21 +501,23 @@ print("Save adapter only", flush=True)
 trainer.model.save_pretrained(adapter_out_dir)
 tokenizer.save_pretrained(adapter_out_dir)
 
-print("Evaluate on validation with closed-set scoring", flush=True)
-val_acc = gen_eval_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
-print(f"final/validation_accuracy_sequencing_source={val_acc:.4f}", flush=True)
-writer.add_scalar("final/validation_accuracy_sequencing_source", val_acc, trainer.state.global_step)
+print("Evaluate on validation with HEAD (primary) + GEN(calibrated)", flush=True)
+val_acc_head, val_bal_head, per_cls_head = gen_eval_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val_head", mode="head", cls_head=cls_head, prior=train_priors)
+val_acc_gen,  val_bal_gen,  _           = gen_eval_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val_gen",  mode="gen",  cls_head=None,      prior=train_priors)
+writer.add_scalar("final/validation_accuracy_head", val_acc_head, trainer.state.global_step)
+writer.add_scalar("final/validation_balanced_accuracy_head", val_bal_head, trainer.state.global_step)
+writer.add_scalar("final/validation_accuracy_gen", val_acc_gen, trainer.state.global_step)
+writer.add_scalar("final/validation_balanced_accuracy_gen", val_bal_gen, trainer.state.global_step)
 writer.flush()
 
-print("Generate on test set with closed-set scoring", flush=True)
-dev = next(trainer.model.parameters()).device
+print("Generate on test set (HEAD; primary inference)", flush=True)
 rows = datasets["test"].to_pandas()
 n_ok, n_all = 0, 0
 for i, r in rows.iterrows():
     prompt   = r["prompt"].strip()
     expected = r["output_json"]
     ref_val  = _extract_value(expected)
-    pred_val = _predict_closed_set(trainer.model, prompt)
+    pred_val = _predict_head(trainer.model, cls_head, prompt)
     pred_json = f'{{"sequencing_source": "{_escape_json_val(pred_val)}"}}'
     ok = (pred_val == ref_val)
     print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
@@ -464,6 +527,20 @@ for i, r in rows.iterrows():
     n_ok += int(ok); n_all += 1
 
 test_acc = (n_ok / max(1, n_all))
-print(f"final/test_accuracy_sequencing_source={test_acc:.4f}", flush=True)
-writer.add_scalar("final/test_accuracy_sequencing_source", test_acc, trainer.state.global_step)
+print(f"final/test_accuracy_sequencing_source(head)={test_acc:.4f}", flush=True)
+writer.add_scalar("final/test_accuracy_sequencing_source_head", test_acc, trainer.state.global_step)
+
+print("Generate on test set (GEN; calibrated, diagnostic only)", flush=True)
+n_ok, n_all = 0, 0
+for i, r in rows.iterrows():
+    prompt   = r["prompt"].strip()
+    expected = r["output_json"]
+    ref_val  = _extract_value(expected)
+    pred_val = _predict_closed_set(trainer.model, prompt, prior=train_priors, tau=1.0)
+    ok = (pred_val == ref_val)
+    n_ok += int(ok); n_all += 1
+gen_test_acc = (n_ok / max(1, n_all))
+print(f"final/test_accuracy_sequencing_source(gen_calibrated)={gen_test_acc:.4f}", flush=True)
+writer.add_scalar("final/test_accuracy_sequencing_source_gen_calibrated", gen_test_acc, trainer.state.global_step)
+
 writer.close()

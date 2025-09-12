@@ -35,7 +35,7 @@ if [[ -n "${PBS_JOBID:-}" ]]; then
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/reload_context_llm.XXXXXX")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/reload_context_llm")"
 fi
 
 mkdir -p "$SCRATCH_DIR"
@@ -142,7 +142,7 @@ PYCODE
               --error_file_path "$CHUNK_DIR/reload_model_bio_info_bis.${SHARD_ID}.txt" \
               --log_file_path "$CHUNK_DIR/llm_log_reload.${SHARD_ID}.txt" \
               --flag_file "$CHUNK_DIR/STEP3_2.flag.${SHARD_ID}" \
-              --initial_n_ctx 3500 \
+              --initial_n_ctx 3500 --strict_match_training \
               --model "$(basename "$MODEL")" "${PY_VERBOSE[@]}"
         fi
       fi
@@ -159,7 +159,7 @@ PYCODE
       rm -rf "$SCRATCH_DIR"/CHUNK_*
     else
       if [[ "$N_GPUS" -le 1 ]]; then
-        python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}"
+        python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --model "$SCRATCH_DIR/$(basename "$MODEL")" --strict_match_training "${PY_VERBOSE[@]}"
       else
         cat > "$SCRATCH_DIR/split_reload.py" << 'PYCODE'
 import argparse, os
@@ -202,7 +202,7 @@ PYCODE
                 --error_file_path "$CHUNK_DIR/reload_model_bio_info_bis.${g}.txt" \
                 --log_file_path "$CHUNK_DIR/llm_log_reload.${g}.txt" \
                 --flag_file "$CHUNK_DIR/STEP3_2.flag.${g}" \
-                --initial_n_ctx 3500 \
+                --initial_n_ctx 3500 --strict_match_training \
                 --model "$(basename "$MODEL")" "${PY_VERBOSE[@]}" ) &
             pids+=($!)
         done

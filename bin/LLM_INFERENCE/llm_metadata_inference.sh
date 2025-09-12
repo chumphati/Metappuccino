@@ -35,7 +35,7 @@ if [[ -n "${PBS_JOBID:-}" ]]; then
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/llm_inference.XXXXXX")"
+  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/llm_inference")"
 fi
 
 mkdir -p "$SCRATCH_DIR"
@@ -193,7 +193,7 @@ if [[ "${SHARD_TOTAL}" -ge 2 ]]; then
   if [[ ! -s "$META_CHUNK" || ! -s "$DB_CHUNK" ]]; then echo "FATAL: missing chunk inputs: $META_CHUNK or $DB_CHUNK" >&2; ls -l "$CHUNK_DIR" >&2 || true; exit 8; fi
   mkdir -p "$CHUNK_DIR/METADATA_LLM_INFERENCE"
   cp -f "$SCRATCH_DIR/$MODEL_BASENAME" "$CHUNK_DIR/" 2>/dev/null
-  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$CHUNK_DIR/reload_model_bio_info.${SHARD_ID}.txt" --log_file_path "$CHUNK_DIR/llm_log_SB.${SHARD_ID}.txt" --flag_file "$CHUNK_DIR/STEP3_1.flag.${SHARD_ID}" --initial_n_ctx 3500 --model "$MODEL_BASENAME" "${PY_VERBOSE[@]}"
+  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$CHUNK_DIR/reload_model_bio_info.${SHARD_ID}.txt" --log_file_path "$CHUNK_DIR/llm_log_SB.${SHARD_ID}.txt" --flag_file "$CHUNK_DIR/STEP3_1.flag.${SHARD_ID}" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}"
   mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
   [[ -d "$CHUNK_DIR/METADATA_LLM_INFERENCE" ]] && rsync -a --ignore-existing "$CHUNK_DIR/METADATA_LLM_INFERENCE/" "$SCRATCH_DIR/METADATA_LLM_INFERENCE/" 2>/dev/null || true
   : > "$SCRATCH_DIR/llm_log_SB.txt"
@@ -211,7 +211,7 @@ fi
 
 if [[ "$N_GPUS" -le 1 ]]; then
   mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
-  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$META_ABS" --error_file_path "$SCRATCH_DIR/reload_model_bio_info.txt" --log_file_path "$SCRATCH_DIR/llm_log_SB.txt" --flag_file "$SCRATCH_DIR/STEP3_1.flag" --initial_n_ctx 3500 --model "$MODEL_BASENAME" "${PY_VERBOSE[@]}"
+  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$META_ABS" --error_file_path "$SCRATCH_DIR/reload_model_bio_info.txt" --log_file_path "$SCRATCH_DIR/llm_log_SB.txt" --flag_file "$SCRATCH_DIR/STEP3_1.flag" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}"
 else
   python3 "$SCRATCH_DIR/split_llm_inputs.py" --db "$DB_ABS" --meta "$META_ABS" --out "$SCRATCH_DIR" --chunks "$N_GPUS" || { echo "FATAL: splitter failed" >&2; exit 9; }
   pids=()
@@ -227,7 +227,7 @@ else
     ERR_FILE="$CHUNK_DIR/reload_model_bio_info.${i}.txt"
     FLAG_FILE="$CHUNK_DIR/STEP3_1.flag.${i}"
     gpu_id="${ALL_GPU_IDS[$i]}"
-    ( CUDA_VISIBLE_DEVICES="$gpu_id" python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$ERR_FILE" --log_file_path "$LOG_FILE" --flag_file "$FLAG_FILE" --initial_n_ctx 3500 --model "$MODEL_BASENAME" "${PY_VERBOSE[@]}" ) &
+    ( CUDA_VISIBLE_DEVICES="$gpu_id" python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$ERR_FILE" --log_file_path "$LOG_FILE" --flag_file "$FLAG_FILE" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}" ) &
     pids+=($!)
   done
   fail=0
