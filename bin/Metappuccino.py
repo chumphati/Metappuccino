@@ -36,14 +36,14 @@ def main():
                         help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
                         help="Path to the venv build with requirement.txt")
-    parser.add_argument("--working_dir", type=str, required=True,
-                        help="Absolute path to the working directory on the compute node—preferably a local scratch location—with sufficient writable space. Examples: $SLURM_TMPDIR, $TMPDIR, /scratchlocal/$USER/$PBS_JOBID. Contents are temporary and may be cleaned up at job end.")
     parser.add_argument("--model", type=str, required=True,
                         help="Path to LLM model used for inference. A specific model trained for the task is to download on hugging face.")
     parser.add_argument("--gguf", action="store_true",
                         help="LLM  inference based on a gguf model (!= Metappuccino fine-tuned model).")
     parser.add_argument("--metappuccino_dir", type=str,
                         help="Path to the Metappuccino directory (Use in case of installation from source).")
+    parser.add_argument("--working_dir", type=str,
+                        help="Absolute path to the working directory on the compute node—preferably a local scratch location—with sufficient writable space. Examples: $SLURM_TMPDIR, $TMPDIR, /scratchlocal/$USER/$PBS_JOBID. Contents are temporary and may be cleaned up at job end.")
     parser.add_argument("--logan_path", type=str, default="",
                         help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")
     parser.add_argument("--getmetadata", action="store_true",
