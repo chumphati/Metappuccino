@@ -19,7 +19,7 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 MODEL=${4:-$MODEL}
 VERBOSE=${5:-${VERBOSE:-FALSE}}
 N_GPUS=${6:-${N_GPUS:-1}}
-NODE_WORK_PATH=${7:-$NODE_WORK_PATH}
+NODE_WORK_PATH=${7:-${NODE_WORK_PATH:-}}
 
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
@@ -35,7 +35,7 @@ if [[ -n "${PBS_JOBID:-}" ]]; then
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/llm_inference")"
+  SCRATCH_DIR="$(mktemp -d -p "$TMP_DIR" llm_inference.XXXXX)"
 fi
 
 mkdir -p "$SCRATCH_DIR"

@@ -20,7 +20,7 @@ MODEL=${4:-$MODEL}
 ITERATION_LIMIT=${5:-$ITERATION_LIMIT}
 VERBOSE=${6:-${VERBOSE:-FALSE}}
 N_GPUS=${7:-${N_GPUS:-1}}
-NODE_WORK_PATH=${8:-$NODE_WORK_PATH}
+NODE_WORK_PATH=${8:-${NODE_WORK_PATH:-}}
 
 RESULTS_DIR=$RES
 TMP_DIR=$RESULTS_DIR/tmp
@@ -35,7 +35,7 @@ if [[ -n "${PBS_JOBID:-}" ]]; then
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/reload_context_llm")"
+  SCRATCH_DIR="$(mktemp -d -p "$TMP_DIR" reload_context_llm.XXXXX)"
 fi
 
 mkdir -p "$SCRATCH_DIR"

@@ -18,7 +18,7 @@ METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
-NODE_WORK_PATH=${5:-$NODE_WORK_PATH}
+NODE_WORK_PATH=${5:-${NODE_WORK_PATH:-}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -31,7 +31,7 @@ if [[ -n "${PBS_JOBID:-}" ]]; then
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$(mktemp -d "$TMP_DIR/summary_context")"
+  SCRATCH_DIR="$(mktemp -d -p "$TMP_DIR" summary_context.XXXXX)"
 fi
 
 mkdir -p "$SCRATCH_DIR"

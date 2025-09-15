@@ -14,13 +14,10 @@
 
 METAPPUCCINO=${1:-$METAPPUCCINO}
 RES=${2:-$RES}
-NODE_WORK_PATH=${3:-$NODE_WORK_PATH}
+NODE_WORK_PATH=${3:-${NODE_WORK_PATH:-}}
 ENV_REQUIREMENT=${4:-$ENV_REQUIREMENT}
 
 source $ENV_REQUIREMENT/bin/activate
-
-LOG_DIR=$RES/logs
-TMP_DIR=$RES/tmp
 
 #create dir
 mkdir -p $RES/logs
@@ -28,12 +25,15 @@ mkdir -p $RES/tmp
 mkdir -p $RES/ORIGINAL_METADATA
 mkdir -p $RES/COMPLETED_INFERENCE/VISUALISATION
 
+LOG_DIR=$RES/logs
+TMP_DIR=$RES/tmp
+
 if [[ -n "${PBS_JOBID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${PBS_JOBID}"
 elif [[ -n "${SLURM_JOB_ID:-}" ]]; then
   SCRATCH_DIR="$NODE_WORK_PATH/${SLURM_JOB_ID}"
 else
-  SCRATCH_DIR="$TMP_DIR"
+  SCRATCH_DIR="$(mktemp -d -p "$TMP_DIR" metappuccino.XXXXX)"
 fi
 
 mkdir -p $SCRATCH_DIR
