@@ -42,7 +42,7 @@ def main():
                         help="LLM  inference based on a gguf model (!= Metappuccino fine-tuned model).")
     parser.add_argument("--metappuccino_dir", type=str,
                         help="Path to the Metappuccino directory (Use in case of installation from source).")
-    parser.add_argument("--working_dir", type=str,
+    parser.add_argument("--working_dir", type=str, default="",
                         help="Absolute path to the working directory on the compute node—preferably a local scratch location—with sufficient writable space. Examples: $SLURM_TMPDIR, $TMPDIR, /scratchlocal/$USER/$PBS_JOBID. Contents are temporary and may be cleaned up at job end.")
     parser.add_argument("--logan_path", type=str, default="",
                         help="Path to logan complementary information. Warning: 'sample_acc' must be to run accessions column. Default = mistral 7B ft.")

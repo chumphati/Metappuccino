@@ -142,12 +142,26 @@ This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
 
 ---
 
-## Minimal usage
+## Minimal usage: local run
 
-Run locally (single machine):
+### If wheel installation
 
 ```bash
 metappuccino \
+  --res_dir "/abs/path/results" \
+  --sample_input "/abs/path/runs.txt" \
+  --env_requirement "/abs/path/.venv" \
+  --model "/abs/path/MetappuccinoLLModel" \
+  --iteration_limit 1 --gpus 0 --cpus 4 --mem "8gb" \
+  --getmetadata --fillmetadata --associateinformation --visualisation \
+  --local --verbose
+```
+
+### If source installation
+
+```bash
+python3 path_to_Metappuccino/bin/Metappuccino.py \
+  --metappuccino_dir "path_to_Metappuccino" \
   --res_dir "/abs/path/results" \
   --sample_input "/abs/path/runs.txt" \
   --env_requirement "/abs/path/.venv" \
@@ -214,6 +228,7 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 ```
 
 > Omit `--nodelist/--node` to let the scheduler pick a node automatically.
+> Add path Metappuccino directory with `--metappuccino_dir` if it has been installed from source.
 
 ---
 
@@ -231,7 +246,7 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 | `--visualisation`        | flag, **required, see [Typical pipeline steps](#typical-pipeline-steps) section** | Build figures from curated metadata (model confidence, summaries, etc).                                                     |
 | `--partition`            | str (**required if scheduler submission**)                                        | Queue/partition **if a scheduler is used** (PBS: queue via `-q`, Slurm: `--partition`).                                     |
 | `--working_dir`          | str (**required if scheduler submission**)                                        | Scratch dir on the compute node (fast local disk preferred).                                                                |
-| `--node`                 | str, default `""` (**required if scheduler submission**)                          | Node name to send the jobs on **if a scheduler is used** .                                                                  |
+| `--node`                 | str, default `""` (**required if scheduler submission**)                          | Node name to send the jobs on **if a scheduler is used**. Must have a GPU available on it if GPU mode active.               |
 | `--metappuccino_dir`     | str (**required if installation from source**)                                    | Absolute path to the Metappuccino repository in case of source installation (must contain `bin/Metappuccino.py`).           |
 | `--gpus`                 | int, default `1`, min `0`                                                         | Number of GPUs to use/request. With `--per_gpu_jobs`, spawns per-GPU shards. If 0, LLM inference will be conducted on CPUS. |
 | `--cpus`                 | int, default `30`, min `8`                                                        | Number of CPUs to request.                                                                                                  |

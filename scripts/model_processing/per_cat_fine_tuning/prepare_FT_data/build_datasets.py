@@ -2,7 +2,7 @@ import os, glob, random, math
 import pandas as pd
 random.seed(42)
 
-BASE_DIR = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/sex"
+BASE_DIR = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/sequencing_source"
 CT_DIR = os.path.join(BASE_DIR, "clean_to_train")
 TRAIN_PATH = os.path.join(CT_DIR, "train.csv")
 VAL_PATH = os.path.join(CT_DIR, "val.csv")

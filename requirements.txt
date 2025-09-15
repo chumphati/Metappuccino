@@ -14,3 +14,4 @@ fastparquet
 matplotlib
 sentence_transformers
 datasets
+peft
