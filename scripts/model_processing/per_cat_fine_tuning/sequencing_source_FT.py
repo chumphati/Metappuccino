@@ -1,46 +1,57 @@
-import os, re, json, argparse, random
+import os, re, json, math, argparse, random
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import Dataset as TorchDataset, DataLoader, WeightedRandomSampler
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from collections import Counter
+from torch.optim import AdamW
+from datasets import Dataset
+from transformers import (
+    AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer,
+    DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
+)
+from peft import LoraConfig, get_peft_model
+from torch.utils.tensorboard import SummaryWriter
+from sentence_transformers import SentenceTransformer
 
-parser = argparse.ArgumentParser(description="Simple 2-epoch baseline for sequencing_source (robust, no comments)")
+parser = argparse.ArgumentParser(description="Fine-tune sequencing_source (multitask) with fixed categories + soft semantic accuracy")
 parser.add_argument("--base_path", type=str, required=True)
+parser.add_argument("--cls_loss_weight", type=float, default=0.6)
 parser.add_argument("--seed", type=int, default=42)
-parser.add_argument("--batch_size", type=int, default=1)
-parser.add_argument("--lr", type=float, default=5e-4)
-parser.add_argument("--max_len", type=int, default=2048)
+parser.add_argument("--sim_thresh", type=float, default=0.25)
 args = parser.parse_args()
-
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 base_path = args.base_path
+
+random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
+
 train_file = os.path.join(base_path, "finetune_data_train.csv")
 val_file   = os.path.join(base_path, "finetune_data_val.csv")
 test_file  = os.path.join(base_path, "finetune_data_test.csv")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 
-print(f"device={device}")
+ALLOWED_CATS = ["bulk", "single cell", "spatial", "unknown"]
 
-ALLOWED = ["spatial","bulk","single cell"]
-label2id = {k:i for i,k in enumerate(ALLOWED)}
-id2label = {i:k for k,i in label2id.items()}
+SYN2CANON = {
+    "unknown": "unknown", "not applicable": "unknown", "n/a": "unknown", "na": "unknown", "none specified": "unknown", "not reported": "unknown", "unavailable": "unknown", "missing": "unknown",
+    "spatial transcriptomics": "spatial", "spatial": "spatial", "10x visium": "spatial", "visium": "spatial", "xenium": "spatial", "geomx": "spatial", "cosmx": "spatial", "slide-seq": "spatial", "slideseq": "spatial", "hdst": "spatial", "st ": "spatial", " spatial-rna": "spatial", "spatial-seq": "spatial", "merfish": "spatial", "seqfish": "spatial", "stereo-seq": "spatial",
+    "single cell": "single cell", "single-cell": "single cell", "sc ": "single cell", "scrna": "single cell", "sc rna": "single cell", "scrna-seq": "single cell", "scRNA-seq": "single cell", "snrna": "single cell", "sn rna": "single cell", "snrna-seq": "single cell", "single nuclei": "single cell", "nuclei": "single cell", "smart-seq2": "single cell", "smart-seq": "single cell", "smartseq2": "single cell", "smartseq": "single cell", "ss2": "single cell", "drop-seq": "single cell", "dropseq": "single cell", "droplet": "single cell", "10x": "single cell", "cellranger": "single cell",
+    "bulk": "bulk", "bulk rna": "bulk", "bulk rna-seq": "bulk", "total rna": "bulk", "total rna-seq": "bulk", "ribodepletion": "bulk", "ribo-depletion": "bulk", "rrna depletion": "bulk", "ribominus": "bulk", "polya": "bulk", "poly a": "bulk", "polyA": "bulk", "pooled": "bulk", "whole tissue": "bulk", "tissue bulk": "bulk", "population": "bulk", "bulk-tissue": "bulk"
+}
 
-def _canon_src(s):
-    t = re.sub(r"\s+", " ", str(s).strip().lower())
-    if ("visium" in t or "xenium" in t or "cosmx" in t or "geomx" in t or "slide-seq" in t or "slideseq" in t or "merfish" in t or "seqfish" in t or "stereo-seq" in t or "stereoseq" in t or "hdst" in t or "spatial" in t):
-        return "spatial"
-    if (re.search(r"\bsingle[\s-]?cell\b", t) or "singlecell" in t or "single nucleus" in t or "single-nucleus" in t or "snrna" in t or "snrna-seq" in t or "sn rna" in t or "scrna" in t or "sc rna" in t or "scrna-seq" in t or "10x chromium" in t or "chromium" in t or "drop-seq" in t or "indrops" in t or "split-seq" in t or "smart-seq" in t or "smartseq" in t):
-        return "single cell"
-    return "bulk"
+
+def _canonize_label(x: str) -> str:
+    s = str(x).strip().lower()
+    s = re.sub(r"\s+", " ", s)
+    if s in SYN2CANON:
+        return SYN2CANON[s]
+    for k, v in SYN2CANON.items():
+        if k in s:
+            return v
+    return "unknown"
+
+
+def _escape_json_val(v):
+    return str(v).replace('\\','\\\\').replace('"','\\"')
+
 
 def read_two_col_csv(path):
     try:
@@ -75,181 +86,413 @@ def read_two_col_csv(path):
             rows.append({"prompt": prompt, "output": out})
     return pd.DataFrame(rows)
 
+
 df_train = read_two_col_csv(train_file)
 df_val   = read_two_col_csv(val_file)
 df_test  = read_two_col_csv(test_file)
 
 for _df in (df_train, df_val, df_test):
-    _df["label_txt"] = _df["output"].map(_canon_src)
-    _df["label_id"]  = _df["label_txt"].map(lambda x: label2id.get(x, label2id["bulk"]))
+    _df["output_raw"]   = _df["output"].astype(str)
+    _df["sequencing_source_cat"] = _df["output_raw"].apply(_canonize_label)
+    _df["output_json"]  = _df["sequencing_source_cat"].apply(lambda v: f'{{"sequencing_source": "{_escape_json_val(v)}"}}')
 
-print(f"sizes train/val/test: {len(df_train)}/{len(df_val)}/{len(df_test)}")
-print("class distribution train:", dict(Counter(df_train["label_txt"])) )
-print("class distribution val:", dict(Counter(df_val["label_txt"])) )
-print("class distribution test:", dict(Counter(df_test["label_txt"])) )
+before = len(df_train)
+df_train = df_train[df_train["sequencing_source_cat"].astype(str).str.strip() != ""].copy()
+print(f"filter/train_dropped={before - len(df_train)}", flush=True)
 
-missing = [k for k in ALLOWED if k not in set(df_train["label_txt"]) ]
-if missing:
-    print("warning: missing classes in train:", missing)
+from collections import Counter
+for name, _df in ("train", df_train), ("val", df_val), ("test", df_test):
+    counts = Counter(_df["sequencing_source_cat"].tolist())
+    total = sum(counts.values()) or 1
+    top = ", ".join([f"{k}={counts.get(k,0)} ({counts.get(k,0)*100/total:.1f}%)" for k in ALLOWED_CATS])
+    print(f"dist/{name}: {top}", flush=True)
 
+labels = ALLOWED_CATS
+label2id = {lbl:i for i,lbl in enumerate(labels)}
+id2label = {i:lbl for lbl,i in label2id.items()}
+print(f"Label space fixed = {len(label2id)} -> {list(label2id.keys())}", flush=True)
+
+for _df in (df_train, df_val, df_test):
+    _df["cls_label"] = _df["sequencing_source_cat"].map(lambda x: label2id.get(x, label2id["unknown"]))
+
+datasets = {
+    "train": Dataset.from_pandas(df_train[["prompt","output_json","cls_label"]]),
+    "validation": Dataset.from_pandas(df_val[["prompt","output_json","cls_label"]]),
+    "test": Dataset.from_pandas(df_test[["prompt","output_json","cls_label"]])
+}
+print({k: len(v) for k,v in datasets.items()}, flush=True)
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM","false")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({"pad_token": "<pad>"})
-try:
-    tokenizer.padding_side = "right"
-except Exception:
-    pass
-
-class TxtClsDataset(TorchDataset):
-    def __init__(self, df, tokenizer, max_len):
-        self.df = df.reset_index(drop=True)
-        self.tok = tokenizer
-        self.max_len = max_len
-    def __len__(self):
-        return len(self.df)
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        enc = self.tok(str(row.prompt), truncation=True, padding=False, max_length=self.max_len, add_special_tokens=False)
-        return {"input_ids": torch.tensor(enc["input_ids"], dtype=torch.long), "attention_mask": torch.tensor([1]*len(enc["input_ids"]), dtype=torch.long), "label": int(row.label_id)}
-
-def pad_collate(batch):
-    maxlen = max(len(x["input_ids"]) for x in batch)
-    ids = []
-    mask = []
-    labels = []
-    for x in batch:
-        t = x["input_ids"]
-        m = x["attention_mask"]
-        if len(t) < maxlen:
-            pad = torch.full((maxlen - len(t),), tokenizer.pad_token_id, dtype=torch.long)
-            t = torch.cat([t, pad], dim=0)
-            m = torch.cat([m, torch.zeros((pad.numel(),), dtype=torch.long)], dim=0)
-        ids.append(t.unsqueeze(0))
-        mask.append(m.unsqueeze(0))
-        labels.append(x["label"])
-    return {"input_ids": torch.cat(ids, dim=0), "attention_mask": torch.cat(mask, dim=0), "labels": torch.tensor(labels, dtype=torch.long)}
-
-train_ds = TxtClsDataset(df_train[["prompt","label_id"]], tokenizer, args.max_len)
-val_ds   = TxtClsDataset(df_val[["prompt","label_id"]], tokenizer, args.max_len)
-test_ds  = TxtClsDataset(df_test[["prompt","label_id"]], tokenizer, args.max_len)
-
-counts = Counter(df_train["label_id"].tolist())
-inv_freq = [1.0 / counts.get(i, 1) for i in df_train["label_id"].tolist()]
-train_sampler = WeightedRandomSampler(weights=torch.tensor(inv_freq, dtype=torch.double), num_samples=len(inv_freq), replacement=True)
-
-train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=train_sampler, collate_fn=pad_collate, pin_memory=True)
-val_loader   = DataLoader(val_ds, batch_size=1, shuffle=False, collate_fn=pad_collate, pin_memory=True)
-test_loader  = DataLoader(test_ds, batch_size=1, shuffle=False, collate_fn=pad_collate, pin_memory=True)
+tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
 
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
 
-print(f"loading base model: {model_name}")
-base_model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype, device_map="auto", low_cpu_mem_usage=True)
+print("Load base model", flush=True)
+base_model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=dtype,
+    device_map="auto",
+    low_cpu_mem_usage=True
+)
+base_model.config.pad_token_id = tokenizer.pad_token_id
 if tokenizer.pad_token_id is not None and base_model.get_input_embeddings().num_embeddings != len(tokenizer):
     base_model.resize_token_embeddings(len(tokenizer))
-base_model.eval()
-for p in base_model.parameters():
-    p.requires_grad = False
 
-hidden_size = getattr(base_model.config, "hidden_size", None) or getattr(base_model.config, "n_embd", None)
-head = nn.Sequential(nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden_size, len(ALLOWED)))
-head.to(device)
+print("Configure LoRA", flush=True)
+peft_config = LoraConfig(
+    task_type="CAUSAL_LM",
+    inference_mode=False,
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.2,
+    target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
+)
+peft_model = get_peft_model(base_model, peft_config)
+peft_model.train()
 
-class_counts = torch.tensor([counts.get(i, 0) for i in range(len(ALLOWED))], dtype=torch.float32)
-class_weights = (1.0 / torch.clamp(class_counts, min=1.0))
-class_weights = class_weights * (len(ALLOWED) / torch.sum(class_weights))
-print("class weights (inverse frequency, normalized):", class_weights.tolist())
+print("Tokenize", flush=True)
 
-criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
-optimizer = torch.optim.AdamW(head.parameters(), lr=args.lr, weight_decay=0.01)
+def tokenize_fn(example):
+    prompt   = example["prompt"].strip()
+    out_json = example["output_json"].strip()
+    m = re.search(r'"sequencing_source"\s*:\s*"([^"]*)"', out_json)
+    value_str  = m.group(1) if m else ""
+    prefix_str = '{"sequencing_source": "'
+    suffix_str = '"}'
+    max_in, max_out, max_total = 3500, 16, 3520
+
+    in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
+    pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
+    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
+    suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
+
+    out_ids = pref_ids + val_ids + suff_ids
+    ids  = in_enc["input_ids"] + out_ids
+    attn = [1]*len(ids)
+
+    labels_out = [-100]*len(pref_ids) + val_ids
+    if len(suff_ids) > 0:
+        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
+    labels = [-100]*len(in_enc["input_ids"]) + labels_out
+
+    if len(ids) > max_total:
+        ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
+
+    return {
+        "input_ids": ids,
+        "attention_mask": attn,
+        "labels": labels,
+        "split_idx": len(in_enc["input_ids"]),
+        "cls_label": int(example.get("cls_label", -1)),
+    }
 
 
-def forward_encode(batch):
-    with torch.no_grad():
-        out = base_model(input_ids=batch["input_ids"].to(base_model.device), attention_mask=batch["attention_mask"].to(base_model.device), output_hidden_states=True, use_cache=False)
-        h = out.hidden_states[-1].to(torch.float32)
-        m = batch["attention_mask"].to(base_model.device).unsqueeze(-1).to(h.dtype)
-        s = (h * m).sum(dim=1)
-        d = m.sum(dim=1).clamp_min(1.0)
-        pooled = (s / d).to(device)
-    return pooled
+tokenized = {k: v.map(tokenize_fn, remove_columns=v.column_names) for k, v in datasets.items()}
+
+class CausalLMPadCollator:
+    def __init__(self, tokenizer):
+        self._padder = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt")
+    def __call__(self, features):
+        labels    = [torch.tensor(f["labels"], dtype=torch.long) for f in features]
+        split_idx = torch.tensor([int(f.get("split_idx", 0)) for f in features], dtype=torch.long)
+        cls_label = torch.tensor([int(f.get("cls_label", -1)) for f in features], dtype=torch.long)
+        for f in features:
+            f.pop("labels", None); f.pop("split_idx", None); f.pop("cls_label", None)
+        batch = self._padder(features)
+        max_len = batch["input_ids"].size(1)
+        padded = []
+        for l in labels:
+            if l.numel() < max_len:
+                pad = torch.full((max_len - l.numel(),), -100, dtype=torch.long)
+                l = torch.cat([l, pad], dim=0)
+            else:
+                l = l[:max_len]
+            padded.append(l)
+        batch["labels"]    = torch.stack(padded, dim=0)
+        batch["split_idx"] = split_idx
+        batch["cls_label"] = cls_label
+        return batch
 
 
-def evaluate(dloader, tag):
-    head.eval()
+data_collator = CausalLMPadCollator(tokenizer)
+
+sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
+model_sem = SentenceTransformer(sem_model_name)
+SIM_THRESH = float(args.sim_thresh)
+
+
+def _cos_sim(a, b):
+    an = a / max(np.linalg.norm(a), 1e-12)
+    bn = b / max(np.linalg.norm(b), 1e-12)
+    return float(np.dot(an, bn))
+
+
+def _choose_forced_category(model, tokenizer, prompt: str, cats=ALLOWED_CATS):
+    dev = next(model.parameters()).device
+    prefix = prompt + '{"sequencing_source": "'
+    pref_ids = tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
+
+    def seq_logprob(candidate: str):
+        cand = candidate + '"}'
+        cand_ids = tokenizer(cand, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
+        inp = torch.cat([pref_ids, cand_ids[:, :-1]], dim=1)
+        with torch.no_grad():
+            out = model(input_ids=inp, attention_mask=torch.ones_like(inp))
+            logits = out.logits[:, -cand_ids.size(1):, :]
+            logp = torch.log_softmax(logits, dim=-1)
+            token_logp = logp.gather(2, cand_ids.unsqueeze(-1)).squeeze(-1)
+            return float(token_logp.sum().item())
+
+    scores = [(c, seq_logprob(c)) for c in cats]
+    scores.sort(key=lambda x: x[1], reverse=True)
+    print("debug/forced_scores=" + ", ".join([f"{c}:{s:.2f}" for c,s in scores]), flush=True)
+    return scores[0][0]
+
+
+def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
+    model.eval()
+    dev = next(model.parameters()).device
     n_ok, n_all = 0, 0
-    per_cls = {i: {"tp":0, "tot":0} for i in range(len(ALLOWED))}
-    for batch in dloader:
-        pooled = forward_encode(batch)
-        logits = head(pooled)
-        pred = torch.argmax(logits, dim=-1).cpu().tolist()
-        refs = batch["labels"].cpu().tolist()
-        for p, r in zip(pred, refs):
-            ok = int(p == r)
-            n_ok += ok; n_all += 1
-            per_cls[r]["tp"] += ok; per_cls[r]["tot"] += 1
-    acc = n_ok / max(1, n_all)
-    recalls = []
-    for i in range(len(ALLOWED)):
-        tot = max(1, per_cls[i]["tot"])
-        rec = per_cls[i]["tp"] / tot
-        recalls.append(rec)
-    bal_acc = float(np.mean(recalls))
-    per_str = ", ".join([f"{id2label[i]}:{per_cls[i]['tp']}/{max(1, per_cls[i]['tot'])}" for i in range(len(ALLOWED))])
-    print(f"{tag} accuracy={acc:.4f} balanced_accuracy={bal_acc:.4f} per_class_recall={{ {per_str} }}")
-    head.train()
-    return acc, bal_acc
+    rows = hf_dataset.to_pandas()
+    if max_examples is not None:
+        rows = rows.sample(min(max_examples, len(rows)), random_state=42)
+    ref_texts = []
+    for _, r in rows.iterrows():
+        try:
+            j = json.loads(r["output_json"])
+            ref_texts.append(str(j.get("sequencing_source", "")))
+        except Exception:
+            m = re.search(r'"sequencing_source"\s*:\s*"([^"]*)"', str(r["output_json"]))
+            ref_texts.append(m.group(1) if m else "")
+    ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
+    for idx_row, r in enumerate(rows.itertuples(index=False)):
+        prompt   = getattr(r, "prompt")
+        ref_val  = ref_texts[idx_row]
+        pred_val = _choose_forced_category(model, tokenizer, prompt, ALLOWED_CATS)
+        pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
+        sim = _cos_sim(pred_emb, ref_embs[idx_row])
+        ok = sim >= SIM_THRESH
+        n_ok += int(ok); n_all += 1
+        print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" cos_sim={sim:.4f} match={ok}', flush=True)
+    model.train()
+    return (n_ok / max(1, n_all))
 
-print("initial evaluation on validation")
-evaluate(val_loader, "val_initial")
 
-epochs = 2
-step = 0
-for epoch in range(1, epochs+1):
-    head.train()
-    running_loss = 0.0
-    for i, batch in enumerate(train_loader, start=1):
-        pooled = forward_encode(batch)
-        logits = head(pooled)
-        loss = criterion(logits, batch["labels"].to(device))
-        optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(head.parameters(), max_norm=1.0)
-        optimizer.step()
-        running_loss += float(loss.item())
-        step += 1
-        if i % 50 == 0:
-            print(f"epoch={epoch} step={step} minibatch={i} loss={running_loss/50:.6f}")
-            running_loss = 0.0
-    if (i % 50) != 0:
-        print(f"epoch={epoch} step={step} minibatch={i} loss={running_loss/max(1,(i%50)):.6f}")
-    print(f"evaluation after epoch {epoch}")
-    evaluate(val_loader, f"val_epoch{epoch}")
+writer = SummaryWriter(os.path.join(base_path, "tb_sequencing_source"))
 
-print("final evaluation on validation and test")
-evaluate(val_loader, "val_final")
-evaluate(test_loader, "test_final")
+class TBCallback(TrainerCallback):
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if not logs: return
+        step = state.global_step
+        for k in ("loss","eval_loss"):
+            if k in logs and isinstance(logs[k], (int, float)):
+                writer.add_scalar(f"trainer/{k}", float(logs[k]), step)
 
-save_dir = os.path.join(base_path, "simple_head_sequencing_source")
-os.makedirs(save_dir, exist_ok=True)
-try:
-    torch.save(head.state_dict(), os.path.join(save_dir, "cls_head.pt"))
-    with open(os.path.join(save_dir, "labels.json"), "w") as f:
-        json.dump({"ALLOWED": ALLOWED, "label2id": label2id}, f)
-    print("saved classifier head and labels to:", save_dir)
-except Exception as e:
-    print("warning: save failed:", e)
+class PrintProgressCallback(TrainerCallback):
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step % max(1, args.logging_steps) == 0:
+            print(f"debug/train_step={state.global_step} completed", flush=True)
 
-print("sample predictions on first 10 test items")
-head.eval()
-count = 0
-for batch in test_loader:
-    pooled = forward_encode(batch)
-    logits = head(pooled)
-    pred = torch.argmax(logits, dim=-1).cpu().item()
-    ref = batch["labels"].cpu().item()
-    print(f"pred={id2label[pred]} ref={id2label[ref]} match={pred==ref}")
-    count += 1
-    if count >= 10:
-        break
+class GradNormLogger(TrainerCallback):
+    def __init__(self, every=50): self.every = every
+    def on_backward_end(self, args, state, control, **kwargs):
+        model = kwargs.get("model", None)
+        if model is None: return
+        total_sq, max_g, n = 0.0, 0.0, 0
+        for p in model.parameters():
+            if p.grad is not None:
+                g = p.grad.detach()
+                gn = float(g.float().norm(2).item())
+                total_sq += gn * gn
+                max_g = max(max_g, gn); n += 1
+        total = math.sqrt(total_sq) if n > 0 else 0.0
+        if state.global_step % self.every == 0:
+            print(f"debug/grad_norm_total={total:.6f} max_grad_norm={max_g:.6f} params_with_grad={n} step={state.global_step}", flush=True)
+            writer.add_scalar("grads/total_norm", total, state.global_step)
+            writer.add_scalar("grads/max_norm",   max_g,   state.global_step)
+
+class GenEvalCallback(TrainerCallback):
+    def __init__(self, eval_ds, max_examples=128):
+        self.eval_ds = eval_ds; self.max_examples = max_examples
+    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
+        model     = kwargs.get("model", None)
+        tokenizer = kwargs.get("tokenizer", None)
+        if model is None or tokenizer is None: return
+        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
+        print(f"eval/accuracy_sequencing_source={acc:.4f} at step={state.global_step}", flush=True)
+        writer.add_scalar("eval/accuracy_sequencing_source", acc, state.global_step)
+        if isinstance(metrics, dict):
+            metrics["eval_accuracy_sequencing_source"] = float(acc)
+
+print("Initial evaluation on validation with BASE model (forced categories + semantic)", flush=True)
+base_model.eval()
+init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
+print(f"initial/validation_accuracy_sequencing_source={init_val_acc:.4f}", flush=True)
+writer.add_scalar("initial/validation_accuracy_sequencing_source", init_val_acc, 0)
+writer.flush()
+
+hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None) or getattr(peft_model.config, "d_model", None)
+num_classes = len(label2id)
+cls_head = nn.Sequential(
+    nn.Linear(hidden_size, hidden_size),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(hidden_size, num_classes)
+)
+cls_head.to(next(peft_model.parameters()).device)
+
+def _weights_from_counts(df):
+    counts = np.array([(df["cls_label"]==i).sum() for i in range(num_classes)], dtype=np.float32)
+    counts = np.maximum(counts, 1.0)
+    w = counts.sum() / counts
+    w = w / w.mean()
+    return torch.tensor(w, dtype=torch.float32)
+
+CE_WEIGHTS = _weights_from_counts(df_train)
+print("debug/class_weights=" + ", ".join([f"{id2label[i]}:{CE_WEIGHTS[i].item():.2f}" for i in range(num_classes)]), flush=True)
+
+class MultiTaskTrainer(Trainer):
+    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.6, **kwargs):
+        super().__init__(**kwargs)
+        self.cls_head = cls_head
+        self.cls_weight = float(cls_weight)
+        self.ce = nn.CrossEntropyLoss(reduction='mean', weight=CE_WEIGHTS.to(next(self.model.parameters()).device))
+
+    def create_optimizer(self):
+        if self.optimizer is None:
+            model_params = [p for p in self.model.parameters() if p.requires_grad]
+            head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
+            optimizer_grouped_parameters = [
+                {"params": model_params, "weight_decay": self.args.weight_decay},
+                {"params": head_params,  "weight_decay": 0.05},
+            ]
+            self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
+        return self.optimizer
+
+    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
+        metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
+        try:
+            ds = datasets.get("validation", None)
+            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
+            metrics[f"{metric_key_prefix}_accuracy_sequencing_source"] = float(acc)
+            step = getattr(self.state, "global_step", -1)
+            print(f"{metric_key_prefix}/accuracy_sequencing_source={acc:.4f} at step={step}", flush=True)
+        except Exception as e:
+            print(f"warn/eval_callback_exception: {e}", flush=True)
+        return metrics
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
+        split_idx = inputs.pop("split_idx")
+        cls_label = inputs.pop("cls_label")
+        outputs   = model(**inputs, output_hidden_states=True)
+        lm_loss   = outputs.loss
+        hidden    = outputs.hidden_states[-1]
+        B = hidden.size(0)
+        idx = torch.clamp(split_idx - 1, min=0)
+        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
+        if next(self.cls_head.parameters()).device != gather.device:
+            self.cls_head.to(gather.device)
+        logits = self.cls_head(gather)
+        mask = (cls_label >= 0)
+        if mask.any():
+            cls_loss = self.ce(logits[mask], cls_label[mask])
+        else:
+            cls_loss = torch.tensor(0.0, device=hidden.device)
+        loss = lm_loss + self.cls_weight * cls_loss
+        if return_outputs:
+            return loss, outputs
+        return loss
+
+training_args = TrainingArguments(
+    output_dir=os.path.join(base_path, "checkpoints_sequencing_source"),
+    eval_strategy="steps",
+    save_strategy="steps",
+    eval_steps=100,
+    save_steps=100,
+    save_total_limit=3,
+    learning_rate=3e-5,
+    per_device_train_batch_size=2,
+    per_device_eval_batch_size=2,
+    num_train_epochs=3,
+    weight_decay=0.05,
+    logging_strategy="steps",
+    logging_steps=50,
+    fp16=(not use_bf16),
+    bf16=use_bf16,
+    gradient_accumulation_steps=16,
+    report_to=["tensorboard"],
+    logging_dir=os.path.join(base_path, "tb_sequencing_source"),
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_accuracy_sequencing_source",
+    greater_is_better=True,
+    warmup_ratio=0.03,
+    lr_scheduler_type="cosine",
+    max_grad_norm=1.0,
+)
+
+trainer = MultiTaskTrainer(
+    model=peft_model,
+    args=training_args,
+    train_dataset=tokenized["train"],
+    eval_dataset=tokenized["validation"],
+    tokenizer=tokenizer,
+    data_collator=data_collator,
+    callbacks=[
+        EarlyStoppingCallback(early_stopping_patience=2),
+        TBCallback(),
+        PrintProgressCallback(),
+        GradNormLogger(every=50),
+        GenEvalCallback(datasets["validation"], max_examples=128)
+    ],
+    cls_head=cls_head,
+    cls_weight=args.cls_loss_weight
+)
+
+print("Begin training", flush=True)
+trainer.train()
+writer.flush()
+
+print("Save adapter only", flush=True)
+trainer.model.save_pretrained(os.path.join(base_path, "cat_sequencing_source"))
+tokenizer.save_pretrained(os.path.join(base_path, "cat_sequencing_source"))
+
+print("Evaluate on validation (forced categories + semantic)", flush=True)
+val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
+print(f"final/validation_accuracy_sequencing_source={val_acc:.4f}", flush=True)
+writer.add_scalar("final/validation_accuracy_sequencing_source", val_acc, trainer.state.global_step)
+writer.flush()
+
+print("Generate on test set (forced categories + semantic)", flush=True)
+dev = next(trainer.model.parameters()).device
+rows = datasets["test"].to_pandas()
+n_ok, n_all = 0, 0
+ref_texts = []
+for _, rr in rows.iterrows():
+    try:
+        j = json.loads(rr["output_json"]) ; ref_texts.append(str(j.get("sequencing_source","")))
+    except Exception:
+        m = re.search(r'"sequencing_source"\s*:\s*"([^"]*)"', str(rr["output_json"]))
+        ref_texts.append(m.group(1) if m else "")
+ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
+for i, r in enumerate(rows.itertuples(index=False)):
+    prompt   = getattr(r, "prompt")
+    ref_val  = ref_texts[i]
+    pred_val = _choose_forced_category(trainer.model, tokenizer, prompt, ALLOWED_CATS)
+    pred_json = f'{{"sequencing_source": "{_escape_json_val(pred_val)}"}}'
+    pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
+    sim = _cos_sim(pred_emb, ref_embs[i])
+    ok = sim >= SIM_THRESH
+    print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
+    print(f"--- Expected output  {i+1}: {{\"sequencing_source\": \"{_escape_json_val(ref_val)}\"}}", flush=True)
+    print(f"--- cos_sim={sim:.4f} match={ok}", flush=True)
+    print("-"*50, flush=True)
+    n_ok += int(ok); n_all += 1
+
+test_acc = (n_ok / max(1, n_all))
+print(f"final/test_accuracy_sequencing_source={test_acc:.4f}", flush=True)
+writer.add_scalar("final/test_accuracy_sequencing_source", test_acc, trainer.state.global_step)
+writer.close()

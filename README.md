@@ -134,6 +134,7 @@ or directly from a precompiled CUDA wheel
 ```bash
 #if CUDA 12.1
 pip install --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121 llama-cpp-python
+#Warning: this build will unable CPU inference mode
 ```
 
 This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
@@ -143,6 +144,8 @@ This must be manually done. llama-cpp is not installed in Metappuccino's wheel.
 ---
 
 ## Minimal usage: local run
+
+>Metappuccino required a HTTP/HTTPS internet connexion to fetch the data.
 
 ### If wheel installation
 

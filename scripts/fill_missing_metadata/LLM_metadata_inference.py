@@ -1,5 +1,5 @@
 ##########################################################################################
-#IMPORT
+# IMPORT
 import os
 import psutil
 from llama_cpp import Llama
@@ -22,26 +22,23 @@ parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
 parser.add_argument("--max_value_tokens", type=int, default=128)
-parser.add_argument("--strict_match_training", action="store_true", help="Per-category prompting aligned with training format")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
-base_path           = args.base_path
+base_path = args.base_path
 input_metadata_path = args.input_metadata_path
-error_file_path     = args.error_file_path
-log_file_path       = args.log_file_path
-FLAG_FILE           = args.flag_file
-initial_n_ctx       = args.initial_n_ctx
-model               = args.model
-max_value_tokens    = args.max_value_tokens
-STRICT_MATCH_TRAINING = args.strict_match_training
+error_file_path = args.error_file_path
+log_file_path = args.log_file_path
+FLAG_FILE = args.flag_file
+initial_n_ctx = args.initial_n_ctx
+base_model_path = args.model
+max_value_tokens = args.max_value_tokens
 
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
-output_dir          = os.path.join(base_path, "METADATA_LLM_INFERENCE")
-skipped_runs_path   = os.path.join(base_path, "skipped_runs.txt")
-ambi_cl_path        = os.path.join(base_path, "ambiguous_cell_lines.csv")
-model_path          = os.path.join(base_path, model)
-error_file_header   = "run_accession\tsummary"
+output_dir = os.path.join(base_path, "METADATA_LLM_INFERENCE")
+skipped_runs_path = os.path.join(base_path, "skipped_runs.txt")
+ambi_cl_path = os.path.join(base_path, "ambiguous_cell_lines.csv")
+error_file_header = "run_accession\tsummary"
 
 sys.stdout = open(log_file_path, "a", encoding="utf-8")
 sys.stderr = sys.stdout
@@ -49,95 +46,56 @@ VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
 ##########################################################################################
-#FUNCTIONS
-
-# def print_memory_usage(proc):
-#     m = proc.memory_info()
-#     v = psutil.virtual_memory()
-#     vprint(f"rss: {m.rss/1024**2:.2f} MB, virt used: {v.used/1024**2:.2f} MB")
-
-def get_llama_model(path, ctx):
-    return Llama(
-        model_path=path,
-        n_ctx=ctx,
-        n_gpu_layers=-1,
-        use_mmap=True,
-        n_threads=4,
-        logits_all=True,
-        flash_attn=True,
-    )
-
-
-def write_reload_file(fp, header, parts):
-    dirpath = os.path.dirname(fp)
-    if dirpath:
-        os.makedirs(dirpath, exist_ok=True)
-    entry = "\t".join(parts)
-    if not os.path.exists(fp):
-        with open(fp, "w", encoding="utf-8") as f:
-            f.write(header + "\n")
-    # Avoid duplicates
-    with open(fp, "r+", encoding="utf-8") as f:
-        content = f.read()
-        if entry not in content:
-            f.write(entry + "\n")
+#HELPPER FUNCTIONS
+def ensure_file_exists(path: str, empty: bool = False):
+    if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        mode = "w" if empty else "a"
+        with open(path, mode, encoding="utf-8") as _:
+            pass
 
 
 def load_ambiguous_map(fp):
-    ambi = defaultdict(list)
-    if not fp or not os.path.isfile(fp):
-        return {}
-    with open(fp, "r", encoding="utf-8", newline="") as f:
-        sample = f.read(1024)
-        f.seek(0)
-        try:
-            dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
-        except csv.Error:
-            class _D: delimiter = ","  # fallback
-            dialect = _D()
-        reader = csv.reader(f, dialect)
-        header_peek = next(reader, None)
-        if header_peek is None:
-            return {}
-
-        def _push(row):
-            if not row or len(row) < 2:
-                return
-            run_id = row[0].strip()
-            val = row[1].strip()
-            if run_id and val:
-                ambi[run_id].append(val)
-
-        if header_peek and not re.search(r"run|accession", " ".join(header_peek), re.I):
-            _push(header_peek)
-        for row in reader:
-            _push(row)
-    return {k: "; ".join(v) for k, v in ambi.items()}
+    ensure_file_exists(fp, empty=True)
+    result = {}
+    try:
+        with open(fp, "r", encoding="utf-8", newline="") as f:
+            rdr = csv.reader(f)
+            for row in rdr:
+                if not row:
+                    continue
+                if row[0].strip().lower() == "run_accession":
+                    continue
+                if len(row) < 2:
+                    continue
+                ra = row[0].strip()
+                cand = row[1].strip()
+                result[ra] = cand
+    except Exception as e:
+        vprint(f"[WARN] Could not read ambiguous file: {e}")
+    return result
 
 
-def clean_val(t: str) -> str:
-    t = (t or "").replace("\r", " ").replace("\n", " ")
-    t = re.sub(r"\s+", " ", t)
-    if '"' in t:
-        t = t.split('"', 1)[0]
-    t = re.sub(r"\s*[,;}\]]\s*$", "", t)
-    t = t.strip()
-    return t if t else "unknown"
+def append_skipped_and_error(run: str, summary: str):
+    try:
+        with open(skipped_runs_path, "a", encoding="utf-8") as sf:
+            sf.write(run + "\n")
+        need_header = (not os.path.exists(error_file_path)) or (os.path.getsize(error_file_path) == 0)
+        with open(error_file_path, "a", encoding="utf-8") as ef:
+            if need_header:
+                ef.write(error_file_header + "\n")
+            ef.write(f"{run}\t{summary}\n")
+        vprint(f"[ERROR] Marked run as skipped & logged for retry: {run}")
+    except Exception as e:
+        vprint(f"[ERROR] Failed to write skip/error logs for {run}: {e}")
 
-
-def calc_entropy_from_logprobs(lp_list):
-    vals = [x for x in (lp_list or []) if x is not None]
-    if not vals:
-        return 0.0
-    arr = np.array(vals, dtype=np.float64)
-    arr -= np.max(arr)
-    probs = np.exp(arr)
-    probs /= probs.sum()
-    ent = -np.sum(probs * np.log(probs + 1e-12))
-    return float(ent)
 
 ##########################################################################################
-# DATA & CAT
+# MAIN
+
+os.makedirs(output_dir, exist_ok=True)
+
+STRICT_MATCH_TRAINING = True
 
 categories = [
     "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
@@ -164,255 +122,206 @@ definitions = {
     "is_cancer": "return 'True' if the disease is cancer related, 'False' otherwise"
 }
 
-##########################################################################################
-#MAIN
-process = psutil.Process(os.getpid())
 
-use_gpu = torch.cuda.is_available()
-vprint(f"use_gpu: {use_gpu}")
-gpu_count = torch.cuda.device_count() if use_gpu else 0
-vprint(f"Used GPU count: {gpu_count}")
+def read_runs(fp):
+    rows = []
+    with open(fp, "r", encoding="utf-8", newline="") as f:
+        sample = f.read(1024)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters="\t,;")
+        except csv.Error:
+            class _D:
+                delimiter = "\t"
 
-if use_gpu and gpu_count > 0:
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
-    vprint(f"Using {gpu_count} GPU(s): {os.environ['CUDA_VISIBLE_DEVICES']}")
-else:
-    vprint("No GPU detected → using CPU only")
+            dialect = _D()
+        rdr = csv.reader(f, dialect)
+        header = next(rdr, None)
+        if header is None:
+            return rows
+        header_lower = [h.strip().lower() for h in header]
+        try:
+            i_run = header_lower.index("run_accession")
+            i_sum = header_lower.index("summary")
+        except ValueError:
+            if len(header) >= 2:
+                i_run, i_sum = 0, 1
+            else:
+                return rows
+        for r in rdr:
+            if not r or len(r) <= max(i_run, i_sum):
+                continue
+            ra = r[i_run].strip()
+            su = r[i_sum].strip()
+            if ra and su:
+                rows.append((ra, su))
+    return rows
 
-llm = get_llama_model(model_path, initial_n_ctx)
 
-with open(input_metadata_path, "r", encoding="utf-8") as mf:
-    header = mf.readline()
-    metadata_lines = mf.readlines()
+def clean_val(t):
+    t = t.replace("\r", " ").replace("\n", " ")
+    t = re.sub(r"\s+", " ", t)
+    if '"' in t:
+        t = t.split('"', 1)[0]
+    t = re.sub(r"\s*[,;}\]]\s*$", "", t)
+    t = t.strip()
+    if t == "":
+        t = "unknown"
+    return t
 
-with open(raw_final_info_path, "r", encoding="utf-8") as rf:
-    raw = rf.readlines()
-    raw_headers = raw[0].rstrip("\n").split("\t")
-    raw_data = {r.split("\t")[0]: r.rstrip("\n").split("\t") for r in raw[1:]}
-    vprint(f"Loaded curated rows: {len(raw_data)}")
 
-ambi_map = load_ambiguous_map(ambi_cl_path)
-
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir, exist_ok=True)
-
-skipped_runs = []
-
-vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
-vprint("[INFO] Model (gguf):", model_path)
-
-# Helper to build prompts (single-category when STRICT_MATCH_TRAINING, otherwise multi-cat JSON like production)
-
-def build_prompt_single_category(run, summary, extra_info_str, key):
+def build_prompt_single_category_train_like(run, summary, key, definition):
     return f"""Run accession: {run}
-Summary: {summary} {extra_info_str}
+                Summary: {summary}
 
-Categories and definitions:
-- {key}: {definitions[key]}
+                Categories and definitions:
+                - {key}: {definition}
 
-For each category below:
-- Extract information from the summary if possible
-- If one value is impossible to extract, even by deducing it, return "unknown"
+                For each category below:
+                - Extract information from the summary if possible
+                - If one value is impossible to extract, even by deducing it, return "unknown"
 
-BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
-FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
+                BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+                FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
 
-Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
+                Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
 
-Here is the output:
-{{\n"{key}": """  # we will stop at the closing quote
-
-
-def build_prompt_multi_category(run, summary, extra_info_str):
-    inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in categories)
-    return f"""Run accession: {run}
-Summary: {summary} {extra_info_str}
-
-Categories and definitions:
-{inst_lines}
-
-For each category below:
-- Infer from the summary if possible
-- The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
-- If one value is impossible to infer, return "unknown", applicable for all categories ALWAYS BETTER THAN FALSE ANSWER ESPECIALLY FOR SPECIFIC DONOR INFORMATION (AGE, SEX, etc)
-
-BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
-FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
-
-Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
-
-Here is the output:
-"""
+                Here is the output:
+                """
 
 
-# Process each run
-for idx, line in enumerate(metadata_lines):
-    if not line.strip():
-        write_reload_file(error_file_path, error_file_header, [f"LINE_{idx}", "empty line"])
-        skipped_runs.append(f"LINE_{idx}")
-        continue
+try:
+    import torch
+    use_gpu = torch.cuda.is_available()
+except Exception:
+    use_gpu = False
 
-    parts = line.rstrip("\n").split("\t", 1)
-    if len(parts) < 2 or not parts[0].strip():
-        bad_run = parts[0].strip() if parts and parts[0].strip() else f"LINE_{idx}"
-        write_reload_file(error_file_path, error_file_header, [bad_run, "malformed: missing tab/summary"])
-        skipped_runs.append(bad_run)
-        continue
+if os.environ.get("CUDA_VISIBLE_DEVICES", "") == "":
+    use_gpu = False
 
-    run, summary = parts[0].strip(), parts[1].strip()
-    vprint(run)
+n_gpu_layers_val = -1 if use_gpu else 0
+try:
+    n_threads_val = psutil.cpu_count(logical=True) or os.cpu_count() or 4
+except Exception:
+    n_threads_val = os.cpu_count() or 4
 
-    if run not in raw_data:
-        skipped_runs.append(run)
-        continue
+llm = Llama(
+    model_path=base_model_path,
+    n_ctx=initial_n_ctx,
+    n_gpu_layers=n_gpu_layers_val,
+    n_threads=n_threads_val,
+    use_mmap=True,
+    logits_all=True,
+)
 
-    raw_vals = raw_data[run]
-    extra_info = []
-    for col, val in zip(raw_headers, raw_vals):
-        if val:
-            extra_info.append(f"- {col}: {val}")
-    ambi_val = ambi_map.get(run)
-    if ambi_val:
-        extra_info.append(f"{ambi_val}")
-    extra_info_str = " ".join(extra_info) if extra_info else ""
+vprint(f"[LLM] use_gpu={use_gpu} n_gpu_layers={n_gpu_layers_val} n_threads={n_threads_val}")
 
-    vprint(f"\n[{idx+1}/{len(metadata_lines)}] {run}", flush=True)
-    # print_memory_usage(process)
 
-    if STRICT_MATCH_TRAINING:
-        out = {}
-        entropies = {}
-        for key in categories:
-            prefix_text = build_prompt_single_category(run, summary, extra_info_str, key)
-            vprint(f"[PEFT] {run} | {key:16s} -> active: (none; llama.cpp)")
+runs = read_runs(input_metadata_path)
+
+vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint("[INFO] Model (gguf):", base_model_path)
+
+ambiguous_map = load_ambiguous_map(ambi_cl_path)
+
+
+def calc_entropy_from_logprobs(lp_list):
+    vals = [x for x in lp_list if x is not None]
+    if not vals:
+        return 0.0
+    arr = np.array(vals, dtype=np.float64)
+    arr -= np.max(arr)
+    probs = np.exp(arr)
+    probs /= probs.sum()
+    ent = -np.sum(probs * np.log(probs + 1e-12))
+    return float(ent)
+
+
+total_t0 = time.perf_counter()
+
+for run, summary in runs:
+    t0 = time.perf_counter()
+    out = {}
+    entropies = {}
+    run_failed = False
+
+    for key in categories:
+        try:
+            if STRICT_MATCH_TRAINING:
+                prompt_key = build_prompt_single_category_train_like(run, summary, key, definitions[key])
+                extra_ctx = ambiguous_map.get(run, "")
+                if extra_ctx and extra_ctx.strip().lower() != "null":
+                    prompt_key = prompt_key + f"\nAdditional context (cell line candidates): {extra_ctx}\n"
+                prefix_text = prompt_key + "{\n" + f"\"{key}\": \""
+            else:
+                inst_lines = "\n".join(f"- {c}: {definitions[c]}" for c in categories)
+                prompt_general = f"""Run accession: {run}
+                                Summary: {summary}
+
+                                Categories and definitions:
+                                {inst_lines}
+
+                                For each category below:
+                                - Extract information from the summary if possible
+                                - The value can be not applicable ONLY FOR: treatment_time and response (if treatment = no treatment) AND cell_line (if cell_type = primary tissue), RETURN "not applicable" for those categories. CAN'T BE NOT APPLICABLE FOR THE OTHER CATEGORIES.
+                                - If one value is impossible to extract, even by deducing it, return "unknown", applicable for all categories
+
+                                BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
+                                FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
+
+                                Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
+
+                                Here is the output:
+                                """
+                extra_ctx = ambiguous_map.get(run, "")
+                if extra_ctx and extra_ctx.strip().lower() != "null":
+                    prompt_general = prompt_general + f"\nAdditional context (cell line candidates): {extra_ctx}\n"
+                prefix_text = prompt_general + "{\n" + f"\"{key}\": \""
+
+            vprint(f"[PEFT] {run} | {key:16s} -> actif: (none; llama.cpp)")
             vprint(f"[PROMPT] {run} | {key}\n{prefix_text}")
-            tcat0 = time.perf_counter()
+
+            cat_t0 = time.perf_counter()
+
             resp = llm(prefix_text, max_tokens=max_value_tokens, stop=['"'], logprobs=True, echo=False)
-            text = resp["choices"][0]["text"]
-            logp = resp["choices"][0].get("logprobs", {}).get("token_logprobs", [])
-            out[key] = clean_val(text)
+
+            try:
+                text = resp["choices"][0]["text"]
+                logp = resp["choices"][0].get("logprobs", {}).get("token_logprobs", [])
+            except Exception as e:
+                vprint(f"[ERROR] {run} | {key}: malformed LLM response: {e}")
+                text = ""
+                logp = []
+                run_failed = True
+
+            if text is None or str(text).strip() == "":
+                run_failed = True
+
+            out[key] = clean_val(text or "")
             entropies[key] = calc_entropy_from_logprobs(logp)
+
             vprint(f"[OUT] {run} | {key}: {out[key]} | H={entropies[key]:.6f}")
-            vprint(f"[TIMING][cat] {run} | {key}: {time.perf_counter() - tcat0:.4f}s")
+            vprint(f"[TIMING][cat] {run} | {key}: {time.perf_counter() - cat_t0:.4f}s")
             vprint("----------------------------------------------------------------------------")
 
-        output_payload = {run: out, "entropy": entropies}
-
-    else:
-        prompt = build_prompt_multi_category(run, summary, extra_info_str)
-        vprint("PROMPT:", flush=True)
-        vprint(prompt, flush=True)
-        vprint("BEGIN:", flush=True)
-        resp = llm(prompt, max_tokens=350, logprobs=True)
-        vprint("ANSWER:", flush=True)
-        vprint(resp["choices"][0]["text"])
-        text = resp["choices"][0]["text"].strip()
-
-        m = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if not m:
-            vprint("No json bloc in the answer")
-            write_reload_file(error_file_path, error_file_header, [run, summary])
-            skipped_runs.append(run)
+        except Exception as e:
+            run_failed = True
+            vprint(f"[ERROR] {run} | {key}: {e}")
+            vprint("----------------------------------------------------------------------------")
             continue
 
-        json_str = m.group(0)
-        try:
-            parsed_json = json.loads(json_str)
-            vprint("Json good format: ", parsed_json)
-        except json.JSONDecodeError:
-            vprint("Json format error")
-            write_reload_file(error_file_path, error_file_header, [run, summary])
-            skipped_runs.append(run)
-            continue
+    try:
+        with open(os.path.join(output_dir, f"{run}.json"), "w") as f:
+            json.dump({run: out, "entropy": entropies}, f, indent=2)
+    except Exception as e:
+        vprint(f"[ERROR] Failed to write JSON for {run}: {e}")
 
-        tokens = resp["choices"][0]["logprobs"]["tokens"]
-        logprobs = resp["choices"][0]["logprobs"]["token_logprobs"]
-        ordered_keys = list(parsed_json.keys())
-        entropy_dict = {}
+    vprint(f"[TIMING] run {run}: {time.perf_counter() - t0:.4f}s")
 
-        def tokenize_pieces(llm_obj, text_):
-            ids = llm_obj.tokenize(text_.encode("utf-8"), add_bos=False)
-            return [llm_obj.detokenize([tid]).decode("utf-8", errors="ignore") for tid in ids]
+    if run_failed:
+        append_skipped_and_error(run, summary)
 
-        def build_category_token_patterns(keys_, llm_obj):
-            patterns_ = {}
-            suffixes = ['"', '":', '": ', '": "']
-            prefixes = ['', ' ', '\n', ', ', '\n  ']
-            for k in keys_:
-                variants = []
-                for suf in suffixes:
-                    s = f'"{k}{suf}'
-                    variants.append(tokenize_pieces(llm_obj, s))
-                    for pref in prefixes[1:]:
-                        variants.append(tokenize_pieces(llm_obj, pref + s))
-                dedup = []
-                seen = set()
-                for v in variants:
-                    tup = tuple(v)
-                    if tup not in seen:
-                        seen.add(tup)
-                        dedup.append(v)
-                patterns_[k] = dedup
-            return patterns_
+vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint(f"[TIMING] total: {time.perf_counter() - total_t0:.4f}s")
 
-        def find_subsequence(full, sub):
-            L, l = len(full), len(sub)
-            for i in range(L - l + 1):
-                if full[i:i + l] == sub:
-                    return i
-            return -1
-
-        def find_subsequence_any(full_tokens, list_of_patterns):
-            for pat in list_of_patterns:
-                idx = find_subsequence(full_tokens, pat)
-                if idx >= 0:
-                    return idx, len(pat)
-            return -1, 0
-
-        category_token_patterns = build_category_token_patterns(categories, llm)
-
-        for key in ordered_keys:
-            pats = category_token_patterns.get(key, [])
-            if not pats:
-                entropy_dict[key] = None
-                continue
-
-            idx, matched_len = find_subsequence_any(tokens, pats)
-            if idx < 0:
-                entropy_dict[key] = None
-                continue
-            start = idx + matched_len
-
-            end = len(tokens)
-            for next_key in ordered_keys[ordered_keys.index(key) + 1:]:
-                next_pats = category_token_patterns.get(next_key, [])
-                if not next_pats:
-                    continue
-                ni, _ = find_subsequence_any(tokens, next_pats)
-                if ni >= 0:
-                    end = ni
-                    break
-
-            if end <= start:
-                entropy_dict[key] = None
-                continue
-
-            segment_logprobs = logprobs[start:end]
-            entropy_dict[key] = calc_entropy_from_logprobs(segment_logprobs)
-
-        output_payload = {run: parsed_json, "entropy": entropy_dict}
-
-    out_fp = os.path.join(output_dir, f"{run}.json")
-    with open(out_fp, "w", encoding="utf-8") as of:
-        json.dump(output_payload, of, indent=2, ensure_ascii=False)
-
-with open(skipped_runs_path, "w", encoding="utf-8") as sf:
-    for r in skipped_runs:
-        sf.write(r + "\n")
-
-sys.stdout.close()
-
-del llm
-import gc
-gc.collect()
 open(FLAG_FILE, "w").close()

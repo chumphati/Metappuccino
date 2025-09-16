@@ -70,6 +70,12 @@ fi
 
 MODEL_BASENAME="$(basename "$MODEL")"
 ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
+if [[ -f "$TMP_DIR/ambiguous_cell_lines.csv" ]]; then
+  cp "$TMP_DIR/ambiguous_cell_lines.csv" "$SCRATCH_DIR/" || true
+else
+  : > "$SCRATCH_DIR/ambiguous_cell_lines.csv"
+fi
+
 cp "$TMP_DIR/reload_model_bio_info.txt" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy reload_model_bio_info.txt"; exit 5; }
 cp "$TMP_DIR/database_metadata_curated.csv" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_MI_per_category.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_MI_per_category.py"; exit 7; }
@@ -82,15 +88,41 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
 SHARD_TOTAL=${SHARD_TOTAL:-0}
 SHARD_ID=${SHARD_ID:-0}
 
+#if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+#  OLDIFS=$IFS
+#  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
+#else
+#  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
+#fi
+#TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
+#if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi
+#if [[ "$N_GPUS" -gt "$TOTAL_AVAIL" ]]; then N_GPUS=$TOTAL_AVAIL; fi
+
+echo "[launcher] Detecting GPUs… $(date)"
 if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
-  OLDIFS=$IFS
-  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
+  IFS=',' read -ra ALL_GPU_IDS <<< "${CUDA_VISIBLE_DEVICES}"
 else
-  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
+  if command -v timeout >/dev/null 2>&1; then
+    MAP_OUT=$(timeout 3s nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || true)
+  else
+    MAP_OUT=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || true)
+  fi
+  if [[ -z "${MAP_OUT//[[:space:]]/}" ]]; then
+    ALL_GPU_IDS=()
+  else
+    readarray -t ALL_GPU_IDS <<<"$MAP_OUT"
+  fi
 fi
+
 TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
-if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi
+if [[ "$TOTAL_AVAIL" -eq 0 ]]; then
+  N_GPUS=0
+  export CUDA_VISIBLE_DEVICES=""
+  echo "[launcher] No GPUs detected → CPU mode"
+fi
 if [[ "$N_GPUS" -gt "$TOTAL_AVAIL" ]]; then N_GPUS=$TOTAL_AVAIL; fi
+echo "[launcher] Using N_GPUS=$N_GPUS (available=$TOTAL_AVAIL) ids=(${ALL_GPU_IDS[*]:-})"
+
 
 iteration_limit=${ITERATION_LIMIT:-1}
 for (( i=0; i<iteration_limit; i++ )); do
@@ -134,7 +166,13 @@ PYCODE
           : > "$CHUNK_DIR/reload_model_bio_info_bis.${SHARD_ID}.txt"
         else
           cp -f "$SCRATCH_DIR/database_metadata_curated.csv" "$CHUNK_DIR/" 2>/dev/null
-          cp -f "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/" 2>/dev/null
+          ln -sfn "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/$(basename "$MODEL")"
+          if [[ -f "$TMP_DIR/ambiguous_cell_lines.csv" ]]; then
+            cp "$TMP_DIR/ambiguous_cell_lines.csv" "$SCRATCH_DIR/" || true
+          else
+            : > "$SCRATCH_DIR/ambiguous_cell_lines.csv"
+          fi
+
           gpu_id="${ALL_GPU_IDS[0]}"
           CUDA_VISIBLE_DEVICES="$gpu_id" python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" \
               --base_path "$CHUNK_DIR" \
@@ -142,8 +180,8 @@ PYCODE
               --error_file_path "$CHUNK_DIR/reload_model_bio_info_bis.${SHARD_ID}.txt" \
               --log_file_path "$CHUNK_DIR/llm_log_reload.${SHARD_ID}.txt" \
               --flag_file "$CHUNK_DIR/STEP3_2.flag.${SHARD_ID}" \
-              --initial_n_ctx 3500 --strict_match_training \
-              --model "$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
+              --initial_n_ctx 3500 \
+              --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
         fi
       fi
       mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
@@ -159,7 +197,7 @@ PYCODE
       rm -rf "$SCRATCH_DIR"/CHUNK_*
     else
       if [[ "$N_GPUS" -le 1 ]]; then
-        python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --strict_match_training --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
+        python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
       else
         cat > "$SCRATCH_DIR/split_reload.py" << 'PYCODE'
 import argparse, os
@@ -193,7 +231,15 @@ PYCODE
               continue
             fi
             cp -f "$SCRATCH_DIR/database_metadata_curated.csv" "$CHUNK_DIR/" 2>/dev/null
-            cp -f "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/" 2>/dev/null
+#            cp -f "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/" 2>/dev/null
+            ln -sfn "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/$(basename "$MODEL")"
+            if [[ -f "$TMP_DIR/ambiguous_cell_lines.csv" ]]; then
+              cp "$TMP_DIR/ambiguous_cell_lines.csv" "$SCRATCH_DIR/" || true
+            else
+              : > "$SCRATCH_DIR/ambiguous_cell_lines.csv"
+            fi
+
+
             gpu_id="${ALL_GPU_IDS[$g]}"
             ( CUDA_VISIBLE_DEVICES="$gpu_id" \
               python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" \
@@ -202,8 +248,8 @@ PYCODE
                 --error_file_path "$CHUNK_DIR/reload_model_bio_info_bis.${g}.txt" \
                 --log_file_path "$CHUNK_DIR/llm_log_reload.${g}.txt" \
                 --flag_file "$CHUNK_DIR/STEP3_2.flag.${g}" \
-                --initial_n_ctx 3500 --strict_match_training \
-                --model "$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL" ) &
+                --initial_n_ctx 3500 \
+                --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL" ) &
             pids+=($!)
         done
         fail=0

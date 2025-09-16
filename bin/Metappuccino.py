@@ -156,7 +156,7 @@ def main():
     mem_req = args.mem
     partition_req = args.partition.strip()
     queue_req = args.partition.strip()
-    tmp_dir = os.path.join(metappuccino_dir, res_dir, "tmp")
+    tmp_dir = os.path.join(res_dir, "tmp")
 
     if node_req_in and node_req_in.isdigit():
         node_req = f"node{node_req_in}"

@@ -8,6 +8,7 @@ import subprocess
 from multiprocessing import Pool
 import argparse
 import time
+import shutil
 
 ########################################################################################################################
 #PATHS
@@ -31,6 +32,21 @@ HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_acc
 
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
+
+def _find_cmd(name, extra_paths=None):
+    p = shutil.which(name)
+    if p:
+        return p
+    for path in (extra_paths or [f"/usr/bin/{name}", f"/bin/{name}", f"/usr/local/bin/{name}"]):
+        if os.path.exists(path):
+            return path
+    return name
+
+BASH_PATH = _find_cmd("bash", ["/bin/bash", "/usr/bin/bash", "/usr/local/bin/bash"])
+CURL_PATH = _find_cmd("curl", ["/usr/bin/curl", "/bin/curl", "/usr/local/bin/curl"])
+MKDIR_PATH = _find_cmd("mkdir")
+CAT_PATH = _find_cmd("cat")
+GREP_PATH = _find_cmd("grep")
 
 ########################################################################################################################
 #FUNCTIONS
@@ -91,28 +107,46 @@ def get_run_accessions(project_id):
 #download metadata
 def execute_bash_download_metadata():
     bash_script = f"""#!/bin/bash
-                if [ -d "{METADATA_DIR}" ]; then
-                    echo "{METADATA_DIR} already downloaded."
+                MKDIR=\"{MKDIR_PATH}\"
+                CAT=\"{CAT_PATH}\"
+                GREP=\"{GREP_PATH}\"
+                CURL=\"{CURL_PATH}\"
+                if [ -d \"{METADATA_DIR}\" ]; then
+                    echo \"{METADATA_DIR} already downloaded.\"
                 else
-                    /usr/bin/mkdir -p "{METADATA_DIR}"
-                    /usr/bin/cat "{RUNS_TSV}" | grep -v '^\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
-                        RUN_ACCESSION=$(echo "$RUN_ACCESSION" | tr -d '\r' | tr -d '\n' | tr -d ' ')
-                        OUTPUT_FILE="{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml"
-                        if [ ! -f "$OUTPUT_FILE" ]; then
-                            echo "Download metadata for $RUN_ACCESSION"
-                            /usr/bin/curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=text" \
-                                 -o "$OUTPUT_FILE"
+                    \"$MKDIR\" -p \"{METADATA_DIR}\"
+                    \"$CAT\" \"{RUNS_TSV}\" | \"$GREP\" -v '^\\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
+                        RUN_ACCESSION=$(echo \"$RUN_ACCESSION\" | tr -d '\r' | tr -d '\n' | tr -d ' ')
+                        OUTPUT_FILE=\"{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml\"
+                        if [ ! -f \"$OUTPUT_FILE\" ]; then
+                            echo \"Download metadata for $RUN_ACCESSION\"
+                            \"$CURL\" -s \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=text\" \
+                                 -o \"$OUTPUT_FILE\"
                             sleep 1
                         fi
                     done
                 fi
                 """
-    subprocess.run(bash_script, shell=True, check=True, executable="/bin/bash")
+    subprocess.run(bash_script, shell=True, check=True, executable=BASH_PATH)
 
 
 #get specific metadata from xml
 def extract_and_save_metadata(run_accession):
     xml_file = os.path.join(METADATA_DIR, f"{run_accession}_metadata.xml")
+
+    if not os.path.exists(xml_file):
+        try:
+            r = requests.get(
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+                params={"db": "sra", "id": run_accession, "retmode": "text"},
+                timeout=60,
+            )
+            if r.status_code == 200 and r.text.strip():
+                os.makedirs(METADATA_DIR, exist_ok=True)
+                with open(xml_file, "w", encoding="utf-8") as fxml:
+                    fxml.write(r.text)
+        except Exception:
+            pass
 
     try:
         #get xml
@@ -125,7 +159,7 @@ def extract_and_save_metadata(run_accession):
 
         #search in sample and study
         curl_command = [
-            "/usr/bin/curl", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
@@ -163,7 +197,7 @@ def extract_and_save_metadata(run_accession):
             xml_raw = ""
 
         curl_command = [
-            "/usr/bin/curl", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
@@ -192,11 +226,11 @@ def main():
             vprint("Error: no run accessions found")
             return
 
-    # Execute Bash script to download metadata
+    #download metadata
     execute_bash_download_metadata()
 
     #get API structured metadata from API and study/sample extraction from xml
-    with Pool(4) as pool:  # multiprocess on 4 CPUs
+    with Pool(4) as pool:  #multiprocess 4 CPU
         pool.map(extract_and_save_metadata, run_accessions)
 
     #create flag end process before cleaning

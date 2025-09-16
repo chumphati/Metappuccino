@@ -40,7 +40,7 @@ exec >"$LOG_DIR/clean_metadata.out" 2>"$LOG_DIR/clean_metadata.err"
 
 cleanup() {
     cp "$SCRATCH_DIR/cleaned_metadata_sra.txt" "$TMP_DIR" 2>/dev/null || echo "Cleaned metadata file not found, skipping."
-    cp "$SCRATCH_DIR/STEP2_0.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
+    ls "$TMP_DIR/STEP2_0.flag" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"
 }
@@ -91,4 +91,4 @@ awk -F'\t' '{
 }' OFS='\t' "$SCRATCH_DIR/cleaned_metadata_sra.txt" > "$SCRATCH_DIR/cleaned_metadata_sra.tmp" && \
 mv "$SCRATCH_DIR/cleaned_metadata_sra.tmp" "$SCRATCH_DIR/cleaned_metadata_sra.txt"
 
-touch "$SCRATCH_DIR/STEP2_0.flag"
+touch "$TMP_DIR/STEP2_0.flag"
