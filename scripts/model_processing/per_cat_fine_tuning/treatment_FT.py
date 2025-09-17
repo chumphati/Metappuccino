@@ -24,7 +24,7 @@ val_file   = os.path.join(base_path, "finetune_data_val.csv")
 test_file  = os.path.join(base_path, "finetune_data_test.csv")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 
-tb_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/logs11/tensorboard_treatment"
+tb_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/logs15/tensorboard_treatment"
 adapter_out_dir = os.path.join(base_path, "cat_treatment")
 os.makedirs(tb_dir, exist_ok=True); os.makedirs(adapter_out_dir, exist_ok=True)
 
