@@ -388,3 +388,5 @@ for run, summary in runs:
 
 vprint(f"[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
 vprint(f"[TIMING] total: {time.perf_counter() - total_t0:.4f}s")
+
+open(FLAG_FILE, "w").close()

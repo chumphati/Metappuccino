@@ -252,6 +252,12 @@ for _, row in df.iterrows():
             if k != "run_accession":
                 entry[f"confidence_entropy_{k}"] = "unknown"
 
+    if entry.get("treatment", "").strip().lower() == "unknown":
+        entry["treatment_time"] = "not applicable"
+        entry["response"] = "not applicable"
+        entry["confidence_entropy_treatment_time"] = "unknown"
+        entry["confidence_entropy_response"] = "unknown"
+        
     augmented_data.append(entry)
 
 out_df = pd.DataFrame(augmented_data, columns=output_cols)

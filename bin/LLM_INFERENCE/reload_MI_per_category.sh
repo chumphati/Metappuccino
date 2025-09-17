@@ -88,16 +88,6 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
 SHARD_TOTAL=${SHARD_TOTAL:-0}
 SHARD_ID=${SHARD_ID:-0}
 
-#if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
-#  OLDIFS=$IFS
-#  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
-#else
-#  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
-#fi
-#TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
-#if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi
-#if [[ "$N_GPUS" -gt "$TOTAL_AVAIL" ]]; then N_GPUS=$TOTAL_AVAIL; fi
-
 echo "[launcher] Detecting GPUs… $(date)"
 if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
   IFS=',' read -ra ALL_GPU_IDS <<< "${CUDA_VISIBLE_DEVICES}"
@@ -196,99 +186,7 @@ PYCODE
       fi
       rm -rf "$SCRATCH_DIR"/CHUNK_*
     else
-      if [[ "$N_GPUS" -le 1 ]]; then
-        python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
-      else
-        cat > "$SCRATCH_DIR/split_reload.py" << 'PYCODE'
-import argparse, os
-p=argparse.ArgumentParser()
-p.add_argument("--input",required=True)
-p.add_argument("--chunks",type=int,required=True)
-p.add_argument("--out",required=True)
-a=p.parse_args()
-with open(a.input,encoding="utf-8",errors="ignore") as f:
-    lines=[ln.rstrip("\n") for ln in f if ln.strip()]
-hdr=lines[0] if lines else ""
-data=lines[1:] if len(lines)>1 else []
-parts=[data[i::a.chunks] for i in range(a.chunks)]
-for i,seg in enumerate(parts):
-    d=os.path.join(a.out,f"CHUNK_{i}")
-    os.makedirs(d,exist_ok=True)
-    with open(os.path.join(d,"reload_model_bio_info.txt"),"w",encoding="utf-8") as o:
-        if hdr: o.write(hdr+"\n")
-        if seg: o.write("\n".join(seg)+"\n")
-    with open(os.path.join(d,"_chunk_info.txt"),"w",encoding="utf-8") as info:
-        info.write(f"chunk_id={i}\nnum_lines={len(seg)}\n")
-PYCODE
-        python3 "$SCRATCH_DIR/split_reload.py" --input "$SCRATCH_DIR/reload_model_bio_info.txt" --chunks "$N_GPUS" --out "$SCRATCH_DIR" || { echo "FATAL: splitter failed"; exit 9; }
-        pids=()
-        for ((g=0; g<N_GPUS; g++)); do
-            CHUNK_DIR="$SCRATCH_DIR/CHUNK_${g}"
-            META_CHUNK="$CHUNK_DIR/reload_model_bio_info.txt"
-            if [[ ! -e "$CHUNK_DIR" ]]; then echo "FATAL: missing CHUNK dir $CHUNK_DIR" >&2; exit 9; fi
-            if [[ ! -s "$META_CHUNK" || $(wc -l < "$META_CHUNK") -le 1 ]]; then
-              : > "$CHUNK_DIR/reload_model_bio_info_bis.${g}.txt"
-              continue
-            fi
-            cp -f "$SCRATCH_DIR/database_metadata_curated.csv" "$CHUNK_DIR/" 2>/dev/null
-#            cp -f "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/" 2>/dev/null
-            ln -sfn "$SCRATCH_DIR/$(basename "$MODEL")" "$CHUNK_DIR/$(basename "$MODEL")"
-            if [[ -f "$TMP_DIR/ambiguous_cell_lines.csv" ]]; then
-              cp "$TMP_DIR/ambiguous_cell_lines.csv" "$SCRATCH_DIR/" || true
-            else
-              : > "$SCRATCH_DIR/ambiguous_cell_lines.csv"
-            fi
-
-
-            gpu_id="${ALL_GPU_IDS[$g]}"
-            ( CUDA_VISIBLE_DEVICES="$gpu_id" \
-              python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" \
-                --base_path "$CHUNK_DIR" \
-                --input_metadata_path "$META_CHUNK" \
-                --error_file_path "$CHUNK_DIR/reload_model_bio_info_bis.${g}.txt" \
-                --log_file_path "$CHUNK_DIR/llm_log_reload.${g}.txt" \
-                --flag_file "$CHUNK_DIR/STEP3_2.flag.${g}" \
-                --initial_n_ctx 3500 \
-                --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL" ) &
-            pids+=($!)
-        done
-        fail=0
-        for pid in "${pids[@]}"; do wait "$pid" || fail=1; done
-        if [[ "$fail" -ne 0 ]]; then echo "One or more GPU workers failed." >&2; exit 1; fi
-        mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
-        if command -v rsync >/dev/null 2>&1; then
-            for d in "$SCRATCH_DIR"/CHUNK_*; do
-                [[ -d "$d/METADATA_LLM_INFERENCE" ]] && rsync -a --ignore-existing "$d/METADATA_LLM_INFERENCE/" "$SCRATCH_DIR/METADATA_LLM_INFERENCE/" || true
-            done
-        else
-            for d in "$SCRATCH_DIR"/CHUNK_*; do
-                if [[ -d "$d/METADATA_LLM_INFERENCE" ]]; then
-                    find "$d/METADATA_LLM_INFERENCE" -type f -print0 | while IFS= read -r -d '' f; do
-                        base="$(basename "$f")"; dest="$SCRATCH_DIR/METADATA_LLM_INFERENCE/$base"; [[ -e "$dest" ]] || cp "$f" "$dest"
-                    done
-                fi
-            done
-        fi
-        : > "$SCRATCH_DIR/llm_log_reload.txt"
-        rm -f "$SCRATCH_DIR/reload_model_bio_info_bis.txt"
-        header_done=0
-        for ((g=0; g<N_GPUS; g++)); do
-            CHUNK_DIR="$SCRATCH_DIR/CHUNK_${g}"
-            LOG_CHUNK="$CHUNK_DIR/llm_log_reload.${g}.txt"
-            NEXT_CHUNK="$CHUNK_DIR/reload_model_bio_info_bis.${g}.txt"
-            [[ -f "$LOG_CHUNK" ]] && cat "$LOG_CHUNK" >> "$SCRATCH_DIR/llm_log_reload.txt"
-            if [[ -s "$NEXT_CHUNK" ]]; then
-              if [[ $header_done -eq 0 ]]; then
-                head -n 1 "$NEXT_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info_bis.txt"
-                tail -n +2 "$NEXT_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info_bis.txt"
-                header_done=1
-              else
-                tail -n +2 "$NEXT_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info_bis.txt"
-              fi
-            fi
-        done
-        rm -rf "$SCRATCH_DIR"/CHUNK_*
-      fi
+      python3 -u "$SCRATCH_DIR/LLM_MI_per_category.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$SCRATCH_DIR/reload_model_bio_info.txt" --error_file_path "$SCRATCH_DIR/reload_model_bio_info_bis.txt" --log_file_path "$SCRATCH_DIR/llm_log_reload.txt" --flag_file "$SCRATCH_DIR/STEP3_2.flag" --initial_n_ctx 3500 --model "$SCRATCH_DIR/$(basename "$MODEL")" "${PY_VERBOSE[@]}" --base_model_dir "$BASE_MODEL"
     fi
 
     if [ ! -s "$SCRATCH_DIR/reload_model_bio_info_bis.txt" ] ; then
