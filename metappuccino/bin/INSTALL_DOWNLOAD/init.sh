@@ -41,7 +41,7 @@ cd $SCRATCH_DIR
 exec >"$LOG_DIR/init.out" 2>"$LOG_DIR/init.err"
 
 cleanup() {
-  cp "$SCRATCH_DIR/STEP1_0.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
+  ls "$TMP_DIR/STEP1_0.flag" 2>/dev/null || echo "Flag not found, skipping."
   echo "End $(date)"
   rm -rf "$SCRATCH_DIR"
 }
@@ -71,4 +71,4 @@ echo "Beginning of Metappuccino analysis"
 echo "Beginning date: $(date)"
 echo "Please wait while your data ara analyzed..."
 
-touch "$SCRATCH_DIR/STEP1_0.flag"
+touch "$TMP_DIR/STEP1_0.flag"

@@ -72,7 +72,12 @@ ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 cp "$META_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy metadata_sra_summarized.txt"; exit 5; }
 cp "$DB_SRC" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy database_metadata_curated.csv"; exit 6; }
 cp "$METAPPUCCINO/scripts/fill_missing_metadata/LLM_metadata_inference.py" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy LLM_metadata_inference.py"; exit 7; }
-cp "$AMBI_CL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy ambiguous_cell_lines.csv"; exit 8; }
+#cp "$AMBI_CL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy ambiguous_cell_lines.csv"; exit 8; }
+if [[ -f "$AMBI_CL" ]]; then
+  cp "$AMBI_CL" "$SCRATCH_DIR/" || { echo "FATAL: cannot copy ambiguous_cell_lines.csv"; exit 8; }
+else
+  : > "$SCRATCH_DIR/ambiguous_cell_lines.csv"
+fi
 
 META_ABS="$SCRATCH_DIR/metadata_sra_summarized.txt"
 DB_ABS="$SCRATCH_DIR/database_metadata_curated.csv"
@@ -87,15 +92,31 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then PY_VERBOSE+=(--verbose); fi
 SHARD_TOTAL=${SHARD_TOTAL:-0}
 SHARD_ID=${SHARD_ID:-0}
 
+echo "[launcher] Detecting GPUs… $(date)"
 if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
-  OLDIFS=$IFS
-  IFS=','; ALL_GPU_IDS=($CUDA_VISIBLE_DEVICES); IFS=$OLDIFS
+  IFS=',' read -ra ALL_GPU_IDS <<< "${CUDA_VISIBLE_DEVICES}"
 else
-  ALL_GPU_IDS=($(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || echo 0))
+  if command -v timeout >/dev/null 2>&1; then
+    MAP_OUT=$(timeout 3s nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || true)
+  else
+    MAP_OUT=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || true)
+  fi
+  if [[ -z "${MAP_OUT//[[:space:]]/}" ]]; then
+    ALL_GPU_IDS=()
+  else
+    readarray -t ALL_GPU_IDS <<<"$MAP_OUT"
+  fi
 fi
+
 TOTAL_AVAIL=${#ALL_GPU_IDS[@]}
-if [[ "$TOTAL_AVAIL" -eq 0 ]]; then N_GPUS=0; fi
+if [[ "$TOTAL_AVAIL" -eq 0 ]]; then
+  N_GPUS=0
+  export CUDA_VISIBLE_DEVICES=""
+  echo "[launcher] No GPUs detected → CPU mode"
+fi
 if [[ "$N_GPUS" -gt "$TOTAL_AVAIL" ]]; then N_GPUS=$TOTAL_AVAIL; fi
+echo "[launcher] Using N_GPUS=$N_GPUS (available=$TOTAL_AVAIL) ids=(${ALL_GPU_IDS[*]:-})"
+
 
 cat > "$SCRATCH_DIR/split_llm_inputs.py" << 'PYCODE'
 import sys, os, json, csv, argparse
@@ -192,8 +213,13 @@ if [[ "${SHARD_TOTAL}" -ge 2 ]]; then
   if [[ ! -e "$CHUNK_DIR" ]]; then echo "FATAL: missing CHUNK dir $CHUNK_DIR" >&2; exit 8; fi
   if [[ ! -s "$META_CHUNK" || ! -s "$DB_CHUNK" ]]; then echo "FATAL: missing chunk inputs: $META_CHUNK or $DB_CHUNK" >&2; ls -l "$CHUNK_DIR" >&2 || true; exit 8; fi
   mkdir -p "$CHUNK_DIR/METADATA_LLM_INFERENCE"
-  cp -f "$SCRATCH_DIR/$MODEL_BASENAME" "$CHUNK_DIR/" 2>/dev/null
-  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$CHUNK_DIR/reload_model_bio_info.${SHARD_ID}.txt" --log_file_path "$CHUNK_DIR/llm_log_SB.${SHARD_ID}.txt" --flag_file "$CHUNK_DIR/STEP3_1.flag.${SHARD_ID}" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}"
+  ln -sfn "$SCRATCH_DIR/$MODEL_BASENAME" "$CHUNK_DIR/$MODEL_BASENAME"
+  if [[ -f "$AMBI_CL" ]]; then
+    cp "$AMBI_CL" "$CHUNK_DIR/ambiguous_cell_lines.csv" || true
+  else
+    : > "$CHUNK_DIR/ambiguous_cell_lines.csv"
+  fi
+  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$CHUNK_DIR/reload_model_bio_info.${SHARD_ID}.txt" --log_file_path "$CHUNK_DIR/llm_log_SB.${SHARD_ID}.txt" --flag_file "$CHUNK_DIR/STEP3_1.flag.${SHARD_ID}" --initial_n_ctx 3500 --model "$MODEL_BASENAME" "${PY_VERBOSE[@]}"
   mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
   [[ -d "$CHUNK_DIR/METADATA_LLM_INFERENCE" ]] && rsync -a --ignore-existing "$CHUNK_DIR/METADATA_LLM_INFERENCE/" "$SCRATCH_DIR/METADATA_LLM_INFERENCE/" 2>/dev/null || true
   : > "$SCRATCH_DIR/llm_log_SB.txt"
@@ -209,61 +235,5 @@ if [[ "${SHARD_TOTAL}" -ge 2 ]]; then
   exit 0
 fi
 
-if [[ "$N_GPUS" -le 1 ]]; then
-  mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
-  python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$META_ABS" --error_file_path "$SCRATCH_DIR/reload_model_bio_info.txt" --log_file_path "$SCRATCH_DIR/llm_log_SB.txt" --flag_file "$SCRATCH_DIR/STEP3_1.flag" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}"
-else
-  python3 "$SCRATCH_DIR/split_llm_inputs.py" --db "$DB_ABS" --meta "$META_ABS" --out "$SCRATCH_DIR" --chunks "$N_GPUS" || { echo "FATAL: splitter failed" >&2; exit 9; }
-  pids=()
-  for ((i=0; i< N_GPUS; i++)); do
-    CHUNK_DIR="$SCRATCH_DIR/CHUNK_${i}"
-    META_CHUNK="$CHUNK_DIR/metadata_sra_summarized.txt"
-    DB_CHUNK="$CHUNK_DIR/database_metadata_curated.csv"
-    if [[ ! -e "$CHUNK_DIR" ]]; then echo "FATAL: missing CHUNK dir $CHUNK_DIR" >&2; exit 9; fi
-    if [[ ! -s "$META_CHUNK" || ! -s "$DB_CHUNK" ]]; then echo "FATAL: missing chunk inputs for CHUNK_${i}" >&2; ls -l "$CHUNK_DIR" >&2 || true; exit 9; fi
-    mkdir -p "$CHUNK_DIR/METADATA_LLM_INFERENCE"
-    cp -f "$SCRATCH_DIR/$MODEL_BASENAME" "$CHUNK_DIR/" 2>/dev/null
-    LOG_FILE="$CHUNK_DIR/llm_log_SB.${i}.txt"
-    ERR_FILE="$CHUNK_DIR/reload_model_bio_info.${i}.txt"
-    FLAG_FILE="$CHUNK_DIR/STEP3_1.flag.${i}"
-    gpu_id="${ALL_GPU_IDS[$i]}"
-    ( CUDA_VISIBLE_DEVICES="$gpu_id" python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$CHUNK_DIR" --input_metadata_path "$META_CHUNK" --error_file_path "$ERR_FILE" --log_file_path "$LOG_FILE" --flag_file "$FLAG_FILE" --initial_n_ctx 3500 --model "$MODEL_BASENAME" --strict_match_training "${PY_VERBOSE[@]}" ) &
-    pids+=($!)
-  done
-  fail=0
-  for pid in "${pids[@]}"; do wait "$pid" || fail=1; done
-  if [[ "$fail" -ne 0 ]]; then echo "One or more GPU workers failed." >&2; exit 10; fi
-  mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
-  if command -v rsync >/dev/null 2>&1; then
-    for d in "$SCRATCH_DIR"/CHUNK_*; do
-      [[ -d "$d/METADATA_LLM_INFERENCE" ]] && rsync -a --ignore-existing "$d/METADATA_LLM_INFERENCE/" "$SCRATCH_DIR/METADATA_LLM_INFERENCE/" || true
-    done
-  else
-    for d in "$SCRATCH_DIR"/CHUNK_*; do
-      if [[ -d "$d/METADATA_LLM_INFERENCE" ]]; then
-        find "$d/METADATA_LLM_INFERENCE" -type f -print0 | while IFS= read -r -d '' f; do
-          base="$(basename "$f")"; dest="$SCRATCH_DIR/METADATA_LLM_INFERENCE/$base"; [[ ! -e "$dest" ]] && cp "$f" "$dest"
-        done
-      fi
-    done
-  fi
-  : > "$SCRATCH_DIR/llm_log_SB.txt"
-  rm -f "$SCRATCH_DIR/reload_model_bio_info.txt"
-  header_done=0
-  for ((i=0; i< N_GPUS; i++)); do
-    CHUNK_DIR="$SCRATCH_DIR/CHUNK_${i}"
-    LOG_CHUNK="$CHUNK_DIR/llm_log_SB.${i}.txt"
-    ERR_CHUNK="$CHUNK_DIR/reload_model_bio_info.${i}.txt"
-    [[ -f "$LOG_CHUNK" ]] && cat "$LOG_CHUNK" >> "$SCRATCH_DIR/llm_log_SB.txt"
-    if [[ -s "$ERR_CHUNK" ]]; then
-      if [[ $header_done -eq 0 ]]; then
-        head -n 1 "$ERR_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info.txt"
-        tail -n +2 "$ERR_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info.txt"
-        header_done=1
-      else
-        tail -n +2 "$ERR_CHUNK" >> "$SCRATCH_DIR/reload_model_bio_info.txt"
-      fi
-    fi
-  done
-  touch "$SCRATCH_DIR/STEP3_1.flag"
-fi
+mkdir -p "$SCRATCH_DIR/METADATA_LLM_INFERENCE"
+python3 -u "$SCRATCH_DIR/LLM_metadata_inference.py" --base_path "$SCRATCH_DIR" --input_metadata_path "$META_ABS" --error_file_path "$SCRATCH_DIR/reload_model_bio_info.txt" --log_file_path "$SCRATCH_DIR/llm_log_SB.txt" --flag_file "$SCRATCH_DIR/STEP3_1.flag" --initial_n_ctx 3500 --model "$MODEL_BASENAME" "${PY_VERBOSE[@]}"
