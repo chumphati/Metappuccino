@@ -185,3 +185,4 @@ dist/
 dist_sdist/
 metappuccino.egg-info/
 
+metappuccino*

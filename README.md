@@ -46,9 +46,41 @@ To install Metappuccino, three steps have to be completed: fetching the LLM mode
 A specific model based on Mistral 7B has been fine-tuned to achieve better performance than open source models (by Sept. 2025). 
 It can be used in Metappuccino by downloading it and providing the path to it in the settings when launching (`--model`).
 
-```bash
+1. Download the original Mistral-7B model (requires asking an access, easily granted to everyone, on HF due to the license).
+```python
+from huggingface_hub import snapshot_download
 
+HF_TOKEN = <HF_TOKEN> #key you have to create on hugging face to be able to download Mistral original model
+
+snapshot_download(
+    repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+    local_dir="<OUT_DIR_URL>/Mistral-7B-Instruct-v0.3",
+    use_auth_token=HF_TOKEN,
+    resume_download=True,
+    max_workers=4
+)
 ```
+
+2. Download MetappuccinoLLModel adaptaters.
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="chumphati/MetappuccinoLLModel",
+    local_dir="<OUT_DIR_URL>/MetappuccinoLLModel", #path to the output directory
+    resume_download=True,
+    max_workers=4
+)
+```
+
+3. Move the original template to the adapters folder.
+
+```bash
+mv <OUT_DIR_URL>/Mistral-7B-Instruct-v0.3 <OUT_DIR_URL>/MetappuccinoLLModel
+```
+
+4. The path to MetappuccinoLLModel is the path to provide to `--model`.
 
 #### Open-source GGUF model
 If you don't want to use MetappuccinoLLModel, you can choose to upload a public model such as GPT, Llama or Deepseek, or your own model. To do so, it must be in GGUF format and will be launched via the llama-cpp backend. 
