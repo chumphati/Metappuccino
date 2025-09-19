@@ -196,3 +196,5 @@ PYCODE
     fi
     mv "$SCRATCH_DIR/reload_model_bio_info_bis.txt" "$SCRATCH_DIR/reload_model_bio_info.txt"
 done
+
+touch "$SCRATCH_DIR/STEP3_2.flag"
