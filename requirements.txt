@@ -15,3 +15,5 @@ matplotlib
 sentence_transformers
 datasets
 peft
+tensorboard
+sentencepiece

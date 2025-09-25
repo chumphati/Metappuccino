@@ -85,7 +85,7 @@ def enrich_from_cell_df(record: dict, mapped: str):
     if mapped in cell_df["name"].values:
         row = cell_df[cell_df["name"] == mapped].iloc[0]
         for f in [
-            "disease", "age", "sex", "ethnicity", "localization",
+            "disease", "age", "sex", "ethnicity",
             "biopsy_type", "biopsy_site", "uberon_code", "cell_type",
         ]:
             v = row.get(f, "")
@@ -141,7 +141,7 @@ cols = [
     "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line", "cell_type",
     "organ", "organ_uberon_code", "disease", "do_code",
     "treatment", "treatment_time", "response",
-    "age", "sex", "ethnicity", "localization"
+    "age", "sex", "ethnicity"
 ]
 
 stopwords = r"\b(?:for|to|and|in|with|via|on|of|the)\b"
@@ -246,7 +246,7 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             vprint("regex")
             found = True
 
-    for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "localization", "biopsy_site",
+    for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "biopsy_site",
                 "biopsy_type", "organ", "disease"]:
         if tag in ["treatment", "treatment_time"]:
             continue

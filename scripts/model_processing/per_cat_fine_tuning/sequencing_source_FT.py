@@ -13,11 +13,21 @@ from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
 from sentence_transformers import SentenceTransformer
 
-parser = argparse.ArgumentParser(description="Fine-tune sequencing_source (multitask) with fixed categories + soft semantic accuracy")
+parser = argparse.ArgumentParser(description="Fine-tune sequencing_source (multitask) — corrected to avoid 'unknown' collapse, keep base skills, and respect prompt logic")
 parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.6)
+parser.add_argument("--cls_loss_weight", type=float, default=0.5)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--sim_thresh", type=float, default=0.25)
+parser.add_argument("--lora_r", type=int, default=8)
+parser.add_argument("--lora_alpha", type=int, default=16)
+parser.add_argument("--lora_dropout", type=float, default=0.05)
+parser.add_argument("--target_modules", type=str, default="q_proj,v_proj,o_proj")
+parser.add_argument("--learning_rate", type=float, default=2e-5)
+parser.add_argument("--unknown_penalty", type=float, default=1.0, help="negative prior for 'unknown' at decoding time")
+parser.add_argument("--length_normalize", action="store_true", help="normalize logprob by token length when forcing categories")
+parser.add_argument("--kl_weight", type=float, default=0.05, help="small distillation weight from base model's easy preferences (classification head)")
+parser.add_argument("--kl_only_if_not_unknown", action="store_true", help="apply distillation only when teacher != 'unknown'")
+parser.add_argument("--proto_weight", type=float, default=0.05, help="prototype guidance weight (align hidden with category prototypes)")
 args = parser.parse_args()
 base_path = args.base_path
 
@@ -28,15 +38,17 @@ val_file   = os.path.join(base_path, "finetune_data_val.csv")
 test_file  = os.path.join(base_path, "finetune_data_test.csv")
 model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
 
-ALLOWED_CATS = ["bulk", "single cell", "spatial", "unknown"]
+aLL = ["bulk", "single cell", "spatial", "unknown"]
+ALLOWED_CATS = aLL
 
 SYN2CANON = {
     "unknown": "unknown", "not applicable": "unknown", "n/a": "unknown", "na": "unknown", "none specified": "unknown", "not reported": "unknown", "unavailable": "unknown", "missing": "unknown",
     "spatial transcriptomics": "spatial", "spatial": "spatial", "10x visium": "spatial", "visium": "spatial", "xenium": "spatial", "geomx": "spatial", "cosmx": "spatial", "slide-seq": "spatial", "slideseq": "spatial", "hdst": "spatial", "st ": "spatial", " spatial-rna": "spatial", "spatial-seq": "spatial", "merfish": "spatial", "seqfish": "spatial", "stereo-seq": "spatial",
-    "single cell": "single cell", "single-cell": "single cell", "sc ": "single cell", "scrna": "single cell", "sc rna": "single cell", "scrna-seq": "single cell", "scRNA-seq": "single cell", "snrna": "single cell", "sn rna": "single cell", "snrna-seq": "single cell", "single nuclei": "single cell", "nuclei": "single cell", "smart-seq2": "single cell", "smart-seq": "single cell", "smartseq2": "single cell", "smartseq": "single cell", "ss2": "single cell", "drop-seq": "single cell", "dropseq": "single cell", "droplet": "single cell", "10x": "single cell", "cellranger": "single cell",
-    "bulk": "bulk", "bulk rna": "bulk", "bulk rna-seq": "bulk", "total rna": "bulk", "total rna-seq": "bulk", "ribodepletion": "bulk", "ribo-depletion": "bulk", "rrna depletion": "bulk", "ribominus": "bulk", "polya": "bulk", "poly a": "bulk", "polyA": "bulk", "pooled": "bulk", "whole tissue": "bulk", "tissue bulk": "bulk", "population": "bulk", "bulk-tissue": "bulk"
+    "single cell": "single cell", "single-cell": "single cell", "sc ": "single cell", "scrna": "single cell", "sc rna": "single cell", "scrna-seq": "single cell", "scrna": "single cell", "snrna": "single cell", "sn rna": "single cell", "snrna-seq": "single cell", "single nuclei": "single cell", "nuclei": "single cell", "smart-seq2": "single cell", "smart-seq": "single cell", "smartseq2": "single cell", "smartseq": "single cell", "ss2": "single cell", "drop-seq": "single cell", "dropseq": "single cell", "droplet": "single cell", "10x": "single cell", "cellranger": "single cell",
+    "bulk": "bulk", "bulk rna": "bulk", "bulk rna-seq": "bulk", "total rna": "bulk", "total rna-seq": "bulk", "ribodepletion": "bulk", "ribo-depletion": "bulk", "rrna depletion": "bulk", "ribominus": "bulk", "polya": "bulk", "poly a": "bulk", "polya selection": "bulk", "whole tissue": "bulk", "tissue bulk": "bulk", "population": "bulk", "bulk-tissue": "bulk"
 }
 
+# --- Helpers
 
 def _canonize_label(x: str) -> str:
     s = str(x).strip().lower()
@@ -86,6 +98,7 @@ def read_two_col_csv(path):
             rows.append({"prompt": prompt, "output": out})
     return pd.DataFrame(rows)
 
+# --- Load data
 
 df_train = read_two_col_csv(train_file)
 df_val   = read_two_col_csv(val_file)
@@ -122,6 +135,7 @@ datasets = {
 }
 print({k: len(v) for k,v in datasets.items()}, flush=True)
 
+# --- Models
 os.environ.setdefault("TOKENIZERS_PARALLELISM","false")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
@@ -131,7 +145,7 @@ tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
 
-print("Load base model", flush=True)
+print("Load base model (student)", flush=True)
 base_model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=dtype,
@@ -142,28 +156,39 @@ base_model.config.pad_token_id = tokenizer.pad_token_id
 if tokenizer.pad_token_id is not None and base_model.get_input_embeddings().num_embeddings != len(tokenizer):
     base_model.resize_token_embeddings(len(tokenizer))
 
-print("Configure LoRA", flush=True)
+print("Configure lightweight LoRA", flush=True)
 peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.2,
-    target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
+    r=int(args.lora_r),
+    lora_alpha=int(args.lora_alpha),
+    lora_dropout=float(args.lora_dropout),
+    target_modules=[m.strip() for m in args.target_modules.split(",") if m.strip()]
 )
 peft_model = get_peft_model(base_model, peft_config)
 peft_model.train()
 
-print("Tokenize", flush=True)
+print("Load teacher (frozen base) for gentle retention", flush=True)
+teacher = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=dtype,
+    device_map="auto",
+    low_cpu_mem_usage=True
+)
+teacher.eval()
+for p in teacher.parameters():
+    p.requires_grad_(False)
+
+# --- Tokenization
 
 def tokenize_fn(example):
-    prompt   = example["prompt"].strip()
+    prompt   = example["prompt"].strip()  # the prompt already carries definitions/context from the input file
     out_json = example["output_json"].strip()
     m = re.search(r'"sequencing_source"\s*:\s*"([^"]*)"', out_json)
     value_str  = m.group(1) if m else ""
     prefix_str = '{"sequencing_source": "'
     suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 16, 3520
+    max_in, max_out, max_total = 2200, 8, 2210
 
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
@@ -174,10 +199,7 @@ def tokenize_fn(example):
     ids  = in_enc["input_ids"] + out_ids
     attn = [1]*len(ids)
 
-    labels_out = [-100]*len(pref_ids) + val_ids
-    if len(suff_ids) > 0:
-        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
-    labels = [-100]*len(in_enc["input_ids"]) + labels_out
+    labels = [-100]*len(in_enc["input_ids"]) + [-100]*len(pref_ids) + val_ids + suff_ids
 
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
@@ -217,45 +239,78 @@ class CausalLMPadCollator:
         batch["cls_label"] = cls_label
         return batch
 
-
 data_collator = CausalLMPadCollator(tokenizer)
 
+# --- Semantic model + category prototypes for guidance
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
-SIM_THRESH = float(args.sim_thresh)
 
+ANCHORS = {
+    "bulk": ["bulk RNA-seq", "whole tissue", "population average", "total RNA"],
+    "single cell": ["scRNA-seq", "single-cell", "single nuclei", "droplet 10x"],
+    "spatial": ["spatial transcriptomics", "Visium", "GeoMx", "MERFISH"],
+    "unknown": ["unknown", "not reported", "n/a"]
+}
+
+cat_proto = {}
+for cat, phrases in ANCHORS.items():
+    emb = model_sem.encode(phrases, convert_to_numpy=True, normalize_embeddings=True)
+    cat_proto[cat] = torch.tensor(emb.mean(axis=0), dtype=torch.float32)
+
+proto_dim = cat_proto["bulk"].numel()
+
+# --- Heads
+hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None) or getattr(peft_model.config, "d_model", None)
+num_classes = len(ALLOWED_CATS)
+cls_head = nn.Sequential(
+    nn.Linear(hidden_size, hidden_size),
+    nn.ReLU(),
+    nn.Dropout(0.2),
+    nn.Linear(hidden_size, num_classes)
+)
+
+proj = nn.Linear(hidden_size, proto_dim)
+
+for m in (cls_head, proj):
+    m.to(next(peft_model.parameters()).device)
+
+# --- Utils
 
 def _cos_sim(a, b):
-    an = a / max(np.linalg.norm(a), 1e-12)
-    bn = b / max(np.linalg.norm(b), 1e-12)
-    return float(np.dot(an, bn))
+    an = a / (a.norm(p=2, dim=-1, keepdim=True) + 1e-12)
+    bn = b / (b.norm(p=2, dim=-1, keepdim=True) + 1e-12)
+    return (an * bn).sum(dim=-1)
+
+cat_proto_mat = torch.stack([cat_proto[c] for c in ALLOWED_CATS], dim=0).to(next(peft_model.parameters()).device)
 
 
-def _choose_forced_category(model, tokenizer, prompt: str, cats=ALLOWED_CATS):
+def _choose_forced_category(model, tokenizer, prompt: str, cats=ALLOWED_CATS, unknown_penalty=0.0, length_normalize=False):
     dev = next(model.parameters()).device
     prefix = prompt + '{"sequencing_source": "'
-    pref_ids = tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
+    pref = tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
 
-    def seq_logprob(candidate: str):
+    def score(candidate: str):
         cand = candidate + '"}'
         cand_ids = tokenizer(cand, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
-        inp = torch.cat([pref_ids, cand_ids[:, :-1]], dim=1)
+        inp = torch.cat([pref, cand_ids[:, :-1]], dim=1)
         with torch.no_grad():
             out = model(input_ids=inp, attention_mask=torch.ones_like(inp))
             logits = out.logits[:, -cand_ids.size(1):, :]
             logp = torch.log_softmax(logits, dim=-1)
             token_logp = logp.gather(2, cand_ids.unsqueeze(-1)).squeeze(-1)
-            return float(token_logp.sum().item())
+            s = token_logp.mean() if length_normalize else token_logp.sum()
+            if candidate == "unknown":
+                s = s - unknown_penalty
+            return float(s.item())
 
-    scores = [(c, seq_logprob(c)) for c in cats]
+    scores = [(c, score(c)) for c in cats]
     scores.sort(key=lambda x: x[1], reverse=True)
     print("debug/forced_scores=" + ", ".join([f"{c}:{s:.2f}" for c,s in scores]), flush=True)
     return scores[0][0]
 
 
-def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
+def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval", unknown_penalty=0.0, length_normalize=False):
     model.eval()
-    dev = next(model.parameters()).device
     n_ok, n_all = 0, 0
     rows = hf_dataset.to_pandas()
     if max_examples is not None:
@@ -263,8 +318,7 @@ def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag=
     ref_texts = []
     for _, r in rows.iterrows():
         try:
-            j = json.loads(r["output_json"])
-            ref_texts.append(str(j.get("sequencing_source", "")))
+            j = json.loads(r["output_json"]) ; ref_texts.append(str(j.get("sequencing_source", "")))
         except Exception:
             m = re.search(r'"sequencing_source"\s*:\s*"([^"]*)"', str(r["output_json"]))
             ref_texts.append(m.group(1) if m else "")
@@ -272,15 +326,14 @@ def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag=
     for idx_row, r in enumerate(rows.itertuples(index=False)):
         prompt   = getattr(r, "prompt")
         ref_val  = ref_texts[idx_row]
-        pred_val = _choose_forced_category(model, tokenizer, prompt, ALLOWED_CATS)
+        pred_val = _choose_forced_category(model, tokenizer, prompt, ALLOWED_CATS, unknown_penalty, length_normalize)
         pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
-        sim = _cos_sim(pred_emb, ref_embs[idx_row])
-        ok = sim >= SIM_THRESH
+        sim = float(np.dot(pred_emb, ref_embs[idx_row]))
+        ok = sim >= float(args.sim_thresh)
         n_ok += int(ok); n_all += 1
         print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" cos_sim={sim:.4f} match={ok}', flush=True)
     model.train()
     return (n_ok / max(1, n_all))
-
 
 writer = SummaryWriter(os.path.join(base_path, "tb_sequencing_source"))
 
@@ -298,7 +351,7 @@ class PrintProgressCallback(TrainerCallback):
             print(f"debug/train_step={state.global_step} completed", flush=True)
 
 class GradNormLogger(TrainerCallback):
-    def __init__(self, every=50): self.every = every
+    def __init__(self, every=100): self.every = every
     def on_backward_end(self, args, state, control, **kwargs):
         model = kwargs.get("model", None)
         if model is None: return
@@ -322,53 +375,44 @@ class GenEvalCallback(TrainerCallback):
         model     = kwargs.get("model", None)
         tokenizer = kwargs.get("tokenizer", None)
         if model is None or tokenizer is None: return
-        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
+        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval", unknown_penalty=float(args._unknown_penalty), length_normalize=bool(args._length_normalize))
         print(f"eval/accuracy_sequencing_source={acc:.4f} at step={state.global_step}", flush=True)
         writer.add_scalar("eval/accuracy_sequencing_source", acc, state.global_step)
         if isinstance(metrics, dict):
             metrics["eval_accuracy_sequencing_source"] = float(acc)
 
-print("Initial evaluation on validation with BASE model (forced categories + semantic)", flush=True)
+# patch TrainingArguments to pass custom flags to callback easily
+TrainingArguments._unknown_penalty = float(args.unknown_penalty)
+TrainingArguments._length_normalize = bool(args.length_normalize)
+
+print("Initial evaluation on validation with BASE model (forced cats + semantic, length-norm & unknown penalty)", flush=True)
 base_model.eval()
-init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
+init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial", unknown_penalty=float(args.unknown_penalty), length_normalize=bool(args.length_normalize))
 print(f"initial/validation_accuracy_sequencing_source={init_val_acc:.4f}", flush=True)
 writer.add_scalar("initial/validation_accuracy_sequencing_source", init_val_acc, 0)
 writer.flush()
 
-hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None) or getattr(peft_model.config, "d_model", None)
-num_classes = len(label2id)
-cls_head = nn.Sequential(
-    nn.Linear(hidden_size, hidden_size),
-    nn.ReLU(),
-    nn.Dropout(0.3),
-    nn.Linear(hidden_size, num_classes)
-)
-cls_head.to(next(peft_model.parameters()).device)
-
-def _weights_from_counts(df):
-    counts = np.array([(df["cls_label"]==i).sum() for i in range(num_classes)], dtype=np.float32)
-    counts = np.maximum(counts, 1.0)
-    w = counts.sum() / counts
-    w = w / w.mean()
-    return torch.tensor(w, dtype=torch.float32)
-
-CE_WEIGHTS = _weights_from_counts(df_train)
-print("debug/class_weights=" + ", ".join([f"{id2label[i]}:{CE_WEIGHTS[i].item():.2f}" for i in range(num_classes)]), flush=True)
+# --- Losses
+CE_WEIGHTS = None  # datasets équilibrés → pas besoin d'upweight a priori
 
 class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.6, **kwargs):
+    def __init__(self, cls_head: nn.Module, proj: nn.Module, cls_weight: float = 0.5, kl_weight: float = 0.05, proto_weight: float = 0.05, **kwargs):
         super().__init__(**kwargs)
         self.cls_head = cls_head
+        self.proj = proj
         self.cls_weight = float(cls_weight)
-        self.ce = nn.CrossEntropyLoss(reduction='mean', weight=CE_WEIGHTS.to(next(self.model.parameters()).device))
+        self.kl_weight = float(kl_weight)
+        self.proto_weight = float(proto_weight)
+        self.ce = nn.CrossEntropyLoss(reduction='mean')
+        self.ce_teacher = nn.CrossEntropyLoss(reduction='mean')
 
     def create_optimizer(self):
         if self.optimizer is None:
             model_params = [p for p in self.model.parameters() if p.requires_grad]
-            head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
+            extra_params = list(self.cls_head.parameters()) + list(self.proj.parameters())
             optimizer_grouped_parameters = [
                 {"params": model_params, "weight_decay": self.args.weight_decay},
-                {"params": head_params,  "weight_decay": 0.05},
+                {"params": extra_params,  "weight_decay": 0.05},
             ]
             self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
         return self.optimizer
@@ -377,7 +421,7 @@ class MultiTaskTrainer(Trainer):
         metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
         try:
             ds = datasets.get("validation", None)
-            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
+            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix, unknown_penalty=float(self.args._unknown_penalty), length_normalize=bool(self.args._length_normalize))
             metrics[f"{metric_key_prefix}_accuracy_sequencing_source"] = float(acc)
             step = getattr(self.state, "global_step", -1)
             print(f"{metric_key_prefix}/accuracy_sequencing_source={acc:.4f} at step={step}", flush=True)
@@ -394,15 +438,46 @@ class MultiTaskTrainer(Trainer):
         B = hidden.size(0)
         idx = torch.clamp(split_idx - 1, min=0)
         gather = hidden[torch.arange(B, device=hidden.device), idx, :]
-        if next(self.cls_head.parameters()).device != gather.device:
-            self.cls_head.to(gather.device)
-        logits = self.cls_head(gather)
+
+        # classification head
+        logits_cls = self.cls_head(gather)
         mask = (cls_label >= 0)
-        if mask.any():
-            cls_loss = self.ce(logits[mask], cls_label[mask])
+        cls_loss = self.ce(logits_cls[mask], cls_label[mask]) if mask.any() else torch.tensor(0.0, device=hidden.device)
+
+        # teacher retention (only gentle, from base model). Use teacher forced category as target.
+        with torch.no_grad():
+            t_targets = []
+            for p in self.tokenizer.batch_decode(inputs["input_ids"], skip_special_tokens=False):
+                # extract the original prompt portion
+                # split_idx is per-sample; we can't use vectorized easily — iterate
+                t_targets.append(None)
+        # because vectorizing per-sample prompts is messy here, recompute from raw batch
+        teacher_targets = []
+        for b in range(B):
+            # rebuild prompt from inputs using split_idx
+            in_ids = inputs["input_ids"][b, :split_idx[b]].detach().cpu().tolist()
+            prompt = self.tokenizer.decode(in_ids, skip_special_tokens=False)
+            t_pred = _choose_forced_category(teacher, self.tokenizer, prompt, ALLOWED_CATS, unknown_penalty=float(self.args._unknown_penalty), length_normalize=bool(self.args._length_normalize))
+            teacher_targets.append(label2id.get(t_pred, label2id["unknown"]))
+        teacher_targets = torch.tensor(teacher_targets, device=hidden.device, dtype=torch.long)
+        if bool(args.kl_only_if_not_unknown):
+            mask_t = teacher_targets != label2id["unknown"]
         else:
-            cls_loss = torch.tensor(0.0, device=hidden.device)
-        loss = lm_loss + self.cls_weight * cls_loss
+            mask_t = torch.ones_like(teacher_targets, dtype=torch.bool)
+        distill_loss = self.ce_teacher(logits_cls[mask_t], teacher_targets[mask_t]) if mask_t.any() else torch.tensor(0.0, device=hidden.device)
+
+        # prototype guidance in semantic space (align with non-unknown when labeled)
+        z = self.proj(gather)
+        z = nn.functional.normalize(z, dim=-1)
+        proto = nn.functional.normalize(cat_proto_mat.to(z.device), dim=-1)
+        pos = proto[cls_label.clamp(min=0)] if mask.any() else proto[0:1].expand(B, -1)
+        cos_pos = _cos_sim(z[mask], pos[mask]) if mask.any() else torch.tensor(0.0, device=z.device)
+        cos_unk = _cos_sim(z, proto[label2id["unknown"]].unsqueeze(0).expand_as(z))
+        proto_loss = (1.0 - cos_pos.mean()) if mask.any() else torch.tensor(0.0, device=z.device)
+        # push away from unknown a bit
+        proto_loss = proto_loss + 0.25 * nn.functional.relu(cos_unk.mean())
+
+        loss = lm_loss + self.cls_weight * cls_loss + self.kl_weight * distill_loss + self.proto_weight * proto_loss
         if return_outputs:
             return loss, outputs
         return loss
@@ -411,27 +486,27 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_sequencing_source"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=100,
-    save_steps=100,
-    save_total_limit=3,
-    learning_rate=3e-5,
+    eval_steps=120,
+    save_steps=120,
+    save_total_limit=2,
+    learning_rate=float(args.learning_rate),
     per_device_train_batch_size=2,
     per_device_eval_batch_size=2,
-    num_train_epochs=3,
+    num_train_epochs=2,
     weight_decay=0.05,
     logging_strategy="steps",
-    logging_steps=50,
+    logging_steps=120,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=12,
     report_to=["tensorboard"],
     logging_dir=os.path.join(base_path, "tb_sequencing_source"),
     load_best_model_at_end=True,
     metric_for_best_model="eval_accuracy_sequencing_source",
     greater_is_better=True,
-    warmup_ratio=0.03,
+    warmup_ratio=0.04,
     lr_scheduler_type="cosine",
-    max_grad_norm=1.0,
+    max_grad_norm=0.8,
 )
 
 trainer = MultiTaskTrainer(
@@ -445,11 +520,14 @@ trainer = MultiTaskTrainer(
         EarlyStoppingCallback(early_stopping_patience=2),
         TBCallback(),
         PrintProgressCallback(),
-        GradNormLogger(every=50),
+        GradNormLogger(every=100),
         GenEvalCallback(datasets["validation"], max_examples=128)
     ],
     cls_head=cls_head,
-    cls_weight=args.cls_loss_weight
+    proj=proj,
+    cls_weight=args.cls_loss_weight,
+    kl_weight=args.kl_weight,
+    proto_weight=args.proto_weight
 )
 
 print("Begin training", flush=True)
@@ -461,7 +539,7 @@ trainer.model.save_pretrained(os.path.join(base_path, "cat_sequencing_source"))
 tokenizer.save_pretrained(os.path.join(base_path, "cat_sequencing_source"))
 
 print("Evaluate on validation (forced categories + semantic)", flush=True)
-val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
+val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val", unknown_penalty=float(args.unknown_penalty), length_normalize=bool(args.length_normalize))
 print(f"final/validation_accuracy_sequencing_source={val_acc:.4f}", flush=True)
 writer.add_scalar("final/validation_accuracy_sequencing_source", val_acc, trainer.state.global_step)
 writer.flush()
@@ -481,11 +559,11 @@ ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddin
 for i, r in enumerate(rows.itertuples(index=False)):
     prompt   = getattr(r, "prompt")
     ref_val  = ref_texts[i]
-    pred_val = _choose_forced_category(trainer.model, tokenizer, prompt, ALLOWED_CATS)
+    pred_val = _choose_forced_category(trainer.model, tokenizer, prompt, ALLOWED_CATS, unknown_penalty=float(args.unknown_penalty), length_normalize=bool(args.length_normalize))
     pred_json = f'{{"sequencing_source": "{_escape_json_val(pred_val)}"}}'
     pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
-    sim = _cos_sim(pred_emb, ref_embs[i])
-    ok = sim >= SIM_THRESH
+    sim = float(np.dot(pred_emb, ref_embs[i]))
+    ok = sim >= float(args.sim_thresh)
     print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
     print(f"--- Expected output  {i+1}: {{\"sequencing_source\": \"{_escape_json_val(ref_val)}\"}}", flush=True)
     print(f"--- cos_sim={sim:.4f} match={ok}", flush=True)

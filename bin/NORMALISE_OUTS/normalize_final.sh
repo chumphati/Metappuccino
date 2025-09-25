@@ -58,6 +58,7 @@ cp "$METAPPUCCINO/data/CELLOSAURUS_CLEAN.csv" "$SCRATCH_DIR/"
 cp "$METAPPUCCINO/data/DOT_TABLE_CLEAN.csv" "$SCRATCH_DIR/"
 cp "$METAPPUCCINO/data/UBERON_TABLE_CLEAN.csv" "$SCRATCH_DIR/"
 cp "$METAPPUCCINO/scripts/normalize_graph/norm_complete.py" "$SCRATCH_DIR/"
+cp "$RES/ORIGINAL_METADATA/metadata_sra_summarized.txt" "$SCRATCH_DIR/"
 
 echo "Start $(date)"
 

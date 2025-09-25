@@ -56,7 +56,7 @@ peft_config = LoraConfig(
     inference_mode=False,
     r=16,
     lora_alpha=32,
-    lora_dropout=0.2,
+    lora_dropout=0.3,
     target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 peft_model = get_peft_model(base_model, peft_config)
@@ -302,7 +302,7 @@ num_classes = len(ALLOWED)
 cls_head = nn.Sequential(
     nn.Linear(hidden_size, hidden_size),
     nn.ReLU(),
-    nn.Dropout(0.3),
+    nn.Dropout(0.35),
     nn.Linear(hidden_size, num_classes)
 )
 cls_head.to(next(peft_model.parameters()).device)
@@ -370,7 +370,7 @@ training_args = TrainingArguments(
     per_device_train_batch_size=2,
     per_device_eval_batch_size=2,
     num_train_epochs=3,
-    weight_decay=0.05,
+    weight_decay=0.1,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),

@@ -12,10 +12,11 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
 from sentence_transformers import SentenceTransformer
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(description="Fine-tune disease (multitask) with soft semantic accuracy")
 parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.4)
+parser.add_argument("--cls_loss_weight", type=float, default=0.2)
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
 base_path = args.base_path
@@ -157,9 +158,7 @@ def tokenize_fn(example):
     attn = [1]*len(ids)
 
     labels_out = [-100]*len(pref_ids) + val_ids
-    if len(suff_ids) > 0:
-        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
-    labels = [-100]*len(in_enc["input_ids"]) + labels_out
+    labels = [-100]*len(in_enc["input_ids"]) + labels_out + [-100]*len(suff_ids)
 
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
@@ -305,22 +304,169 @@ cls_head = nn.Sequential(
 )
 cls_head.to(next(peft_model.parameters()).device)
 
+def is_unknown(x):
+    return str(x).strip().lower() in {"unknown","unk","inconnu"}
+def is_none(x):
+    t = str(x).strip().lower()
+    return t in {"no disease","none","healthy","normal","sans maladie","no_disease"}
+
+raw_labels = sorted(set(df_train["output_raw"].astype(str)))
+emb = model_sem.encode(raw_labels, convert_to_numpy=True, normalize_embeddings=True)
+idx_unknown = [i for i,s in enumerate(raw_labels) if is_unknown(s)]
+idx_none    = [i for i,s in enumerate(raw_labels) if is_none(s)]
+special_idx = set(idx_unknown + idx_none)
+idx_rest = [i for i in range(len(raw_labels)) if i not in special_idx]
+clusters = []
+threshold = 0.6
+for i in idx_rest:
+    v = emb[i]
+    placed = False
+    for cl in clusters:
+        m = max(np.dot(v, emb[j]) for j in cl)
+        if m >= threshold:
+            cl.append(i); placed = True; break
+    if not placed:
+        clusters.append([i])
+if idx_unknown:
+    clusters.append(idx_unknown)
+if idx_none:
+    clusters.append(idx_none)
+canon = {}
+for cl in clusters:
+    sims_sum = (emb[cl] @ emb[cl].T).sum(axis=1)
+    canon_idx = cl[int(np.argmax(sims_sum))]
+    canon_name = raw_labels[canon_idx]
+    for j in cl:
+        canon[raw_labels[j]] = canon_name
+for _df in (df_train, df_val, df_test):
+    _df["canon"] = _df["output_raw"].map(lambda x: canon.get(str(x), str(x)))
+
+canon_labels = sorted(set(df_train["canon"]))
+canon2id = {c:i for i,c in enumerate(canon_labels)}
+id2canon = {i:c for c,i in canon2id.items()}
+
+def to_presence(c):
+    c_low = str(c).strip().lower()
+    if c_low in {"unknown","unk","inconnu"}: return 1
+    if c_low in {"no disease","none","healthy","normal","sans maladie","no_disease"}: return 2
+    return 0
+
+for _df in (df_train, df_val, df_test):
+    _df["canon_id"]    = _df["canon"].map(lambda x: canon2id.get(x, -1))
+    _df["presence_id"] = _df["canon"].map(to_presence)
+
+alias = defaultdict(list)
+for k,v in canon.items():
+    alias[v].append(k)
+def maybe_augment_output(row, p=0.0):
+    return f'{{"disease": "{_escape_json_val(row["output_raw"])}"}}'
+df_train["output_json"] = df_train.apply(maybe_augment_output, axis=1)
+
+datasets = {
+    "train": Dataset.from_pandas(df_train[["prompt","output_json","cls_label","canon_id","presence_id"]]),
+    "validation": Dataset.from_pandas(df_val[["prompt","output_json","cls_label","canon_id","presence_id"]]),
+    "test": Dataset.from_pandas(df_test[["prompt","output_json","cls_label","canon_id","presence_id"]])
+}
+
+def tokenize_fn_aug(example):
+    prompt   = example["prompt"].strip()
+    out_json = example["output_json"].strip()
+    m = re.search(r'"disease"\s*:\s*"([^"]*)"', out_json)
+    value_str  = m.group(1) if m else ""
+    prefix_str = '{"disease": "'
+    suffix_str = '"}'
+    max_in, max_out, max_total = 3500, 350, 3850
+
+    in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
+    pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
+    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
+    suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
+
+    out_ids = pref_ids + val_ids + suff_ids
+    ids  = in_enc["input_ids"] + out_ids
+    attn = [1]*len(ids)
+
+    labels_out = [-100]*len(pref_ids) + val_ids
+    labels = [-100]*len(in_enc["input_ids"]) + labels_out + [-100]*len(suff_ids)
+
+    if len(ids) > max_total:
+        ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
+
+    return {
+        "input_ids": ids,
+        "attention_mask": attn,
+        "labels": labels,
+        "split_idx": len(in_enc["input_ids"]),
+        "cls_label": int(example.get("cls_label", -1)),
+        "canon_id": int(example.get("canon_id", -1)),
+        "presence_id": int(example.get("presence_id", -1)),
+    }
+
+tokenized = {
+    "train": datasets["train"].map(tokenize_fn_aug, remove_columns=datasets["train"].column_names),
+    "validation": datasets["validation"].map(tokenize_fn_aug, remove_columns=datasets["validation"].column_names),
+    "test": datasets["test"].map(tokenize_fn_aug, remove_columns=datasets["test"].column_names),
+}
+
+class CausalLMPadCollator2:
+    def __init__(self, tokenizer):
+        self._padder = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt")
+    def __call__(self, features):
+        labels    = [torch.tensor(f["labels"], dtype=torch.long) for f in features]
+        split_idx = torch.tensor([int(f.get("split_idx", 0)) for f in features], dtype=torch.long)
+        cls_label = torch.tensor([int(f.get("cls_label", -1)) for f in features], dtype=torch.long)
+        canon_id  = torch.tensor([int(f.get("canon_id", -1)) for f in features], dtype=torch.long)
+        presence_id = torch.tensor([int(f.get("presence_id", -1)) for f in features], dtype=torch.long)
+        for f in features:
+            for k in ("labels","split_idx","cls_label","canon_id","presence_id"):
+                f.pop(k, None)
+        batch = self._padder(features)
+        max_len = batch["input_ids"].size(1)
+        padded = []
+        for l in labels:
+            if l.numel() < max_len:
+                pad = torch.full((max_len - l.numel(),), -100, dtype=torch.long)
+                l = l[:max_len] if l.numel() >= max_len else torch.cat([l, pad], dim=0)
+            else:
+                l = l[:max_len]
+            padded.append(l)
+        batch["labels"]    = torch.stack(padded, dim=0)
+        batch["split_idx"] = split_idx
+        batch["cls_label"] = cls_label
+        batch["canon_id"]  = canon_id
+        batch["presence_id"] = presence_id
+        return batch
+
+data_collator = CausalLMPadCollator2(tokenizer)
+
+with torch.no_grad():
+    canon_texts = [id2canon[i] for i in range(len(id2canon))]
+    canon_emb_np = model_sem.encode(canon_texts, convert_to_numpy=True, normalize_embeddings=True)
+canon_emb = torch.tensor(canon_emb_np, dtype=torch.float32)
+
 class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.7, **kwargs):
+    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.2, **kwargs):
         super().__init__(**kwargs)
         self.cls_head = cls_head
         self.cls_weight = float(cls_weight)
         self.ce = nn.CrossEntropyLoss(reduction='mean')
+        hidden_size = getattr(self.model.config, "hidden_size", None) or getattr(self.model.config, "n_embd", None)
+        self.canon_head = nn.Sequential(nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Dropout(0.2),
+                                        nn.Linear(hidden_size, len(canon2id)))
+        self.pres_head  = nn.Sequential(nn.Linear(hidden_size, hidden_size//2), nn.ReLU(), nn.Dropout(0.2),
+                                        nn.Linear(hidden_size//2, 3))
+        self._proj = nn.Linear(hidden_size, canon_emb.size(1), bias=False)
+        self.temp = 0.07
 
     def create_optimizer(self):
         if self.optimizer is None:
             model_params = [p for p in self.model.parameters() if p.requires_grad]
-            head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
+            head_params  = list(self.canon_head.parameters()) + list(self.pres_head.parameters()) + list(self._proj.parameters()) + list(self.cls_head.parameters())
             optimizer_grouped_parameters = [
-                {"params": model_params, "weight_decay": self.args.weight_decay},
-                {"params": head_params,  "weight_decay": 0.05},
+                {"params": model_params, "weight_decay": self.args.weight_decay, "lr": 1e-5},
+                {"params": head_params,  "weight_decay": 0.05, "lr": 3e-5},
             ]
-            self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
+            self.optimizer = AdamW(optimizer_grouped_parameters, lr=1e-5)
         return self.optimizer
 
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
@@ -336,23 +482,32 @@ class MultiTaskTrainer(Trainer):
         return metrics
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
+        attention_mask = inputs["attention_mask"]
         split_idx = inputs.pop("split_idx")
         cls_label = inputs.pop("cls_label")
+        canon_id  = inputs.pop("canon_id")
+        presence_id = inputs.pop("presence_id")
         outputs   = model(**inputs, output_hidden_states=True)
         lm_loss   = outputs.loss
         hidden    = outputs.hidden_states[-1]
         B = hidden.size(0)
-        idx = torch.clamp(split_idx - 1, min=0)
-        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
-        if next(self.cls_head.parameters()).device != gather.device:
-            self.cls_head.to(gather.device)
-        logits = self.cls_head(gather)
-        mask = (cls_label >= 0)
-        if mask.any():
-            cls_loss = self.ce(logits[mask], cls_label[mask])
-        else:
-            cls_loss = torch.tensor(0.0, device=hidden.device)
-        loss = lm_loss + self.cls_weight * cls_loss
+        last_idx = attention_mask.sum(dim=1).to(hidden.device) - 1
+        gather = hidden[torch.arange(B, device=hidden.device), last_idx, :]
+        self.canon_head.to(gather.device); self.pres_head.to(gather.device); self._proj.to(gather.device); self.cls_head.to(gather.device)
+        canon_logits = self.canon_head(gather)
+        pres_logits  = self.pres_head(gather)
+        cls_logits   = self.cls_head(gather)
+        mask_c = (canon_id >= 0)
+        mask_p = (presence_id >= 0)
+        mask_cls = (cls_label >= 0)
+        canon_loss = self.ce(canon_logits[mask_c], canon_id[mask_c]) if mask_c.any() else torch.tensor(0.0, device=hidden.device)
+        pres_loss  = self.ce(pres_logits[mask_p],  presence_id[mask_p]) if mask_p.any() else torch.tensor(0.0, device=hidden.device)
+        cls_loss   = self.ce(cls_logits[mask_cls], cls_label[mask_cls]) if mask_cls.any() else torch.tensor(0.0, device=hidden.device)
+        q = nn.functional.normalize(self._proj(gather), dim=-1)
+        k = nn.functional.normalize(canon_emb.to(gather.device), dim=-1)
+        sims = (q @ k.t()) / self.temp
+        sem_loss = self.ce(sims[mask_c], canon_id[mask_c]) if mask_c.any() else torch.tensor(0.0, device=hidden.device)
+        loss = lm_loss + self.cls_weight*(0.5*canon_loss + 0.25*pres_loss + 0.25*sem_loss) + self.cls_weight*cls_loss
         if return_outputs:
             return loss, outputs
         return loss
@@ -364,7 +519,7 @@ training_args = TrainingArguments(
     eval_steps=50,
     save_steps=50,
     save_total_limit=3,
-    learning_rate=3e-5,
+    learning_rate=1e-5,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=2,
     num_train_epochs=2,
@@ -381,7 +536,7 @@ training_args = TrainingArguments(
     greater_is_better=True,
     warmup_ratio=0.03,
     lr_scheduler_type="cosine",
-    max_grad_norm=1.0,
+    max_grad_norm=0.5,
 )
 
 trainer = MultiTaskTrainer(

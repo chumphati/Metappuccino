@@ -55,9 +55,9 @@ print("Configure LoRA", flush=True)
 peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.2,
+    r=8,
+    lora_alpha=16,
+    lora_dropout=0.3,
     target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 peft_model = get_peft_model(base_model, peft_config)
@@ -202,7 +202,7 @@ data_collator = CausalLMPadCollator(tokenizer)
 
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
-SIM_THRESH = 0.4
+SIM_THRESH = 0.7
 
 def _cos_sim(a, b):
     an = a / max(np.linalg.norm(a), 1e-12)

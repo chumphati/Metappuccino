@@ -2,19 +2,17 @@ import os, re, json, math, argparse, random
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from torch.optim import AdamW
+from torch.utils.tensorboard import SummaryWriter
 from datasets import Dataset
 from transformers import (
     AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer,
     DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
 )
 from peft import LoraConfig, get_peft_model
-from torch.utils.tensorboard import SummaryWriter
 
 parser = argparse.ArgumentParser(description="Fine-tune age (multitask), eval ponctuation-insensitive, case-sensitive")
 parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.4)
+parser.add_argument("--cls_loss_weight", type=float, default=0.0)
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
 base_path = args.base_path
@@ -34,7 +32,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM","false")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({"pad_token": "<pad>"})
-tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
+tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token_id
 
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -54,9 +52,9 @@ print("Configure LoRA", flush=True)
 peft_config = LoraConfig(
     task_type="CAUSAL_LM",
     inference_mode=False,
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.2,
+    r=8,
+    lora_alpha=16,
+    lora_dropout=0.3,
     target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
 )
 peft_model = get_peft_model(base_model, peft_config)
@@ -118,89 +116,72 @@ def _extract_value(txt):
         m = re.search(r'"age"\s*:\s*"([^"]*)"', str(txt))
         return m.group(1) if m else str(txt)
 
+_CANON = re.compile(r'(?i)\b(\d{1,3})\s*(y|yr|yrs|yo|year|years|ans|años|anni|лет|岁)\b|\bage(?:d)?\s*[:=]?\s*(\d{1,3})\b|\b(\d{1,3})\s*(?:years?\s*old)\b')
+def _canon_age(s):
+    s = str(s).strip()
+    if s.lower() in {"", "na", "n/a", "none", "null", "unknown", "unk"}:
+        return "unknown"
+    m = _CANON.search(s)
+    if not m:
+        return "unknown"
+    n = None
+    for g in (1,3,4):
+        if m.group(g):
+            n = int(m.group(g))
+            break
+    if n is None or n < 0 or n > 120:
+        return "unknown"
+    return f"{n} years"
+
 def _strip_punct_keep_case(s):
     return re.sub(r'[^A-Za-z0-9]+', '', str(s))
 
-for _df in (df_train, df_val, df_test):
-    _df["output_raw"]  = _df["output"].astype(str)
-    _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"age": "{_escape_json_val(v)}"}}')
+def _extract_age_candidates(text):
+    text = str(text)
+    pats = [
+        r'(?i)\bage(?:d)?\s*[:=]?\s*(\d{1,3})\b',
+        r'(?i)\b(\d{1,3})\s*(?:years?|y|yr|yo)\b',
+        r'(?i)\b(\d{1,3})\s*(?:years?\s*old)\b'
+    ]
+    nums = []
+    for p in pats:
+        for m in re.finditer(p, text):
+            try:
+                n = int(m.group(1))
+                if 0 <= n <= 120:
+                    nums.append(n)
+            except:
+                pass
+    return sorted(set(nums))
 
-labels_train = sorted(set(df_train["output_raw"].tolist()))
-label2id = {lbl:i for i,lbl in enumerate(labels_train)}
-id2label = {i:lbl for lbl,i in label2id.items()}
-print(f"Label space (train) size = {len(label2id)}", flush=True)
+def _prompt_has_age(prompt):
+    return len(_extract_age_candidates(prompt)) > 0
 
-for _df in (df_train, df_val, df_test):
-    _df["cls_label"] = _df["output_raw"].map(lambda x: label2id.get(x, -1))
+def _score_continuation(model, tokenizer, prefix, continuation, device):
+    with torch.no_grad():
+        ids_pref = tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"].to(device)
+        ids_cont = tokenizer(continuation, add_special_tokens=False, return_tensors="pt")["input_ids"].to(device)
+        inp = torch.cat([ids_pref, ids_cont], dim=1)
+        out = model(input_ids=inp)
+        logits = out.logits[:, :-1, :]
+        tgt = inp[:, 1:]
+        start = ids_pref.size(1) - 1
+        logits = logits[:, start:start+ids_cont.size(1), :]
+        tgt = tgt[:, start:start+ids_cont.size(1)]
+        logprobs = torch.log_softmax(logits, dim=-1).gather(-1, tgt.unsqueeze(-1)).squeeze(-1)
+        return float(logprobs.sum().item())
 
-datasets = {
-    "train": Dataset.from_pandas(df_train[["prompt","output_json","cls_label"]]),
-    "validation": Dataset.from_pandas(df_val[["prompt","output_json","cls_label"]]),
-    "test": Dataset.from_pandas(df_test[["prompt","output_json","cls_label"]])
-}
-print({k: len(v) for k,v in datasets.items()}, flush=True)
-
-def tokenize_fn(example):
-    prompt   = example["prompt"].strip()
-    out_json = example["output_json"].strip()
-    m = re.search(r'"age"\s*:\s*"([^"]*)"', out_json)
-    value_str  = m.group(1) if m else ""
-    prefix_str = '{"age": "'
-    suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 350, 3850
-
-    in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
-    pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
-    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
-    suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
-
-    out_ids = pref_ids + val_ids + suff_ids
-    ids  = in_enc["input_ids"] + out_ids
-    attn = [1]*len(ids)
-
-    labels_out = [-100]*len(pref_ids) + val_ids
-    if len(suff_ids) > 0:
-        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
-    labels = [-100]*len(in_enc["input_ids"]) + labels_out
-
-    if len(ids) > max_total:
-        ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
-
-    return {
-        "input_ids": ids,
-        "attention_mask": attn,
-        "labels": labels,
-        "split_idx": len(in_enc["input_ids"]),
-        "cls_label": int(example.get("cls_label", -1)),
-    }
-
-tokenized = {k: v.map(tokenize_fn, remove_columns=v.column_names) for k, v in datasets.items()}
-
-class CausalLMPadCollator:
-    def __init__(self, tokenizer):
-        self._padder = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt")
-    def __call__(self, features):
-        labels    = [torch.tensor(f["labels"], dtype=torch.long) for f in features]
-        split_idx = torch.tensor([int(f.get("split_idx", 0)) for f in features], dtype=torch.long)
-        cls_label = torch.tensor([int(f.get("cls_label", -1)) for f in features], dtype=torch.long)
-        for f in features:
-            f.pop("labels", None); f.pop("split_idx", None); f.pop("cls_label", None)
-        batch = self._padder(features)
-        max_len = batch["input_ids"].size(1)
-        padded = []
-        for l in labels:
-            if l.numel() < max_len:
-                pad = torch.full((max_len - l.numel(),), -100, dtype=torch.long)
-                l = torch.cat([l, pad], dim=0)
-            else:
-                l = l[:max_len]
-            padded.append(l)
-        batch["labels"]    = torch.stack(padded, dim=0)
-        batch["split_idx"] = split_idx
-        batch["cls_label"] = cls_label
-        return batch
-
-data_collator = CausalLMPadCollator(tokenizer)
+def _argmax_over_candidates(model, tokenizer, prompt, device):
+    prefix = prompt + '{"age": "'
+    cands_num = _extract_age_candidates(prompt)
+    cand_strs = [f"{n} years" for n in cands_num]
+    cand_strs.append("unknown")
+    scores = []
+    for c in cand_strs:
+        s = _score_continuation(model, tokenizer, prefix, c + '"}', device)
+        scores.append((s, c))
+    scores.sort(reverse=True, key=lambda x: x[0])
+    return scores[0][1]
 
 def _cmp_ignore_punct_keep_case(a, b):
     return _strip_punct_keep_case(a) == _strip_punct_keep_case(b)
@@ -215,24 +196,72 @@ def gen_eval_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval
     for i, r in rows.iterrows():
         prompt   = r["prompt"]
         expected = r["output_json"]
-        ref_val  = _extract_value(expected)
-        prefix = prompt + '{"age": "'
-        inp = tokenizer(prefix, return_tensors="pt").to(dev)
-        with torch.no_grad():
-            out_ids = model.generate(
-                **inp,
-                max_new_tokens=64,
-                do_sample=False,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id
-            )
-        cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        pred_val = re.split(r'["\n,}]', cont)[0]
+        ref_val  = _canon_age(_extract_value(expected))
+        pred_val = _argmax_over_candidates(model, tokenizer, prompt, dev) if _prompt_has_age(prompt) else "unknown"
         ok = _cmp_ignore_punct_keep_case(pred_val, ref_val)
         n_ok += int(ok); n_all += 1
         print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" pred_norm="{_strip_punct_keep_case(pred_val)}" ref_norm="{_strip_punct_keep_case(ref_val)}" match={ok}', flush=True)
     model.train()
     return (n_ok / max(1, n_all))
+
+for _df in (df_train, df_val, df_test):
+    _df["output_raw"]  = _df["output"].astype(str)
+    _df["output_raw"]  = _df["output_raw"].map(_canon_age)
+    _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"age": "{_escape_json_val(v)}"}}')
+
+datasets = {
+    "train": Dataset.from_pandas(df_train[["prompt","output_json"]]),
+    "validation": Dataset.from_pandas(df_val[["prompt","output_json"]]),
+    "test": Dataset.from_pandas(df_test[["prompt","output_json"]])
+}
+print({k: len(v) for k,v in datasets.items()}, flush=True)
+
+def tokenize_fn(example):
+    prompt   = example["prompt"].strip()
+    out_json = example["output_json"].strip()
+    m = re.search(r'"age"\s*:\s*"([^"]*)"', out_json)
+    value_str  = m.group(1) if m else ""
+    prefix_str = '{"age": "'
+    suffix_str = '"}'
+    max_in, max_out, max_total = 3500, 350, 3850
+    in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
+    pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
+    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
+    suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
+    out_ids = pref_ids + val_ids + suff_ids
+    ids  = in_enc["input_ids"] + out_ids
+    attn = [1]*len(ids)
+    labels_out = [-100]*len(pref_ids) + val_ids
+    if len(suff_ids) > 0:
+        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
+    labels = [-100]*len(in_enc["input_ids"]) + labels_out
+    if len(ids) > max_total:
+        ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
+    return {"input_ids": ids, "attention_mask": attn, "labels": labels}
+
+tokenized = {k: v.map(tokenize_fn, remove_columns=v.column_names) for k, v in datasets.items()}
+
+class CausalLMPadCollator:
+    def __init__(self, tokenizer):
+        self._padder = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt")
+    def __call__(self, features):
+        labels = [torch.tensor(f["labels"], dtype=torch.long) for f in features]
+        for f in features:
+            f.pop("labels", None)
+        batch = self._padder(features)
+        max_len = batch["input_ids"].size(1)
+        padded = []
+        for l in labels:
+            if l.numel() < max_len:
+                pad = torch.full((max_len - l.numel(),), -100, dtype=torch.long)
+                l = torch.cat([l, pad], dim=0)
+            else:
+                l = l[:max_len]
+            padded.append(l)
+        batch["labels"] = torch.stack(padded, dim=0)
+        return batch
+
+data_collator = CausalLMPadCollator(tokenizer)
 
 writer = SummaryWriter(tb_dir)
 
@@ -287,80 +316,18 @@ print(f"initial/validation_accuracy_age={init_val_acc:.4f}", flush=True)
 writer.add_scalar("initial/validation_accuracy_age", init_val_acc, 0)
 writer.flush()
 
-hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None)
-num_classes = len(label2id)
-cls_head = nn.Sequential(
-    nn.Linear(hidden_size, hidden_size),
-    nn.ReLU(),
-    nn.Dropout(0.3),
-    nn.Linear(hidden_size, num_classes)
-)
-cls_head.to(next(peft_model.parameters()).device)
-
-class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.7, **kwargs):
-        super().__init__(**kwargs)
-        self.cls_head = cls_head
-        self.cls_weight = float(cls_weight)
-        self.ce = nn.CrossEntropyLoss(reduction='mean')
-
-    def create_optimizer(self):
-        if self.optimizer is None:
-            model_params = [p for p in self.model.parameters() if p.requires_grad]
-            head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
-            optimizer_grouped_parameters = [
-                {"params": model_params, "weight_decay": self.args.weight_decay},
-                {"params": head_params,  "weight_decay": 0.05},
-            ]
-            self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
-        return self.optimizer
-
-    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
-        metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
-        try:
-            ds = datasets.get("validation", None)
-            acc = gen_eval_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
-            metrics[f"{metric_key_prefix}_accuracy_age"] = float(acc)
-            step = getattr(self.state, "global_step", -1)
-            print(f"{metric_key_prefix}/accuracy_age={acc:.4f} at step={step}", flush=True)
-        except Exception as e:
-            print(f"warn/eval_callback_exception: {e}", flush=True)
-        return metrics
-
-    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
-        split_idx = inputs.pop("split_idx")
-        cls_label = inputs.pop("cls_label")
-        outputs   = model(**inputs, output_hidden_states=True)
-        lm_loss   = outputs.loss
-        hidden    = outputs.hidden_states[-1]
-        B = hidden.size(0)
-        idx = torch.clamp(split_idx - 1, min=0)
-        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
-        if next(self.cls_head.parameters()).device != gather.device:
-            self.cls_head.to(gather.device)
-        logits = self.cls_head(gather)
-        mask = (cls_label >= 0)
-        if mask.any():
-            cls_loss = self.ce(logits[mask], cls_label[mask])
-        else:
-            cls_loss = torch.tensor(0.0, device=hidden.device)
-        loss = lm_loss + self.cls_weight * cls_loss
-        if return_outputs:
-            return loss, outputs
-        return loss
-
 training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_age"),
     eval_strategy="steps",
     save_strategy="steps",
     eval_steps=50,
     save_steps=50,
-    save_total_limit=3,
-    learning_rate=3e-5,
+    save_total_limit=1,
+    learning_rate=1e-5,
     per_device_train_batch_size=2,
     per_device_eval_batch_size=2,
-    num_train_epochs=2,
-    weight_decay=0.05,
+    num_train_epochs=1,
+    weight_decay=0.1,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
@@ -371,12 +338,12 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="eval_accuracy_age",
     greater_is_better=True,
-    warmup_ratio=0.03,
+    warmup_ratio=0.05,
     lr_scheduler_type="cosine",
     max_grad_norm=1.0,
 )
 
-trainer = MultiTaskTrainer(
+trainer = Trainer(
     model=peft_model,
     args=training_args,
     train_dataset=tokenized["train"],
@@ -390,8 +357,6 @@ trainer = MultiTaskTrainer(
         GradNormLogger(every=50),
         GenEvalCallback(datasets["validation"], max_examples=128)
     ],
-    cls_head=cls_head,
-    cls_weight=args.cls_loss_weight
 )
 
 print("Begin training", flush=True)
@@ -415,19 +380,8 @@ n_ok, n_all = 0, 0
 for i, r in rows.iterrows():
     prompt   = r["prompt"]
     expected = r["output_json"]
-    ref_val  = _extract_value(expected)
-    prefix = prompt + '{"age": "'
-    inp = tokenizer(prefix, return_tensors="pt").to(dev)
-    with torch.no_grad():
-        out_ids = trainer.model.generate(
-            **inp,
-            max_new_tokens=64,
-            do_sample=False,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id
-        )
-    cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-    pred_val = re.split(r'["\n,}]', cont)[0]
+    ref_val  = _canon_age(_extract_value(expected))
+    pred_val = _argmax_over_candidates(trainer.model, tokenizer, prompt, dev) if _prompt_has_age(prompt) else "unknown"
     pred_json = f'{{"age": "{_escape_json_val(pred_val)}"}}'
     ok = _cmp_ignore_punct_keep_case(pred_val, ref_val)
     print(f"--- Predicted output {i+1}: {pred_json}", flush=True)

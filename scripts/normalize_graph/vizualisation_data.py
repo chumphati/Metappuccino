@@ -15,7 +15,7 @@ IMPORTANT_FIELDS = [
     "disease", "treatment", "organ", "biopsy_site", "biopsy_type",
     "cell_type", "cell_line", "sex", "ethnicity",
     "instrument_platform", "library_strategy", "sequencing_source",
-    "localization", "organ_uberon_code", "bs_uberon_code", "do_code",
+    "organ_uberon_code", "bs_uberon_code", "do_code",
     "response", "is_cancer", "treatment_time"
 ]
 

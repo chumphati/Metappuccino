@@ -20,6 +20,7 @@ CELLOSAURUS = os.path.join(base_path, "CELLOSAURUS_CLEAN.csv")
 DOT_FILE = os.path.join(base_path, "DOT_TABLE_CLEAN.csv")
 UBERON_FILE = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
 CSV_OUTPUT = os.path.join(base_path, "completed_metadata.csv")
+SUMMARIES_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
 
 INVALID_ENTRIES = {"unknown", "missing", "n/a", "na", "none", ""}
@@ -86,7 +87,7 @@ def fmt_codes(x):
 def infer_from_cell_line(cell_line, cell_df):
     row = cell_df[cell_df["name"] == cell_line].iloc[0]
     output = {}
-    for f in ["disease", "age", "sex", "ethnicity", "localization", "biopsy_type", "biopsy_site", "uberon_code",
+    for f in ["disease", "age", "sex", "ethnicity", "biopsy_type", "biopsy_site", "uberon_code",
               "cell_type"]:
         val = row.get(f, "")
         if val and val.strip():
@@ -160,7 +161,7 @@ organ_canon_case = {k.lower(): k for k in organ_code.keys()}
 fields = ["run_accession", "study_accession", "instrument_platform", "library_selection", "library_strategy",
           "base_count", "sequencing_source", "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line",
           "cell_type", "organ", "organ_uberon_code", "disease", "do_code", "is_cancer", "treatment", "treatment_time",
-          "response", "age", "sex", "ethnicity", "localization"]
+          "response", "age", "sex", "ethnicity"]
 
 no_entropy_fields = {"do_code", "organ_uberon_code", "bs_uberon_code"}
 entropy_cols = [f"confidence_entropy_{f}" for f in fields if f not in no_entropy_fields and f != "run_accession"]
@@ -297,6 +298,101 @@ def _normalize_sex_value(x: str) -> str:
 
 if "sex" in out_df.columns:
     out_df["sex"] = out_df["sex"].apply(_normalize_sex_value)
+
+##########################################################################################
+#VERIF AGE
+
+summaries_map = {}
+if os.path.exists(SUMMARIES_FILE):
+    try:
+        _df_sum = pd.read_csv(SUMMARIES_FILE, sep="\t", dtype=str, on_bad_lines="skip").fillna("")
+        if {"run_accession", "summary"}.issubset(set(_df_sum.columns)):
+            summaries_map = dict(zip(_df_sum["run_accession"].astype(str), _df_sum["summary"].astype(str)))
+    except Exception:
+        summaries_map = {}
+
+
+_AGE_UNIT_MAP = {
+    "y": "y", "yr": "y", "yrs": "y", "year": "y", "years": "y",
+    "mo": "mo", "mos": "mo", "month": "mo", "months": "mo",
+    "d": "d", "day": "d", "days": "d",
+    "wk": "wk", "wks": "wk", "week": "wk", "weeks": "wk",
+}
+
+_AGE_PATTERNS = [
+    re.compile(r"(?i)\b(?:age|aged|y\/o|yo|years?\s+old|months?\s+old|weeks?\s+old|days?\s+old|gestational\s+age)\s*[:=]?\s*(\d{1,3}(?:\.\d+)?)\s*([a-z]+)?\b"),
+    re.compile(r"(?i)\b(\d{1,3}(?:\.\d+)?)\s*(y|yr|yrs|year|years|mo|mos|month|months|wk|wks|week|weeks|d|day|days)\b"),
+    re.compile(r"(?i)\b(\d{1,2})\s*(?:y\/o|yo)\b"),
+]
+
+def _parse_age_value(raw: str):
+    if not isinstance(raw, str):
+        return None
+    s = raw.strip().lower()
+    if not s or s in INVALID_ENTRIES:
+        return None
+    m = re.search(r"^(\d{1,3}(?:\.\d+)?)(?:\s*([a-z]+))?$", s)
+    if not m:
+        return None
+    num = m.group(1)
+    unit = m.group(2) or "y"
+    unit = _AGE_UNIT_MAP.get(unit, unit)
+    if unit not in {"y", "mo", "wk", "d"}:
+        if re.fullmatch(r"\d{1,3}(?:\.\d+)?", s):
+            unit = "y"
+        else:
+            return None
+    return (num, unit)
+
+def _extract_age_mentions_from_text(text: str):
+    out = []
+    if not isinstance(text, str) or not text:
+        return out
+    for pat in _AGE_PATTERNS:
+        for m in pat.finditer(text):
+            num = m.group(1)
+            unit = m.group(2) if m.lastindex and m.lastindex >= 2 else None
+            if unit is None and pat is _AGE_PATTERNS[2]:
+                unit = "y"
+            if num:
+                unit = (unit or "y").lower()
+                unit = _AGE_UNIT_MAP.get(unit, unit)
+                if unit in {"y", "mo", "wk", "d"}:
+                    out.append((num, unit))
+    return out
+
+def _nums_equal(a: str, b: str) -> bool:
+    try:
+        return abs(float(a) - float(b)) < 1e-6
+    except Exception:
+        return a == b
+
+def _age_is_confirmed_in_summary(age_value: str, summary: str) -> bool:
+    parsed = _parse_age_value(age_value)
+    if not parsed:
+        return True
+    num_v, unit_v = parsed
+    mentions = _extract_age_mentions_from_text(summary or "")
+    for num_s, unit_s in mentions:
+        if unit_s == unit_v and _nums_equal(num_s, num_v):
+            return True
+        if unit_v == "y" and unit_s == "y" and _nums_equal(num_s, num_v):
+            return True
+    return False
+
+if "age" in out_df.columns and "run_accession" in out_df.columns:
+    _validated_ages = []
+    for _i, _r in out_df.iterrows():
+        _run = str(_r["run_accession"])
+        _age = str(_r["age"])
+        _summary = summaries_map.get(_run, "")
+        if _age.strip().lower() not in INVALID_ENTRIES and not _age.strip().lower() == "unknown":
+            if not _age_is_confirmed_in_summary(_age, _summary):
+                _age = "unknown"
+                if "confidence_entropy_age" in out_df.columns:
+                    out_df.at[_i, "confidence_entropy_age"] = "unknown"
+        _validated_ages.append(_age)
+    out_df["age"] = _validated_ages
 
 ##########################################################################################
 # SAVE
