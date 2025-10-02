@@ -46,3 +46,16 @@ df.to_csv(sys.argv[1], index=False)
 #are files same
 cmp -s "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/synt_summary.txt" "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/utils_scripts/METADATA_LLM_INFERENCE/synt_summary2.txt" \
   && echo "identiques" || echo "différents"
+
+#ft mv
+for d in /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/FINE_TUNING*/; do
+  [ -d "$d" ] || continue
+  mkdir -p "$d/archive"
+  shopt -s nullglob
+  for item in "$d"*; do
+    base=$(basename "$item")
+    [ "$base" = "finetune_data_test.csv" ] && continue
+    [ "$base" = "archive" ] && continue
+    mv -v -- "$item" "$d/archive/"
+  done
+done

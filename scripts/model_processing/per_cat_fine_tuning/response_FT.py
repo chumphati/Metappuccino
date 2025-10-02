@@ -5,19 +5,18 @@ import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from datasets import Dataset
-from transformers import (
-    AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer,
-    DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
 from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
 from sentence_transformers import SentenceTransformer
 
 parser = argparse.ArgumentParser(description="Fine-tune response (multitask) with fixed categories + soft semantic accuracy")
 parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.6)
+parser.add_argument("--cls_loss_weight", type=float, default=2.0)
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--sim_thresh", type=float, default=0.25)
+parser.add_argument("--head_lr", type=float, default=1e-3)
+parser.add_argument("--head_warmup_steps", type=int, default=300)
 args = parser.parse_args()
 base_path = args.base_path
 
@@ -37,14 +36,13 @@ SYN2CANON = {
     "not reported": "unknown", "unavailable": "unknown", "missing": "unknown", "dose-limiting toxicity": "unknown",
     "stable": "stable", "stable disease": "stable", "sd": "stable", "no change": "stable", "unchanged": "stable",
     "progressive": "progressive", "progression": "progressive", "progressive disease": "progressive", "pd": "progressive",
-    "worsened": "progressive", "worsening": "progressive", "relapse": "progressive", "no response": "progressive",
-    "refractory": "progressive",
+    "worsened": "progressive", "worsening": "progressive", "relapse": "progressive", "refractory": "progressive",
     "success": "success", "responder": "success", "responded": "success", "response": "success",
     "effective": "success", "efficacy": "success", "benefit": "success", "improved": "success", "improvement": "success",
     "remission": "success", "partial response": "success", "complete response": "success", "cr": "success", "pr": "success",
-    "symptom resolution": "success"
+    "symptom resolution": "success",
+    "no response": "unknown"
 }
-
 
 def _canonize_label(x: str) -> str:
     s = str(x).strip().lower()
@@ -56,10 +54,8 @@ def _canonize_label(x: str) -> str:
             return v
     return "unknown"
 
-
 def _escape_json_val(v):
     return str(v).replace('\\','\\\\').replace('"','\\"')
-
 
 def read_two_col_csv(path):
     try:
@@ -93,7 +89,6 @@ def read_two_col_csv(path):
                     prompt, out = line[:idx], line[idx+1:]
             rows.append({"prompt": prompt, "output": out})
     return pd.DataFrame(rows)
-
 
 df_train = read_two_col_csv(train_file)
 df_val   = read_two_col_csv(val_file)
@@ -172,24 +167,19 @@ def tokenize_fn(example):
     prefix_str = '{"response": "'
     suffix_str = '"}'
     max_in, max_out, max_total = 3500, 16, 3520
-
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
     val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
     suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
-
     out_ids = pref_ids + val_ids + suff_ids
     ids  = in_enc["input_ids"] + out_ids
     attn = [1]*len(ids)
-
     labels_out = [-100]*len(pref_ids) + val_ids
     if len(suff_ids) > 0:
         labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
     labels = [-100]*len(in_enc["input_ids"]) + labels_out
-
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
-
     return {
         "input_ids": ids,
         "attention_mask": attn,
@@ -197,7 +187,6 @@ def tokenize_fn(example):
         "split_idx": len(in_enc["input_ids"]),
         "cls_label": int(example.get("cls_label", -1)),
     }
-
 
 tokenized = {k: v.map(tokenize_fn, remove_columns=v.column_names) for k, v in datasets.items()}
 
@@ -225,26 +214,22 @@ class CausalLMPadCollator:
         batch["cls_label"] = cls_label
         return batch
 
-
 data_collator = CausalLMPadCollator(tokenizer)
 
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 SIM_THRESH = float(args.sim_thresh)
 
-
 def _cos_sim(a, b):
     an = a / max(np.linalg.norm(a), 1e-12)
     bn = b / max(np.linalg.norm(b), 1e-12)
     return float(np.dot(an, bn))
 
-
 def _choose_forced_category(model, tokenizer, prompt: str, cats=ALLOWED_CATS):
     dev = next(model.parameters()).device
     prefix = prompt + '{"response": "'
     pref_ids = tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
-
-    def seq_logprob(candidate: str):
+    def avg_logprob(candidate: str):
         cand = candidate + '"}'
         cand_ids = tokenizer(cand, add_special_tokens=False, return_tensors="pt")["input_ids"].to(dev)
         inp = torch.cat([pref_ids, cand_ids[:, :-1]], dim=1)
@@ -253,42 +238,58 @@ def _choose_forced_category(model, tokenizer, prompt: str, cats=ALLOWED_CATS):
             logits = out.logits[:, -cand_ids.size(1):, :]
             logp = torch.log_softmax(logits, dim=-1)
             token_logp = logp.gather(2, cand_ids.unsqueeze(-1)).squeeze(-1)
-            return float(token_logp.sum().item())
-
-    scores = [(c, seq_logprob(c)) for c in cats]
+            return float(token_logp.mean().item())
+    scores = [(c, avg_logprob(c)) for c in cats]
     scores.sort(key=lambda x: x[1], reverse=True)
-    print("debug/forced_scores=" + ", ".join([f"{c}:{s:.2f}" for c,s in scores]), flush=True)
+    print("debug/forced_scores=" + ", ".join([f"{c}:{s:.3f}" for c,s in scores]), flush=True)
     return scores[0][0]
 
-
-def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
-    model.eval()
+def _predict_with_cls(model, tokenizer, cls_head, prompt: str):
     dev = next(model.parameters()).device
-    n_ok, n_all = 0, 0
+    was_training = model.training
+    model.eval()
+    enc = tokenizer(prompt, add_special_tokens=False, return_tensors="pt").to(dev)
+    with torch.no_grad():
+        out = model(**enc, output_hidden_states=True)
+        hidden = out.hidden_states[-1]
+        feat = hidden.mean(dim=1)
+        logits = cls_head.to(dev)(feat)
+        pred_id = int(logits.argmax(dim=-1).item())
+    if was_training: model.train()
+    return id2label[pred_id]
+
+def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval", use_classifier=False, cls_head=None):
+    model.eval()
     rows = hf_dataset.to_pandas()
     if max_examples is not None:
         rows = rows.sample(min(max_examples, len(rows)), random_state=42)
-    ref_texts = []
+    refs = []
     for _, r in rows.iterrows():
         try:
-            j = json.loads(r["output_json"])
-            ref_texts.append(str(j.get("response", "")))
+            j = json.loads(r["output_json"]); refs.append(str(j.get("response","")))
         except Exception:
             m = re.search(r'"response"\s*:\s*"([^"]*)"', str(r["output_json"]))
-            ref_texts.append(m.group(1) if m else "")
-    ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
-    for idx_row, r in enumerate(rows.itertuples(index=False)):
-        prompt   = getattr(r, "prompt")
-        ref_val  = ref_texts[idx_row]
-        pred_val = _choose_forced_category(model, tokenizer, prompt, ALLOWED_CATS)
-        pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
-        sim = _cos_sim(pred_emb, ref_embs[idx_row])
-        ok = sim >= SIM_THRESH
-        n_ok += int(ok); n_all += 1
-        print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" cos_sim={sim:.4f} match={ok}', flush=True)
+            refs.append(m.group(1) if m else "")
+    preds = []
+    for r in rows.itertuples(index=False):
+        prompt = getattr(r, "prompt")
+        if use_classifier and cls_head is not None:
+            pred = _predict_with_cls(model, tokenizer, cls_head, prompt)
+        else:
+            pred = _choose_forced_category(model, tokenizer, prompt, ALLOWED_CATS)
+        preds.append(pred)
+    n_all = len(refs)
+    n_ok  = sum(int(p==g) for p,g in zip(preds, refs))
+    acc   = n_ok / max(1, n_all)
+    from collections import Counter, defaultdict
+    cm = defaultdict(Counter)
+    for p,g in zip(preds, refs):
+        cm[g][p]+=1
+    per_cls = {c: (cm[c][c] / max(1, sum(cm[c].values()))) for c in ALLOWED_CATS}
+    macro = sum(per_cls.values())/len(ALLOWED_CATS)
+    print(f'{tag}/accuracy_exact={acc:.4f} macro={macro:.4f} | ' + ", ".join([f'{c}={per_cls.get(c,0):.3f}' for c in ALLOWED_CATS]), flush=True)
     model.train()
-    return (n_ok / max(1, n_all))
-
+    return acc
 
 writer = SummaryWriter(os.path.join(base_path, "tb_response_fixed"))
 
@@ -324,21 +325,39 @@ class GradNormLogger(TrainerCallback):
             writer.add_scalar("grads/max_norm",   max_g,   state.global_step)
 
 class GenEvalCallback(TrainerCallback):
-    def __init__(self, eval_ds, max_examples=128):
-        self.eval_ds = eval_ds; self.max_examples = max_examples
+    def __init__(self, eval_ds, max_examples=128, cls_head=None):
+        self.eval_ds = eval_ds; self.max_examples = max_examples; self.cls_head = cls_head
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
         model     = kwargs.get("model", None)
         tokenizer = kwargs.get("tokenizer", None)
         if model is None or tokenizer is None: return
-        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
+        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval", use_classifier=True, cls_head=self.cls_head)
         print(f"eval/accuracy_response={acc:.4f} at step={state.global_step}", flush=True)
         writer.add_scalar("eval/accuracy_response", acc, state.global_step)
         if isinstance(metrics, dict):
             metrics["eval_accuracy_response"] = float(acc)
 
+class HeadWarmupCallback(TrainerCallback):
+    def __init__(self, model_ref, head_ref, warmup_steps):
+        self.model_ref = model_ref
+        self.head_ref = head_ref
+        self.warmup_steps = warmup_steps
+        self.frozen = False
+        self.unfroze = False
+    def on_train_begin(self, args, state, control, **kwargs):
+        for p in self.model_ref.parameters(): p.requires_grad = False
+        for p in self.head_ref.parameters(): p.requires_grad = True
+        self.frozen = True
+        print(f"warmup/freeze_backbone=1 steps={self.warmup_steps}", flush=True)
+    def on_step_end(self, args, state, control, **kwargs):
+        if self.frozen and not self.unfroze and state.global_step >= self.warmup_steps:
+            for p in self.model_ref.parameters(): p.requires_grad = True
+            self.unfroze = True
+            print("warmup/unfreeze_backbone=1", flush=True)
+
 print("Initial evaluation on validation with BASE model (forced categories + semantic)", flush=True)
 base_model.eval()
-init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
+init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial", use_classifier=False, cls_head=None)
 print(f"initial/validation_accuracy_response={init_val_acc:.4f}", flush=True)
 writer.add_scalar("initial/validation_accuracy_response", init_val_acc, 0)
 writer.flush()
@@ -358,50 +377,51 @@ def _weights_from_counts(df):
     counts = np.maximum(counts, 1.0)
     w = counts.sum() / counts
     w = w / w.mean()
+    w = np.clip(w, 0.3, 3.0)
     return torch.tensor(w, dtype=torch.float32)
 
 CE_WEIGHTS = _weights_from_counts(df_train)
 print("debug/class_weights=" + ", ".join([f"{id2label[i]}:{CE_WEIGHTS[i].item():.2f}" for i in range(num_classes)]), flush=True)
 
 class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.6, **kwargs):
+    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.6, head_lr: float = 1e-3, **kwargs):
         super().__init__(**kwargs)
         self.cls_head = cls_head
         self.cls_weight = float(cls_weight)
+        self.head_lr = float(head_lr)
         self.ce = nn.CrossEntropyLoss(reduction='mean', weight=CE_WEIGHTS.to(next(self.model.parameters()).device))
-
     def create_optimizer(self):
         if self.optimizer is None:
             model_params = [p for p in self.model.parameters() if p.requires_grad]
             head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
-            optimizer_grouped_parameters = [
-                {"params": model_params, "weight_decay": self.args.weight_decay},
-                {"params": head_params,  "weight_decay": 0.05},
+            param_groups = [
+                {"params": model_params, "weight_decay": self.args.weight_decay, "lr": self.args.learning_rate},
+                {"params": head_params,  "weight_decay": 0.0,                   "lr": self.head_lr},
             ]
-            self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
+            self.optimizer = AdamW(param_groups)
         return self.optimizer
-
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
         metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
         try:
             ds = datasets.get("validation", None)
-            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
+            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix, use_classifier=True, cls_head=self.cls_head)
             metrics[f"{metric_key_prefix}_accuracy_response"] = float(acc)
             step = getattr(self.state, "global_step", -1)
             print(f"{metric_key_prefix}/accuracy_response={acc:.4f} at step={step}", flush=True)
         except Exception as e:
             print(f"warn/eval_callback_exception: {e}", flush=True)
         return metrics
-
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
         split_idx = inputs.pop("split_idx")
         cls_label = inputs.pop("cls_label")
         outputs   = model(**inputs, output_hidden_states=True)
         lm_loss   = outputs.loss
         hidden    = outputs.hidden_states[-1]
-        B = hidden.size(0)
-        idx = torch.clamp(split_idx - 1, min=0)
-        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
+        B, T, H = hidden.size()
+        arange = torch.arange(T, device=hidden.device).unsqueeze(0).expand(B, T)
+        prompt_mask = (arange < split_idx.unsqueeze(1)).float()
+        den = prompt_mask.sum(dim=1, keepdim=True).clamp_min(1.0)
+        gather = (hidden * prompt_mask.unsqueeze(-1)).sum(dim=1) / den
         if next(self.cls_head.parameters()).device != gather.device:
             self.cls_head.to(gather.device)
         logits = self.cls_head(gather)
@@ -419,19 +439,19 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_response_fixed"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=100,
-    save_steps=100,
+    eval_steps=250,
+    save_steps=250,
     save_total_limit=3,
     learning_rate=3e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=3,
     weight_decay=0.05,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     report_to=["tensorboard"],
     logging_dir=os.path.join(base_path, "tb_response_fixed"),
     load_best_model_at_end=True,
@@ -454,10 +474,12 @@ trainer = MultiTaskTrainer(
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),
-        GenEvalCallback(datasets["validation"], max_examples=128)
+        GenEvalCallback(datasets["validation"], max_examples=128, cls_head=cls_head),
+        HeadWarmupCallback(peft_model, cls_head, warmup_steps=args.head_warmup_steps)
     ],
     cls_head=cls_head,
-    cls_weight=args.cls_loss_weight
+    cls_weight=args.cls_loss_weight,
+    head_lr=args.head_lr
 )
 
 print("Begin training", flush=True)
@@ -468,39 +490,49 @@ print("Save adapter only", flush=True)
 trainer.model.save_pretrained(os.path.join(base_path, "cat_response"))
 tokenizer.save_pretrained(os.path.join(base_path, "cat_response"))
 
-print("Evaluate on validation (forced categories + semantic)", flush=True)
-val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
+print("Evaluate on validation (classifier exact-match)", flush=True)
+val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val", use_classifier=True, cls_head=cls_head)
 print(f"final/validation_accuracy_response={val_acc:.4f}", flush=True)
 writer.add_scalar("final/validation_accuracy_response", val_acc, trainer.state.global_step)
 writer.flush()
 
-print("Generate on test set (forced categories + semantic)", flush=True)
-dev = next(trainer.model.parameters()).device
+print("Generate on test set (classifier exact-match + cosine info)", flush=True)
 rows = datasets["test"].to_pandas()
-n_ok, n_all = 0, 0
-ref_texts = []
+refs = []
 for _, rr in rows.iterrows():
     try:
-        j = json.loads(rr["output_json"]) ; ref_texts.append(str(j.get("response","")))
+        refs.append(json.loads(rr["output_json"]).get("response",""))
     except Exception:
         m = re.search(r'"response"\s*:\s*"([^"]*)"', str(rr["output_json"]))
-        ref_texts.append(m.group(1) if m else "")
-ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
-for i, r in enumerate(rows.itertuples(index=False)):
+        refs.append(m.group(1) if m else "")
+preds = []
+for r in rows.itertuples(index=False):
     prompt   = getattr(r, "prompt")
-    ref_val  = ref_texts[i]
-    pred_val = _choose_forced_category(trainer.model, tokenizer, prompt, ALLOWED_CATS)
-    pred_json = f'{{"response": "{_escape_json_val(pred_val)}"}}'
-    pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
-    sim = _cos_sim(pred_emb, ref_embs[i])
-    ok = sim >= SIM_THRESH
-    print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
-    print(f"--- Expected output  {i+1}: {{\"response\": \"{_escape_json_val(ref_val)}\"}}", flush=True)
-    print(f"--- cos_sim={sim:.4f} match={ok}", flush=True)
+    pred_val = _predict_with_cls(trainer.model, tokenizer, cls_head, prompt)
+    preds.append(pred_val)
+ref_embs = model_sem.encode(refs, convert_to_numpy=True, normalize_embeddings=True)
+pred_embs = model_sem.encode(preds, convert_to_numpy=True, normalize_embeddings=True)
+from collections import Counter, defaultdict
+n_all = len(refs)
+n_ok = sum(int(p==g) for p,g in zip(preds, refs))
+acc_exact = n_ok / max(1, n_all)
+cm = defaultdict(Counter)
+for p,g in zip(preds, refs):
+    cm[g][p]+=1
+per_cls = {c: (cm[c][c] / max(1, sum(cm[c].values()))) for c in ALLOWED_CATS}
+macro = sum(per_cls.values())/len(ALLOWED_CATS)
+for i, (p,g) in enumerate(zip(preds, refs)):
+    sim = _cos_sim(pred_embs[i], ref_embs[i])
+    print(f"--- Predicted output {i+1}: {{\"response\": \"{_escape_json_val(p)}\"}}", flush=True)
+    print(f"--- Expected output  {i+1}: {{\"response\": \"{_escape_json_val(g)}\"}}", flush=True)
+    print(f"--- cos_sim={sim:.4f} match_exact={p==g}", flush=True)
     print("-"*50, flush=True)
-    n_ok += int(ok); n_all += 1
-
-test_acc = (n_ok / max(1, n_all))
-print(f"final/test_accuracy_response={test_acc:.4f}", flush=True)
-writer.add_scalar("final/test_accuracy_response", test_acc, trainer.state.global_step)
+print(f"final/test_accuracy_exact={acc_exact:.4f} macro={macro:.4f} | " + ", ".join([f'{c}={per_cls.get(c,0):.3f}' for c in ALLOWED_CATS]), flush=True)
+print("Top confusions:", flush=True)
+for gold in ALLOWED_CATS:
+    row = cm[gold]
+    if sum(row.values())>0:
+        worst = sorted([(k,v) for k,v in row.items() if k!=gold], key=lambda x:-x[1])[:2]
+        print(f"  {gold} -> {worst}", flush=True)
+writer.add_scalar("final/test_accuracy_response_exact", acc_exact, trainer.state.global_step)
 writer.close()

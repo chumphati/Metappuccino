@@ -48,6 +48,8 @@ MKDIR_PATH = _find_cmd("mkdir")
 CAT_PATH = _find_cmd("cat")
 GREP_PATH = _find_cmd("grep")
 
+os.makedirs(METADATA_DIR, exist_ok=True)
+
 ########################################################################################################################
 #FUNCTIONS
 
@@ -197,6 +199,124 @@ def _parse_xml_with_retry(xml_file, max_retries=2):
         raise last_exc
     return None
 
+def _fetch_biosample_xml(samn_accession: str, dest_path: str, max_retries: int = 3) -> bool:
+    headers = {"User-Agent": "metappuccino/1.0 (contact: none)"}
+    params = {"db": "biosample", "id": samn_accession, "retmode": "xml"}
+    tmp = dest_path + ".tmp"
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+                params=params, headers=headers, timeout=60,
+            )
+            txt = (r.text or "").lstrip()
+            if r.status_code == 200 and txt.startswith("<"):
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                with open(tmp, "w", encoding="utf-8") as fxml:
+                    fxml.write(txt)
+                os.replace(tmp, dest_path)
+                time.sleep(1.0)
+                return True
+        except Exception:
+            pass
+        time.sleep(1 * attempt)
+    return False
+
+def _extract_biosample_attributes_from_file(biosample_xml_path: str) -> str:
+    try:
+        root = ET.parse(biosample_xml_path).getroot()
+    except Exception:
+        return ""
+    attrs = []
+    for a in root.findall(".//BioSample/Attributes/Attribute"):
+        name = a.get("attribute_name") or a.get("harmonized_name") or ""
+        val = (a.text or "").strip()
+        if name and val:
+            name = " ".join(name.split())
+            val = " ".join(val.split())
+            attrs.append(f"{name}: {val}")
+    return "; ".join(attrs)
+
+def _extract_sra_sample_attributes_as_fallback(root) -> str:
+    pairs = []
+    for sa in root.findall(".//SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE"):
+        tag = (sa.findtext("TAG") or "").strip()
+        val = (sa.findtext("VALUE") or "").strip()
+        if tag and val:
+            pairs.append(f"{tag}: {val}")
+    return "; ".join(pairs)
+
+def _find_samn_in_sra_root(root) -> str:
+    def _local(tag):
+        return tag.rsplit('}', 1)[-1] if '}' in tag else tag
+    for x in root.iter():
+        if _local(getattr(x, 'tag', '')) != "XREF_LINK":
+            continue
+        db = None
+        idv = None
+        for child in x:
+            ln = _local(getattr(child, 'tag', ''))
+            if ln == "DB":
+                db = (child.text or "").strip() if child.text else ""
+            elif ln == "ID":
+                idv = (child.text or "").strip() if child.text else ""
+        if (db or "").lower() == "biosample" and idv and idv.startswith("SAMN"):
+            return idv
+    for ext in root.iter():
+        if _local(getattr(ext, 'tag', '')) == "EXTERNAL_ID":
+            ns = (ext.get("namespace") or "").strip().lower()
+            val = (ext.text or "").strip()
+            if "biosample" in ns and val.startswith("SAMN"):
+                return val
+    import re
+    sampat = re.compile(r"\bSAMN\d+\b")
+    for node in root.iter():
+        txt = (getattr(node, 'text', None) or "").strip()
+        if txt:
+            m = sampat.search(txt)
+            if m:
+                return m.group(0)
+    return ""
+
+def _find_samn_anywhere_from_file(xml_path: str) -> str:
+    try:
+        with open(xml_path, "r", encoding="utf-8", errors="ignore") as f:
+            txt = f.read()
+    except Exception:
+        return ""
+    import re
+    m = re.search(r"\bSAMN\d+\b", txt)
+    return m.group(0) if m else ""
+
+def _get_biosample_acc_from_ena(run_accession: str) -> str:
+    try:
+        payload = (
+            "result=read_run"
+            f"&query=run_accession%3D{run_accession}"
+            "&format=tsv"
+            "&fields=run_accession,biosample_accession,secondary_sample_accession,sample_accession"
+            "&limit=1"
+        )
+        resp = requests.post(
+            "https://www.ebi.ac.uk/ena/portal/api/search",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data=payload,
+            timeout=30
+        )
+        lines = resp.text.strip().splitlines()
+        if len(lines) >= 2:
+            header = lines[0].split("\t")
+            row = lines[1].split("\t")
+            idx = {h:i for i,h in enumerate(header)}
+            for key in ("biosample_accession", "secondary_sample_accession", "sample_accession"):
+                if key in idx and len(row) > idx[key]:
+                    v = row[idx[key]].strip()
+                    if v.startswith("SAMN"):
+                        return v
+    except Exception:
+        pass
+    return ""
+
 
 #get specific metadata from xml
 def extract_and_save_metadata(run_accession):
@@ -215,7 +335,30 @@ def extract_and_save_metadata(run_accession):
         if not _looks_like_xml(xml_file):
             _download_xml_ncbi(run_accession, xml_file, max_retries=2)
         root = _parse_xml_with_retry(xml_file)
-        sample_metadata = " ".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
+
+        sample_metadata = ""
+
+        samn = _find_samn_in_sra_root(root)
+        if not samn:
+            samn = _find_samn_anywhere_from_file(xml_file)
+        if not samn:
+            samn = _get_biosample_acc_from_ena(run_accession)
+        if samn:
+            biosample_xml_path = os.path.join(METADATA_DIR, f"{run_accession}_biosample.xml")
+            if (not os.path.exists(biosample_xml_path)) or os.path.getsize(biosample_xml_path) == 0:
+                _fetch_biosample_xml(samn, biosample_xml_path, max_retries=3)
+            biosample_attrs = _extract_biosample_attributes_from_file(biosample_xml_path)
+            if biosample_attrs:
+                sample_metadata = biosample_attrs
+
+        if not sample_metadata:
+            sra_attrs = _extract_sra_sample_attributes_as_fallback(root)
+            if sra_attrs:
+                sample_metadata = sra_attrs
+
+        if not sample_metadata:
+            sample_metadata = " ".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
+
         study_metadata = " ".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
 
         time.sleep(4)

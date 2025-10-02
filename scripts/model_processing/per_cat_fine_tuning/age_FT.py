@@ -32,7 +32,6 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM","false")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({"pad_token": "<pad>"})
-tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token_id
 
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -40,12 +39,12 @@ dtype = torch.bfloat16 if use_bf16 else torch.float16
 print("Load base model", flush=True)
 base_model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    torch_dtype=dtype,
+    dtype=dtype,
     device_map="auto",
     low_cpu_mem_usage=True
 )
 base_model.config.pad_token_id = tokenizer.pad_token_id
-if tokenizer.pad_token_id is not None and base_model.get_input_embeddings().num_embeddings != len(tokenizer):
+if base_model.get_input_embeddings().num_embeddings != len(tokenizer):
     base_model.resize_token_embeddings(len(tokenizer))
 
 print("Configure LoRA", flush=True)
@@ -216,6 +215,8 @@ datasets = {
 }
 print({k: len(v) for k,v in datasets.items()}, flush=True)
 
+validation_raw = datasets["validation"]
+
 def tokenize_fn(example):
     prompt   = example["prompt"].strip()
     out_json = example["output_json"].strip()
@@ -223,7 +224,7 @@ def tokenize_fn(example):
     value_str  = m.group(1) if m else ""
     prefix_str = '{"age": "'
     suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 350, 3850
+    max_in, max_out, max_total = 2048, 64, 2112
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
     val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
@@ -320,19 +321,19 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_age"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=50,
-    save_steps=50,
+    eval_steps=250,
+    save_steps=250,
     save_total_limit=1,
     learning_rate=1e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=1,
     weight_decay=0.1,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     report_to=["tensorboard"],
     logging_dir=tb_dir,
     load_best_model_at_end=True,
@@ -343,7 +344,24 @@ training_args = TrainingArguments(
     max_grad_norm=1.0,
 )
 
-trainer = Trainer(
+class MyTrainer(Trainer):
+    def __init__(self, *args, eval_raw=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.eval_raw = eval_raw
+    def evaluate(self, eval_dataset=None, **kwargs):
+        metrics = super().evaluate(eval_dataset=eval_dataset, **kwargs)
+        raw = self.eval_raw if self.eval_raw is not None else eval_dataset
+        try:
+            if hasattr(raw, "column_names") and {"prompt","output_json"}.issubset(set(raw.column_names)):
+                acc = gen_eval_accuracy(self.model, self.tokenizer, raw, max_examples=128, tag="eval")
+                metrics["eval_accuracy_age"] = float(acc)
+            else:
+                print("warn: eval_raw missing 'prompt'/'output_json'; skipping age accuracy", flush=True)
+        except Exception as e:
+            print(f"warn: custom eval failed: {e}", flush=True)
+        return metrics
+
+trainer = MyTrainer(
     model=peft_model,
     args=training_args,
     train_dataset=tokenized["train"],
@@ -355,8 +373,9 @@ trainer = Trainer(
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),
-        GenEvalCallback(datasets["validation"], max_examples=128)
+        GenEvalCallback(validation_raw, max_examples=128)
     ],
+    eval_raw=validation_raw,
 )
 
 print("Begin training", flush=True)

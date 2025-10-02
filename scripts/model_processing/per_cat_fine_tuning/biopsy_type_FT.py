@@ -1,451 +1,328 @@
-import os, re, json, math, argparse, random
+import os, re, json, argparse, random, unicodedata
+from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.optim import AdamW
-from datasets import Dataset
-from transformers import (
-    AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer,
-    DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
-)
+from torch.utils.data import WeightedRandomSampler, DataLoader
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorWithPadding, EarlyStoppingCallback
 from peft import LoraConfig, get_peft_model
-from torch.utils.tensorboard import SummaryWriter
+from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
 
-parser = argparse.ArgumentParser(description="Fine-tune biopsy_type (multitask) exact 4-class classification")
-parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.6)
-parser.add_argument("--seed", type=int, default=42)
-args = parser.parse_args()
-base_path = args.base_path
+SAVE_ROOT = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/logs5"
+ALLOWED = ["primary", "metastasis", "blood", "unknown"]
+label2id = {k: i for i, k in enumerate(ALLOWED)}
+id2label = {i: k for k, i in label2id.items()}
 
-random.seed(args.seed); np.random.seed(args.seed); torch.manual_seed(args.seed)
+SYNONYMS = {
+    "primary": [
+        "primary","primaire","primary tumor","tumor of origin","primary site",
+        "localized","de novo","primary lesion","site primitif","tumeur primitive"
+    ],
+    "metastasis": [
+        "metastasis","metastases","metastatic","métastase","metastatique",
+        "secondary","mets","met","distant","metastatic lesion"
+    ],
+    "blood": [
+        "blood","sang","plasma","serum","sérum","pbmc","buffy coat",
+        "whole blood","wb","leukapheresis"
+    ],
+    "unknown": [
+        "unknown","unk","n/a","na","not available","unspecified",
+        "indeterminate","undetermined","inconnu","non précisé"
+    ],
+}
+SYN_PATTERNS = {k: re.compile(r"\b(?:" + "|".join(map(re.escape, v)) + r")\b", flags=re.IGNORECASE) for k, v in SYNONYMS.items()}
 
-train_file = os.path.join(base_path, "finetune_data_train.csv")
-val_file   = os.path.join(base_path, "finetune_data_val.csv")
-test_file  = os.path.join(base_path, "finetune_data_test.csv")
-model_name = os.path.join(base_path, "Mistral-7B-Instruct-v0.3")
+def _strip_accents(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", str(text)) if unicodedata.category(c) != "Mn").lower()
 
-tb_dir = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/logs5/tensorboard_biopsy_type"
-adapter_out_dir = os.path.join(base_path, "cat_biopsy_type")
-os.makedirs(tb_dir, exist_ok=True); os.makedirs(adapter_out_dir, exist_ok=True)
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-os.environ.setdefault("TOKENIZERS_PARALLELISM","false")
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-if tokenizer.pad_token is None:
-    tokenizer.add_special_tokens({"pad_token": "<pad>"})
-tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
-
-use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
-dtype = torch.bfloat16 if use_bf16 else torch.float16
-
-print("Load base model", flush=True)
-base_model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype=dtype,
-    device_map="auto",
-    low_cpu_mem_usage=True
-)
-base_model.config.pad_token_id = tokenizer.pad_token_id
-if tokenizer.pad_token_id is not None and base_model.get_input_embeddings().num_embeddings != len(tokenizer):
-    base_model.resize_token_embeddings(len(tokenizer))
-
-print("Configure LoRA", flush=True)
-peft_config = LoraConfig(
-    task_type="CAUSAL_LM",
-    inference_mode=False,
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.3,
-    target_modules=['q_proj','k_proj','v_proj','o_proj','gate_proj','up_proj','down_proj']
-)
-peft_model = get_peft_model(base_model, peft_config)
-peft_model.train()
-
-RULES = "\nTask: Determine biopsy_type among [\"primary\",\"metastasis\",\"blood\",\"unknown\"]. If cancer and a metastasis is mentioned, choose \"metastasis\". Else if blood-related information and no metastasis is mentioned, choose \"blood\". Otherwise choose \"primary\". Return strictly JSON.\n"
-
-print("Load datasets", flush=True)
-
-def read_two_col_csv(path):
-    try:
-        df = pd.read_csv(path, engine="python", sep=None, dtype=str, keep_default_na=False)
-        if "prompt" in df.columns and "output" in df.columns:
-            return df[["prompt","output"]].astype(str)
-    except Exception:
-        pass
-    try:
-        df = pd.read_csv(path, engine="python", sep=";", dtype=str, keep_default_na=False)
-        if "prompt" in df.columns and "output" in df.columns:
-            return df[["prompt","output"]].astype(str)
-    except Exception:
-        pass
-    rows = []
-    with open(path, "r", encoding="utf-8") as f:
-        _ = f.readline()
-        for line in f:
-            line = line.rstrip("\n\r")
-            if not line:
-                continue
-            if "\t" in line:
-                parts = line.split("\t"); prompt = "\t".join(parts[:-1]); out = parts[-1]
-            elif ";" in line:
-                parts = line.split(";"); prompt = ";".join(parts[:-1]); out = parts[-1]
-            else:
-                idx = line.rfind(",")
-                if idx == -1:
-                    prompt, out = line, ""
-                else:
-                    prompt, out = line[:idx], line[idx+1:]
-            rows.append({"prompt": prompt, "output": out})
-    return pd.DataFrame(rows)
-
-df_train = read_two_col_csv(train_file)
-df_val   = read_two_col_csv(val_file)
-df_test  = read_two_col_csv(test_file)
-
-df_train = df_train.drop_duplicates(subset=["prompt"]).copy()
-df_train = df_train[df_train["output"].astype(str).str.strip()!=""].copy()
-
-print(f"Train/Val/Test sizes: {len(df_train)}/{len(df_val)}/{len(df_test)}", flush=True)
-
-ALLOWED = ["primary","metastasis","blood","unknown"]
-label2id = {k:i for i,k in enumerate(ALLOWED)}
-id2label = {i:k for k,i in label2id.items()}
-
-def _escape_json_val(v):
-    return str(v).replace('\\','\\\\').replace('"','\\"')
-
-def _canon_biopsy_type(s):
+def canon_biopsy_type(s: str) -> str:
     t = str(s).strip().lower()
+    tt = _strip_accents(t)
     if t in ALLOWED:
         return t
-    if re.search(r'\bmet(astasis|astatic|s)?\b', t):
+    for label, pat in SYN_PATTERNS.items():
+        if pat.search(tt):
+            return label
+    if re.search(r"\bmet(astasis|astatic|s|astatic lesions)?\b", tt):
         return "metastasis"
-    if re.search(r'\b(pbmc|blood|plasma|serum|buffy|hemat|haemat)\b', t):
+    if re.search(r"\b(pbmc|blood|plasma|serum|buffy|hemat|haemat|sang|serum)\b", tt):
         return "blood"
-    if re.search(r'\bprimary\b', t):
+    if re.search(r"\bprimary|primaire|primary site|tumeur primitive\b", tt):
         return "primary"
     return "unknown"
 
-def _extract_value(txt):
+def read_two_col_csv(path: str) -> pd.DataFrame:
     try:
-        j = json.loads(txt)
-        v = j.get("biopsy_type","")
-        return _canon_biopsy_type(v)
+        df = pd.read_csv(path, engine="python", sep=None, dtype=str, keep_default_na=False)
     except Exception:
-        m = re.search(r'"biopsy_type"\s*:\s*"([^"]*)"', str(txt))
-        return _canon_biopsy_type(m.group(1) if m else str(txt))
+        df = pd.read_csv(path, engine="python", sep=";", dtype=str, keep_default_na=False)
+    cols = [c.lower() for c in df.columns]
+    df.columns = cols
+    assert {"prompt", "output"}.issubset(df.columns), f"Colonnes manquantes dans {path}"
+    return df[["prompt", "output"]].astype(str)
 
-for _df in (df_train, df_val, df_test):
-    _df["output_raw"]  = _df["output"].astype(str).map(_canon_biopsy_type)
-    _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"biopsy_type": "{_escape_json_val(v)}"}}')
-    _df["cls_label"]   = _df["output_raw"].map(lambda x: label2id.get(x, label2id["unknown"]))
+@dataclass
+class BiopsyExample:
+    input_ids: list
+    attention_mask: list
+    label: int
 
-print(f"Label space (train) size = {len(ALLOWED)}", flush=True)
-
-datasets = {
-    "train": Dataset.from_pandas(df_train[["prompt","output_json","cls_label"]]),
-    "validation": Dataset.from_pandas(df_val[["prompt","output_json","cls_label"]]),
-    "test": Dataset.from_pandas(df_test[["prompt","output_json","cls_label"]])
-}
-print({k: len(v) for k,v in datasets.items()}, flush=True)
-
-def tokenize_fn(example):
-    prompt   = example["prompt"].strip() + RULES
-    out_json = example["output_json"].strip()
-    m = re.search(r'"biopsy_type"\s*:\s*"([^"]*)"', out_json)
-    value_str  = m.group(1) if m else ""
-    prefix_str = '{"biopsy_type": "'
-    suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 16, 3520
-
-    in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
-    pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
-    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
-    suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
-
-    out_ids = pref_ids + val_ids + suff_ids
-    ids  = in_enc["input_ids"] + out_ids
-    attn = [1]*len(ids)
-
-    labels_out = [-100]*len(pref_ids) + val_ids
-    if len(suff_ids) > 0:
-        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
-    labels = [-100]*len(in_enc["input_ids"]) + labels_out
-
-    if len(ids) > max_total:
-        ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
-
-    return {
-        "input_ids": ids,
-        "attention_mask": attn,
-        "labels": labels,
-        "split_idx": len(in_enc["input_ids"]),
-        "cls_label": int(example.get("cls_label", -1)),
-    }
-
-tokenized = {k: v.map(tokenize_fn, remove_columns=v.column_names) for k, v in datasets.items()}
-
-class CausalLMPadCollator:
-    def __init__(self, tokenizer):
-        self._padder = DataCollatorWithPadding(tokenizer=tokenizer, return_tensors="pt")
+class Collator(DataCollatorWithPadding):
     def __call__(self, features):
-        labels    = [torch.tensor(f["labels"], dtype=torch.long) for f in features]
-        split_idx = torch.tensor([int(f.get("split_idx", 0)) for f in features], dtype=torch.long)
-        cls_label = torch.tensor([int(f.get("cls_label", -1)) for f in features], dtype=torch.long)
+        labels = torch.tensor([f.get("labels") for f in features], dtype=torch.long)
         for f in features:
-            f.pop("labels", None); f.pop("split_idx", None); f.pop("cls_label", None)
-        batch = self._padder(features)
-        max_len = batch["input_ids"].size(1)
-        padded = []
-        for l in labels:
-            if l.numel() < max_len:
-                pad = torch.full((max_len - l.numel(),), -100, dtype=torch.long)
-                l = torch.cat([l, pad], dim=0)
-            else:
-                l = l[:max_len]
-            padded.append(l)
-        batch["labels"]    = torch.stack(padded, dim=0)
-        batch["split_idx"] = split_idx
-        batch["cls_label"] = cls_label
+            f.pop("labels", None)
+            for k in list(f.keys()):
+                if k not in ("input_ids", "attention_mask", "token_type_ids"):
+                    f.pop(k, None)
+        batch = super().__call__(features)
+        batch["labels"] = labels
         return batch
 
-data_collator = CausalLMPadCollator(tokenizer)
+class Head(nn.Module):
+    def __init__(self, hidden_size: int, num_classes: int = 4, p_drop: float = 0.1):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(p_drop),
+            nn.Linear(hidden_size, num_classes),
+        )
+    def forward(self, x):
+        return self.net(x)
 
-def gen_eval_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
-    model.eval()
-    dev = next(model.parameters()).device
-    n_ok, n_all = 0, 0
-    rows = hf_dataset.to_pandas()
-    if max_examples is not None:
-        rows = rows.sample(min(max_examples, len(rows)), random_state=42)
-    for i, r in rows.iterrows():
-        prompt   = r["prompt"] + RULES
-        expected = r["output_json"]
-        ref_val  = _extract_value(expected)
-        prefix = prompt + '{"biopsy_type": "'
-        inp = tokenizer(prefix, return_tensors="pt").to(dev)
-        with torch.no_grad():
-            out_ids = model.generate(
-                **inp,
-                max_new_tokens=8,
-                do_sample=False,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id
-            )
-        cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        pred_val_raw = re.split(r'["\n,}]', cont)[0]
-        pred_val = _canon_biopsy_type(pred_val_raw)
-        ok = (pred_val == ref_val)
-        n_ok += int(ok); n_all += 1
-        print(f'{tag}/pair {n_all}: pred="{pred_val}" ref="{ref_val}" raw="{pred_val_raw}" match={ok}', flush=True)
-    model.train()
-    return (n_ok / max(1, n_all))
-
-writer = SummaryWriter(tb_dir)
-
-class TBCallback(TrainerCallback):
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        if not logs: return
-        step = state.global_step
-        for k in ("loss","eval_loss"):
-            if k in logs and isinstance(logs[k], (int, float)):
-                writer.add_scalar(f"trainer/{k}", float(logs[k]), step)
-
-class PrintProgressCallback(TrainerCallback):
-    def on_step_end(self, args, state, control, **kwargs):
-        if state.global_step % max(1, args.logging_steps) == 0:
-            print(f"debug/train_step={state.global_step} completed", flush=True)
-
-class GradNormLogger(TrainerCallback):
-    def __init__(self, every=50): self.every = every
-    def on_backward_end(self, args, state, control, **kwargs):
-        model = kwargs.get("model", None)
-        if model is None: return
-        total_sq, max_g, n = 0.0, 0.0, 0
-        for p in model.parameters():
-            if p.grad is not None:
-                g = p.grad.detach()
-                gn = float(g.float().norm(2).item())
-                total_sq += gn * gn
-                max_g = max(max_g, gn); n += 1
-        total = math.sqrt(total_sq) if n > 0 else 0.0
-        if state.global_step % self.every == 0:
-            print(f"debug/grad_norm_total={total:.6f} max_grad_norm={max_g:.6f} params_with_grad={n} step={state.global_step}", flush=True)
-            writer.add_scalar("grads/total_norm", total, state.global_step)
-            writer.add_scalar("grads/max_norm",   max_g,   state.global_step)
-
-class GenEvalCallback(TrainerCallback):
-    def __init__(self, eval_ds, max_examples=128):
-        self.eval_ds = eval_ds; self.max_examples = max_examples
-    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-        model     = kwargs.get("model", None)
-        tokenizer = kwargs.get("tokenizer", None)
-        if model is None or tokenizer is None: return
-        acc = gen_eval_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
-        print(f"eval/accuracy_biopsy_type={acc:.4f} at step={state.global_step}", flush=True)
-        writer.add_scalar("eval/accuracy_biopsy_type", acc, state.global_step)
-        if isinstance(metrics, dict):
-            metrics["eval_accuracy_biopsy_type"] = float(acc)
-
-print("Initial evaluation on validation with BASE model (exact match 4-class)", flush=True)
-base_model.eval()
-init_val_acc = gen_eval_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
-print(f"initial/validation_accuracy_biopsy_type={init_val_acc:.4f}", flush=True)
-writer.add_scalar("initial/validation_accuracy_biopsy_type", init_val_acc, 0)
-writer.flush()
-
-hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None)
-num_classes = len(ALLOWED)
-cls_head = nn.Sequential(
-    nn.Linear(hidden_size, hidden_size),
-    nn.ReLU(),
-    nn.Dropout(0.35),
-    nn.Linear(hidden_size, num_classes)
-)
-cls_head.to(next(peft_model.parameters()).device)
-
-class MultiTaskTrainer(Trainer):
-    def __init__(self, cls_head: nn.Module, cls_weight: float = 0.7, **kwargs):
+class SimpleClsTrainer(Trainer):
+    def __init__(self, cls_head: nn.Module, cls_weight: float, class_weights: torch.Tensor, **kwargs):
         super().__init__(**kwargs)
         self.cls_head = cls_head
         self.cls_weight = float(cls_weight)
-        self.ce = nn.CrossEntropyLoss(reduction='mean')
-
+        self.class_weights = class_weights
     def create_optimizer(self):
         if self.optimizer is None:
-            model_params = [p for p in self.model.parameters() if p.requires_grad]
-            head_params  = [p for p in self.cls_head.parameters() if p.requires_grad]
-            optimizer_grouped_parameters = [
-                {"params": model_params, "weight_decay": self.args.weight_decay},
-                {"params": head_params,  "weight_decay": 0.05},
+            lora_params = [p for n, p in self.model.named_parameters() if p.requires_grad and "lora_" in n]
+            head_params = [p for p in self.cls_head.parameters() if p.requires_grad]
+            optim_groups = [
+                {"params": lora_params, "weight_decay": self.args.weight_decay, "lr": self.args.learning_rate},
+                {"params": head_params,  "weight_decay": 0.0,                   "lr": self.args.learning_rate * 5.0},
             ]
-            self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
+            self.optimizer = torch.optim.AdamW(optim_groups)
         return self.optimizer
-
-    def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
-        metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
-        try:
-            ds = datasets.get("validation", None)
-            acc = gen_eval_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
-            metrics[f"{metric_key_prefix}_accuracy_biopsy_type"] = float(acc)
-            step = getattr(self.state, "global_step", -1)
-            print(f"{metric_key_prefix}/accuracy_biopsy_type={acc:.4f} at step={step}", flush=True)
-        except Exception as e:
-            print(f"warn/eval_callback_exception: {e}", flush=True)
-        return metrics
-
-    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
-        split_idx = inputs.pop("split_idx")
-        cls_label = inputs.pop("cls_label")
-        outputs   = model(**inputs, output_hidden_states=True)
-        lm_loss   = outputs.loss
-        hidden    = outputs.hidden_states[-1]
-        B = hidden.size(0)
-        idx = torch.clamp(split_idx - 1, min=0)
-        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
-        if next(self.cls_head.parameters()).device != gather.device:
-            self.cls_head.to(gather.device)
-        logits = self.cls_head(gather)
-        mask = (cls_label >= 0)
-        if mask.any():
-            cls_loss = self.ce(logits[mask], cls_label[mask])
-        else:
-            cls_loss = torch.tensor(0.0, device=hidden.device)
-        loss = lm_loss + self.cls_weight * cls_loss
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        outputs = model(input_ids=inputs["input_ids"], attention_mask=inputs.get("attention_mask"), output_hidden_states=True)
+        hidden = outputs.hidden_states[-1]
+        attn = inputs["attention_mask"].bool()
+        last_index = attn.long().sum(dim=1) - 1
+        pooled = hidden[torch.arange(hidden.size(0), device=hidden.device), last_index, :]
+        logits = self.cls_head(pooled)
+        labels = inputs["labels"].to(logits.device)
+        ce = nn.CrossEntropyLoss(weight=self.class_weights.to(logits.device))
+        loss = ce(logits, labels)
         if return_outputs:
-            return loss, outputs
+            return loss, {"logits": logits}
         return loss
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None, **kwargs):
+        with torch.no_grad():
+            outputs = model(input_ids=inputs["input_ids"], attention_mask=inputs.get("attention_mask"), output_hidden_states=True)
+            hidden = outputs.hidden_states[-1]
+            attn = inputs["attention_mask"].bool()
+            last_index = attn.long().sum(dim=1) - 1
+            pooled = hidden[torch.arange(hidden.size(0), device=hidden.device), last_index, :]
+            logits = self.cls_head(pooled)
+            if prediction_loss_only:
+                labels = inputs.get("labels")
+                loss = nn.functional.cross_entropy(logits, labels.to(logits.device), reduction="mean") if labels is not None else None
+                return (loss, None, None)
+            return (None, logits.detach().cpu(), inputs.get("labels").detach().cpu())
 
-training_args = TrainingArguments(
-    output_dir=os.path.join(base_path, "checkpoints_biopsy_type"),
-    eval_strategy="steps",
-    save_strategy="steps",
-    eval_steps=50,
-    save_steps=50,
-    save_total_limit=3,
-    learning_rate=2e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
-    num_train_epochs=3,
-    weight_decay=0.05,
-    logging_strategy="steps",
-    logging_steps=50,
-    fp16=(not use_bf16),
-    bf16=use_bf16,
-    gradient_accumulation_steps=16,
-    report_to=["tensorboard"],
-    logging_dir=tb_dir,
-    load_best_model_at_end=True,
-    metric_for_best_model="eval_accuracy_biopsy_type",
-    greater_is_better=True,
-    warmup_ratio=0.06,
-    lr_scheduler_type="cosine",
-    max_grad_norm=1.0,
-)
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--base_path", type=str, required=True)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--epochs", type=int, default=5)
+    p.add_argument("--batch_size", type=int, default=4)
+    p.add_argument("--lr", type=float, default=2e-5)
+    p.add_argument("--grad_accum", type=int, default=2)
+    p.add_argument("--eval_steps", type=int, default=200)
+    p.add_argument("--save_steps", type=int, default=200)
+    p.add_argument("--max_len", type=int, default=2048)
+    p.add_argument("--dropout", type=float, default=0.1)
+    args = p.parse_args()
 
-trainer = MultiTaskTrainer(
-    model=peft_model,
-    args=training_args,
-    train_dataset=tokenized["train"],
-    eval_dataset=tokenized["validation"],
-    tokenizer=tokenizer,
-    data_collator=data_collator,
-    callbacks=[
-        EarlyStoppingCallback(early_stopping_patience=2),
-        TBCallback(),
-        PrintProgressCallback(),
-        GradNormLogger(every=50),
-        GenEvalCallback(datasets["validation"], max_examples=128)
-    ],
-    cls_head=cls_head,
-    cls_weight=args.cls_loss_weight
-)
+    set_seed(args.seed)
 
-print("Begin training", flush=True)
-trainer.train()
-writer.flush()
+    os.makedirs(SAVE_ROOT, exist_ok=True)
+    ADAPTER_DIR = os.path.join(SAVE_ROOT, "cat_biopsy_type")
+    CHECKPOINT_DIR = os.path.join(SAVE_ROOT, "checkpoints_biopsy_type_simple")
+    TB_DIR = os.path.join(SAVE_ROOT, "tensorboard_biopsy_type")
+    MERGED_DIR = os.path.join(SAVE_ROOT, "merged_full_model")
+    os.makedirs(ADAPTER_DIR, exist_ok=True)
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    os.makedirs(TB_DIR, exist_ok=True)
 
-print("Save adapter only", flush=True)
-trainer.model.save_pretrained(adapter_out_dir)
-tokenizer.save_pretrained(adapter_out_dir)
+    train_file = os.path.join(args.base_path, "finetune_data_train.csv")
+    val_file   = os.path.join(args.base_path, "finetune_data_val.csv")
+    test_file  = os.path.join(args.base_path, "finetune_data_test.csv")
+    model_name = os.path.join(args.base_path, "Mistral-7B-Instruct-v0.3")
 
-print("Evaluate on validation with generation (exact match 4-class)", flush=True)
-val_acc = gen_eval_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
-print(f"final/validation_accuracy_biopsy_type={val_acc:.4f}", flush=True)
-writer.add_scalar("final/validation_accuracy_biopsy_type", val_acc, trainer.state.global_step)
-writer.flush()
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token or "</s>"
 
-print("Generate on test set (exact match 4-class)", flush=True)
-dev = next(trainer.model.parameters()).device
-rows = datasets["test"].to_pandas()
-n_ok, n_all = 0, 0
-for i, r in rows.iterrows():
-    prompt   = r["prompt"] + RULES
-    expected = r["output_json"]
-    ref_val  = _extract_value(expected)
-    prefix = prompt + '{"biopsy_type": "'
-    inp = tokenizer(prefix, return_tensors="pt").to(dev)
-    with torch.no_grad():
-        out_ids = trainer.model.generate(
-            **inp,
-            max_new_tokens=8,
-            do_sample=False,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id
-        )
-    cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-    pred_val_raw = re.split(r'["\n,}]', cont)[0]
-    pred_val = _canon_biopsy_type(pred_val_raw)
-    pred_json = f'{{"biopsy_type": "{_escape_json_val(pred_val)}"}}'
-    ok = (pred_val == ref_val)
-    print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
-    print(f"--- Expected output  {i+1}: {expected}", flush=True)
-    print(f"--- match={ok} raw_pred=\"{pred_val_raw}\"", flush=True)
-    print("-"*50, flush=True)
-    n_ok += int(ok); n_all += 1
+    df_tr = read_two_col_csv(train_file)
+    df_va = read_two_col_csv(val_file)
+    df_te = read_two_col_csv(test_file)
+    for _df in (df_tr, df_va, df_te):
+        _df["label_txt"] = _df["output"].map(canon_biopsy_type)
+        _df["label"] = _df["label_txt"].map(label2id)
 
-test_acc = (n_ok / max(1, n_all))
-print(f"final/test_accuracy_biopsy_type={test_acc:.4f}", flush=True)
-writer.add_scalar("final/test_accuracy_biopsy_type", test_acc, trainer.state.global_step)
-writer.close()
+    counts = df_tr["label"].value_counts().reindex(range(len(ALLOWED)), fill_value=0).astype(float)
+    inv = 1.0 / np.maximum(counts.values, 1.0)
+    class_weights = torch.tensor(inv / inv.sum() * len(inv), dtype=torch.float)
+    sample_weights = df_tr["label"].map({i: inv[i] for i in range(len(ALLOWED))}).values
+
+    def tok(batch):
+        enc = tokenizer(batch["prompt"], truncation=True, padding=False, max_length=args.max_len)
+        enc["labels"] = batch["label"]
+        return enc
+
+    from datasets import Dataset
+    d_tr = Dataset.from_pandas(df_tr[["prompt", "label"]]).map(tok, batched=True, remove_columns=["prompt", "label"])
+    d_va = Dataset.from_pandas(df_va[["prompt", "label"]]).map(tok, batched=True, remove_columns=["prompt", "label"])
+    d_te = Dataset.from_pandas(df_te[["prompt", "label"]]).map(tok, batched=True, remove_columns=["prompt", "label"])
+
+    collator = Collator(tokenizer=tokenizer, return_tensors="pt")
+
+    dtype = torch.bfloat16 if (torch.cuda.is_available() and torch.cuda.is_bf16_supported()) else torch.float16
+    base = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype, device_map="auto", low_cpu_mem_usage=True, trust_remote_code=True)
+    if base.get_input_embeddings().num_embeddings != len(tokenizer):
+        base.resize_token_embeddings(len(tokenizer))
+    base.config.use_cache = False
+
+    peft_cfg = LoraConfig(task_type="CAUSAL_LM", inference_mode=False, r=16, lora_alpha=32, lora_dropout=0.1, target_modules=["q_proj", "k_proj", "v_proj", "o_proj"])
+    model = get_peft_model(base, peft_cfg)
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    model.gradient_checkpointing_enable()
+
+    hidden_size = getattr(model.config, "hidden_size", None) or getattr(model.config, "n_embd", None)
+    cls_head = Head(hidden_size, num_classes=len(ALLOWED), p_drop=args.dropout).to(model.device)
+
+    sampler = WeightedRandomSampler(weights=torch.tensor(sample_weights, dtype=torch.double), num_samples=len(sample_weights), replacement=True)
+
+    targs = TrainingArguments(
+        output_dir=CHECKPOINT_DIR,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=8,
+        gradient_accumulation_steps=args.grad_accum,
+        num_train_epochs=args.epochs,
+        learning_rate=args.lr,
+        weight_decay=0.05,
+        warmup_ratio=0.06,
+        lr_scheduler_type="cosine",
+        logging_strategy="steps",
+        logging_steps=50,
+        eval_strategy="steps",
+        eval_steps=args.eval_steps,
+        save_strategy="steps",
+        save_steps=args.save_steps,
+        save_total_limit=2,
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_macro_f1",
+        greater_is_better=True,
+        fp16=(dtype == torch.float16),
+        bf16=(dtype == torch.bfloat16),
+        max_grad_norm=1.0,
+        report_to=["tensorboard"],
+        logging_dir=TB_DIR,
+    )
+
+    class Metrics:
+        def __call__(self, eval_pred):
+            logits, labels = eval_pred
+            y_pred = logits.argmax(-1)
+            acc = accuracy_score(labels, y_pred)
+            f1m = f1_score(labels, y_pred, average="macro", zero_division=0)
+            return {"accuracy": acc, "macro_f1": f1m}
+
+    trainer = SimpleClsTrainer(
+        model=model,
+        args=targs,
+        train_dataset=d_tr,
+        eval_dataset=d_va,
+        tokenizer=tokenizer,
+        data_collator=collator,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],
+        cls_head=cls_head,
+        cls_weight=1.0,
+        class_weights=class_weights,
+        compute_metrics=Metrics(),
+    )
+
+    def train_dl():
+        return DataLoader(d_tr, batch_size=targs.per_device_train_batch_size, sampler=sampler, collate_fn=collator)
+    trainer.get_train_dataloader = train_dl
+
+    print("debug/fit", flush=True)
+    trainer.train()
+
+    print("debug/eval", flush=True)
+    out = trainer.predict(d_va)
+    y_true = out.label_ids
+    y_pred = out.predictions.argmax(-1)
+    print(classification_report(y_true, y_pred, labels=list(range(len(ALLOWED))), target_names=ALLOWED, digits=4, zero_division=0))
+    print("Confusion matrix (rows=true, cols=pred):\n", confusion_matrix(y_true, y_pred, labels=list(range(len(ALLOWED)))))
+
+    print("debug/test", flush=True)
+    out_te = trainer.predict(d_te)
+    y_true_te = out_te.label_ids
+    y_pred_te = out_te.predictions.argmax(-1)
+    print(classification_report(y_true_te, y_pred_te, labels=list(range(len(ALLOWED))), target_names=ALLOWED, digits=4, zero_division=0))
+    test_acc = accuracy_score(y_true_te, y_pred_te)
+    test_f1m = f1_score(y_true_te, y_pred_te, average="macro", zero_division=0)
+    print(f"final/test_accuracy={test_acc:.4f}")
+    print(f"final/test_macro_f1={test_f1m:.4f}")
+
+    print("debug/save_adapter_start", flush=True)
+    try:
+        trainer.model.save_pretrained(ADAPTER_DIR, safe_serialization=True)
+        print(f"save/adapter_ok path={ADAPTER_DIR}", flush=True)
+    except Exception as e:
+        print(f"error/save_adapter: {e}", flush=True)
+
+    print("debug/save_tokenizer_start", flush=True)
+    try:
+        tokenizer.save_pretrained(ADAPTER_DIR)
+        print("save/tokenizer_ok", flush=True)
+    except Exception as e:
+        print(f"error/save_tokenizer: {e}", flush=True)
+
+    print("debug/save_head_start", flush=True)
+    try:
+        cls_head_cpu = Head(hidden_size, num_classes=len(ALLOWED))
+        cls_head_cpu.load_state_dict(cls_head.state_dict())
+        torch.save(cls_head_cpu.state_dict(), os.path.join(ADAPTER_DIR, "cls_head.pt"))
+        with open(os.path.join(ADAPTER_DIR, "labels.json"), "w", encoding="utf-8") as f:
+            json.dump({"id2label": {int(k): v for k, v in id2label.items()}, "label2id": label2id}, f)
+        print("save/head_ok", flush=True)
+    except Exception as e:
+        print(f"error/save_head: {e}", flush=True)
+
+    print("debug/merge_and_save_full_model_start", flush=True)
+    try:
+        os.makedirs(MERGED_DIR, exist_ok=True)
+        merged = trainer.model.merge_and_unload()
+        merged.save_pretrained(MERGED_DIR, safe_serialization=True)
+        print(f"save/merged_ok path={MERGED_DIR}", flush=True)
+    except Exception as e:
+        print(f"warn/merge_save_failed: {e}", flush=True)
+
+if __name__ == "__main__":
+    main()

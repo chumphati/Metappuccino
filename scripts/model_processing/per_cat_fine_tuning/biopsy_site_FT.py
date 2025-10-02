@@ -145,7 +145,7 @@ def tokenize_fn(example):
     value_str  = m.group(1) if m else ""
     prefix_str = '{"biopsy_site": "'
     suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 350, 3850
+    max_in, max_out, max_total = 2048, 64, 2112
 
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
@@ -361,19 +361,19 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_biopsy_site"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=50,
-    save_steps=50,
+    eval_steps=250,
+    save_steps=250,
     save_total_limit=3,
     learning_rate=3e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=2,
     weight_decay=0.05,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     report_to=["tensorboard"],
     logging_dir=tb_dir,
     load_best_model_at_end=True,

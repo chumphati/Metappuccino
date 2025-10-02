@@ -15,7 +15,7 @@ from sentence_transformers import SentenceTransformer
 
 parser = argparse.ArgumentParser(description="Fine-tune ethnicity (multitask) with soft semantic accuracy")
 parser.add_argument("--base_path", type=str, required=True)
-parser.add_argument("--cls_loss_weight", type=float, default=0.4)
+parser.add_argument("--cls_loss_weight", type=float, default=0.6)
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
 base_path = args.base_path
@@ -145,25 +145,20 @@ def tokenize_fn(example):
     value_str  = m.group(1) if m else ""
     prefix_str = '{"ethnicity": "'
     suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 350, 3850
-
+    max_in, max_out, max_total = 2048, 64, 2112
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
     val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
     suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
-
     out_ids = pref_ids + val_ids + suff_ids
     ids  = in_enc["input_ids"] + out_ids
     attn = [1]*len(ids)
-
     labels_out = [-100]*len(pref_ids) + val_ids
     if len(suff_ids) > 0:
         labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
     labels = [-100]*len(in_enc["input_ids"]) + labels_out
-
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
-
     return {
         "input_ids": ids,
         "attention_mask": attn,
@@ -209,13 +204,20 @@ def _cos_sim(a, b):
     bn = b / max(np.linalg.norm(b), 1e-12)
     return float(np.dot(an, bn))
 
-def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
+CANON = sorted(set(df_train["output_raw"].tolist()) | set(df_val["output_raw"].tolist()))
+CANON_EMB = model_sem.encode(CANON, convert_to_numpy=True, normalize_embeddings=True)
+
+def to_canonical(label_text):
+    emb = model_sem.encode([label_text], convert_to_numpy=True, normalize_embeddings=True)[0]
+    sims = CANON_EMB @ emb
+    j = int(np.argmax(sims))
+    return CANON[j]
+
+def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, tag="eval"):
     model.eval()
     dev = next(model.parameters()).device
     n_ok, n_all = 0, 0
     rows = hf_dataset.to_pandas()
-    if max_examples is not None:
-        rows = rows.sample(min(max_examples, len(rows)), random_state=42)
     ref_texts = [ _extract_value(r["output_json"]) for _, r in rows.iterrows() ]
     ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
     for idx_row, r in enumerate(rows.itertuples(index=False)):
@@ -233,7 +235,8 @@ def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag=
                 pad_token_id=tokenizer.pad_token_id
             )
         cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        pred_val = re.split(r'["\n,}]', cont)[0]
+        pred_val_raw = re.split(r'["\n,}]', cont)[0]
+        pred_val = to_canonical(pred_val_raw)
         pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
         sim = _cos_sim(pred_emb, ref_embs[idx_row])
         ok = sim >= SIM_THRESH
@@ -242,13 +245,47 @@ def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag=
     model.train()
     return (n_ok / max(1, n_all))
 
+def sweep_threshold(model, tokenizer, hf_dataset, grid=None):
+    if grid is None:
+        grid = [x/100 for x in range(30, 81, 5)]
+    model.eval()
+    dev = next(model.parameters()).device
+    rows = hf_dataset.to_pandas()
+    ref_texts = [ _extract_value(r["output_json"]) for _, r in rows.iterrows() ]
+    ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
+    preds = []
+    for r in rows.itertuples(index=False):
+        prompt = getattr(r, "prompt")
+        prefix = prompt + '{"ethnicity": "'
+        inp = tokenizer(prefix, return_tensors="pt").to(dev)
+        with torch.no_grad():
+            out_ids = model.generate(
+                **inp,
+                max_new_tokens=64,
+                do_sample=False,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id
+            )
+        cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        preds.append(to_canonical(re.split(r'["\n,}]', cont)[0]))
+    pred_embs = model_sem.encode(preds, convert_to_numpy=True, normalize_embeddings=True)
+    sims = np.sum(pred_embs * ref_embs, axis=1)
+    best_thr, best_acc = None, -1.0
+    for t in grid:
+        m = (sims >= t).mean()
+        if m > best_acc:
+            best_acc, best_thr = m, t
+    print(f"calibration/grid={grid} best_thr={best_thr:.2f} best_acc={best_acc:.4f}", flush=True)
+    model.train()
+    return best_thr, best_acc
+
 writer = SummaryWriter(tb_dir)
 
 class TBCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         if not logs: return
         step = state.global_step
-        for k in ("loss","eval_loss"):
+        for k in ("loss","eval_loss","eval_full_accuracy_ethnicity"):
             if k in logs and isinstance(logs[k], (int, float)):
                 writer.add_scalar(f"trainer/{k}", float(logs[k]), step)
 
@@ -276,23 +313,35 @@ class GradNormLogger(TrainerCallback):
             writer.add_scalar("grads/max_norm",   max_g,   state.global_step)
 
 class GenEvalCallback(TrainerCallback):
-    def __init__(self, eval_ds, max_examples=128):
-        self.eval_ds = eval_ds; self.max_examples = max_examples
+    def __init__(self, eval_ds):
+        self.eval_ds = eval_ds
+        self.calibrated = False
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
         model     = kwargs.get("model", None)
         tokenizer = kwargs.get("tokenizer", None)
         if model is None or tokenizer is None: return
-        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, max_examples=self.max_examples, tag="eval")
-        print(f"eval/accuracy_ethnicity={acc:.4f} at step={state.global_step}", flush=True)
-        writer.add_scalar("eval/accuracy_ethnicity", acc, state.global_step)
+        acc = gen_eval_soft_accuracy(model, tokenizer, self.eval_ds, tag="eval_full")
+        print(f"eval_full/accuracy_ethnicity={acc:.4f} at step={state.global_step}", flush=True)
+        writer.add_scalar("eval_full/accuracy_ethnicity", acc, state.global_step)
         if isinstance(metrics, dict):
-            metrics["eval_accuracy_ethnicity"] = float(acc)
+            metrics["eval_full_accuracy_ethnicity"] = float(acc)
+        global SIM_THRESH
+        if not self.calibrated and state.global_step > 0:
+            thr, acc_thr = sweep_threshold(model, tokenizer, self.eval_ds)
+            SIM_THRESH = float(thr)
+            self.calibrated = True
+            print(f"calibration/selected_SIM_THRESH={SIM_THRESH:.2f} (val_acc={acc_thr:.4f})", flush=True)
+            writer.add_scalar("calibration/SIM_THRESH", SIM_THRESH, state.global_step)
 
 print("Initial evaluation on validation with BASE model (semantic soft accuracy)", flush=True)
 base_model.eval()
-init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], max_examples=None, tag="initial")
+init_val_acc = gen_eval_soft_accuracy(base_model, tokenizer, datasets["validation"], tag="initial_full")
 print(f"initial/validation_accuracy_ethnicity={init_val_acc:.4f}", flush=True)
+thr0, acc0 = sweep_threshold(base_model, tokenizer, datasets["validation"])
+SIM_THRESH = float(thr0)
+print(f"initial/calibrated_SIM_THRESH={SIM_THRESH:.2f} (val_acc={acc0:.4f})", flush=True)
 writer.add_scalar("initial/validation_accuracy_ethnicity", init_val_acc, 0)
+writer.add_scalar("initial/SIM_THRESH", SIM_THRESH, 0)
 writer.flush()
 
 hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None)
@@ -311,7 +360,6 @@ class MultiTaskTrainer(Trainer):
         self.cls_head = cls_head
         self.cls_weight = float(cls_weight)
         self.ce = nn.CrossEntropyLoss(reduction='mean')
-
     def create_optimizer(self):
         if self.optimizer is None:
             model_params = [p for p in self.model.parameters() if p.requires_grad]
@@ -322,19 +370,17 @@ class MultiTaskTrainer(Trainer):
             ]
             self.optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate)
         return self.optimizer
-
     def evaluate(self, eval_dataset=None, ignore_keys=None, metric_key_prefix="eval"):
         metrics = super().evaluate(eval_dataset=eval_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
         try:
             ds = datasets.get("validation", None)
-            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], max_examples=128, tag=metric_key_prefix)
+            acc = gen_eval_soft_accuracy(self.model, self.tokenizer, ds if ds is not None else datasets["validation"], tag=f"{metric_key_prefix}_full")
             metrics[f"{metric_key_prefix}_accuracy_ethnicity"] = float(acc)
             step = getattr(self.state, "global_step", -1)
-            print(f"{metric_key_prefix}/accuracy_ethnicity={acc:.4f} at step={step}", flush=True)
+            print(f"{metric_key_prefix}_full/accuracy_ethnicity={acc:.4f} at step={step}", flush=True)
         except Exception as e:
             print(f"warn/eval_callback_exception: {e}", flush=True)
         return metrics
-
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
         split_idx = inputs.pop("split_idx")
         cls_label = inputs.pop("cls_label")
@@ -361,19 +407,19 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_ethnicity"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=50,
-    save_steps=50,
+    eval_steps=400,
+    save_steps=400,
     save_total_limit=3,
     learning_rate=3e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=2,
     weight_decay=0.05,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     report_to=["tensorboard"],
     logging_dir=tb_dir,
     load_best_model_at_end=True,
@@ -392,11 +438,11 @@ trainer = MultiTaskTrainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     callbacks=[
-        EarlyStoppingCallback(early_stopping_patience=1),
+        EarlyStoppingCallback(early_stopping_patience=3),
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),
-        GenEvalCallback(datasets["validation"], max_examples=128)
+        GenEvalCallback(datasets["validation"])
     ],
     cls_head=cls_head,
     cls_weight=args.cls_loss_weight
@@ -411,7 +457,7 @@ trainer.model.save_pretrained(adapter_out_dir)
 tokenizer.save_pretrained(adapter_out_dir)
 
 print("Evaluate on validation with generation (semantic soft accuracy)", flush=True)
-val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], max_examples=None, tag="final_val")
+val_acc = gen_eval_soft_accuracy(trainer.model, tokenizer, datasets["validation"], tag="final_val_full")
 print(f"final/validation_accuracy_ethnicity={val_acc:.4f}", flush=True)
 writer.add_scalar("final/validation_accuracy_ethnicity", val_acc, trainer.state.global_step)
 writer.flush()
@@ -437,7 +483,8 @@ for i, r in enumerate(rows.itertuples(index=False)):
             pad_token_id=tokenizer.pad_token_id
         )
     cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-    pred_val = re.split(r'["\n,}]', cont)[0]
+    pred_val_raw = re.split(r'["\n,}]', cont)[0]
+    pred_val = to_canonical(pred_val_raw)
     pred_json = f'{{"ethnicity": "{_escape_json_val(pred_val)}"}}'
     pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
     sim = _cos_sim(pred_emb, ref_embs[i])

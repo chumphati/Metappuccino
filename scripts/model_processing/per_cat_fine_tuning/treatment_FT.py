@@ -5,7 +5,7 @@ import torch
 from datasets import Dataset
 from transformers import (
     AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer,
-    DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback
+    DataCollatorWithPadding, EarlyStoppingCallback, TrainerCallback, StoppingCriteria, StoppingCriteriaList
 )
 from peft import LoraConfig, get_peft_model
 from torch.utils.tensorboard import SummaryWriter
@@ -33,6 +33,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.add_special_tokens({"pad_token": "<pad>"})
 tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
+tokenizer.padding_side = "right"
 
 use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -120,7 +121,6 @@ for _df in (df_train, df_val, df_test):
     _df["output_raw"]  = _df["output"].astype(str)
     _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"treatment": "{_escape_json_val(v)}"}}')
 
-
 datasets = {
     "train": Dataset.from_pandas(df_train[["prompt","output_json"]]),
     "validation": Dataset.from_pandas(df_val[["prompt","output_json"]]),
@@ -135,25 +135,18 @@ def tokenize_fn(example):
     value_str  = m.group(1) if m else ""
     prefix_str = '{"treatment": "'
     suffix_str = '"}'
-    max_in, max_out, max_total = 3500, 350, 3850
-
+    max_in, max_out, max_total = 2048, 64, 2112
     in_enc  = tokenizer(prompt, truncation=True, padding=False, max_length=max_in, add_special_tokens=False)
     pref_ids = tokenizer(prefix_str, add_special_tokens=False)["input_ids"]
-    val_ids  = tokenizer(value_str, truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
+    val_ids  = tokenizer(value_str.strip(), truncation=True, padding=False, max_length=max_out, add_special_tokens=False)["input_ids"]
     suff_ids = tokenizer(suffix_str, add_special_tokens=False)["input_ids"]
-
     out_ids = pref_ids + val_ids + suff_ids
     ids  = in_enc["input_ids"] + out_ids
     attn = [1]*len(ids)
-
-    labels_out = [-100]*len(pref_ids) + val_ids
-    if len(suff_ids) > 0:
-        labels_out += [suff_ids[0]] + [-100]*(len(suff_ids)-1)
+    labels_out = val_ids + suff_ids
     labels = [-100]*len(in_enc["input_ids"]) + labels_out
-
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
-
     return {
         "input_ids": ids,
         "attention_mask": attn,
@@ -189,10 +182,58 @@ sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 SIM_THRESH = 0.4
 
+CANON = {
+  r'\b(i[- ]?131|131i|radioiodine|rai)\b': 'radioiodine ablation',
+  r'\bintravitreal( anti-vegf)? injection\b': 'anti-VEGF intravitreal injection',
+  r'\bcochlear implant(s)?\b': 'cochlear implant',
+}
+def canonize(s):
+    s = str(s).lower().strip()
+    for pat, rep in CANON.items():
+        s = re.sub(pat, rep, s)
+    s = re.sub(r'\s+', ' ', s)
+    return s
+
 def _cos_sim(a, b):
     an = a / max(np.linalg.norm(a), 1e-12)
     bn = b / max(np.linalg.norm(b), 1e-12)
     return float(np.dot(an, bn))
+
+class StopOnSuffix(StoppingCriteria):
+    def __init__(self, tokenizer, suffix_ids, start_len: int):
+        self.tokenizer = tokenizer
+        self.suffix_ids = suffix_ids
+        self.start_len = start_len
+        self.suf_len = len(suffix_ids)
+    def __call__(self, input_ids, scores, **kwargs):
+        seq = input_ids[0].tolist()[self.start_len:]
+        if len(seq) < self.suf_len:
+            return False
+        return seq[-self.suf_len:] == self.suffix_ids
+
+def gen_once(model, tokenizer, prompt):
+    prefix = prompt + '{"treatment": "'
+    dev = next(model.parameters()).device
+    inp = tokenizer(prefix, return_tensors="pt").to(dev)
+    start_len = inp["input_ids"].size(1)
+    suffix_ids = tokenizer('"}', add_special_tokens=False)["input_ids"]
+    stops = StoppingCriteriaList([StopOnSuffix(tokenizer, suffix_ids, start_len)])
+    with torch.no_grad():
+        out_ids = model.generate(
+            **inp,
+            max_new_tokens=64,
+            min_new_tokens=1,
+            do_sample=False,
+            eos_token_id=None,
+            pad_token_id=tokenizer.pad_token_id,
+            no_repeat_ngram_size=3,
+            stopping_criteria=stops
+        )
+    cont_ids = out_ids[0][start_len:]
+    cont = tokenizer.decode(cont_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+    val = re.split(r'"\}', cont)[0]
+    val = re.sub(r'[\n\r]+', ' ', val).strip()
+    return val
 
 def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag="eval"):
     model.eval()
@@ -201,24 +242,12 @@ def gen_eval_soft_accuracy(model, tokenizer, hf_dataset, max_examples=None, tag=
     rows = hf_dataset.to_pandas()
     if max_examples is not None:
         rows = rows.sample(min(max_examples, len(rows)), random_state=42)
-    ref_texts = [ _extract_value(r["output_json"]) for _, r in rows.iterrows() ]
+    ref_texts = [ canonize(_extract_value(r["output_json"])) for _, r in rows.iterrows() ]
     ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
     for idx_row, r in enumerate(rows.itertuples(index=False)):
         prompt   = getattr(r, "prompt")
-        expected = getattr(r, "output_json")
         ref_val  = ref_texts[idx_row]
-        prefix = prompt + '{"treatment": "'
-        inp = tokenizer(prefix, return_tensors="pt").to(dev)
-        with torch.no_grad():
-            out_ids = model.generate(
-                **inp,
-                max_new_tokens=128,
-                do_sample=False,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.pad_token_id
-            )
-        cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        pred_val = re.split(r'["\n,}]', cont)[0]
+        pred_val = canonize(gen_once(model, tokenizer, prompt))
         pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
         sim = _cos_sim(pred_emb, ref_embs[idx_row])
         ok = sim >= SIM_THRESH
@@ -284,19 +313,19 @@ training_args = TrainingArguments(
     output_dir=os.path.join(base_path, "checkpoints_treatment"),
     eval_strategy="steps",
     save_strategy="steps",
-    eval_steps=50,
-    save_steps=50,
+    eval_steps=250,
+    save_steps=250,
     save_total_limit=3,
     learning_rate=3e-5,
-    per_device_train_batch_size=2,
-    per_device_eval_batch_size=2,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     num_train_epochs=2,
     weight_decay=0.05,
     logging_strategy="steps",
     logging_steps=50,
     fp16=(not use_bf16),
     bf16=use_bf16,
-    gradient_accumulation_steps=16,
+    gradient_accumulation_steps=8,
     report_to=["tensorboard"],
     logging_dir=tb_dir,
     load_best_model_at_end=True,
@@ -305,7 +334,7 @@ training_args = TrainingArguments(
     warmup_ratio=0.03,
     lr_scheduler_type="cosine",
     max_grad_norm=1.0,
-    label_smoothing_factor=0.1,
+    label_smoothing_factor=0.0,
 )
 
 class EvalSoftAccTrainer(Trainer):
@@ -329,7 +358,7 @@ trainer = EvalSoftAccTrainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     callbacks=[
-        EarlyStoppingCallback(early_stopping_patience=1),
+        EarlyStoppingCallback(early_stopping_patience=2),
         TBCallback(),
         PrintProgressCallback(),
         GradNormLogger(every=50),
@@ -355,26 +384,16 @@ print("Generate on test set (semantic soft accuracy)", flush=True)
 dev = next(trainer.model.parameters()).device
 rows = datasets["test"].to_pandas()
 n_ok, n_all = 0, 0
-ref_texts = [ _extract_value(r["output_json"]) for _, r in rows.iterrows() ]
+ref_texts = [ canonize(_extract_value(r["output_json"])) for _, r in rows.iterrows() ]
 ref_embs = model_sem.encode(ref_texts, convert_to_numpy=True, normalize_embeddings=True)
 for i, r in enumerate(rows.itertuples(index=False)):
     prompt   = getattr(r, "prompt")
     expected = getattr(r, "output_json")
     ref_val  = ref_texts[i]
-    prefix = prompt + '{"treatment": "'
-    inp = tokenizer(prefix, return_tensors="pt").to(dev)
-    with torch.no_grad():
-        out_ids = trainer.model.generate(
-            **inp,
-            max_new_tokens=128,
-            do_sample=False,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id
-        )
-    cont = tokenizer.decode(out_ids[0][inp["input_ids"].size(1):], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-    pred_val = re.split(r'["\n,}]', cont)[0]
+    pred_val = gen_once(trainer.model, tokenizer, prompt)
+    pred_val_c = canonize(pred_val)
     pred_json = f'{{"treatment": "{_escape_json_val(pred_val)}"}}'
-    pred_emb = model_sem.encode(pred_val, convert_to_numpy=True, normalize_embeddings=True)
+    pred_emb = model_sem.encode(pred_val_c, convert_to_numpy=True, normalize_embeddings=True)
     sim = _cos_sim(pred_emb, ref_embs[i])
     ok = sim >= SIM_THRESH
     print(f"--- Predicted output {i+1}: {pred_json}", flush=True)
