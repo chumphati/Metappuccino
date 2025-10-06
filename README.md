@@ -39,7 +39,7 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 ## Installation
 
 To install Metappuccino, three steps have to be completed: fetching the LLM model of your choice for inference, installing the tool and its dependencies, and configuring the GPU if you intend to use it.
- 
+
 ### Download the LLM Model
 
 #### MetappuccinoLLModel: Metappuccino's LLM
