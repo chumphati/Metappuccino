@@ -12,13 +12,23 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 import spacy
 from spacy.cli import download
 from transformers import AutoTokenizer
+from collections import Counter
+from nltk.corpus import stopwords
 
 ##########################################################################################
 #PATHS
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
+nltk.download("stopwords", quiet=True)
 download('en_core_web_md')
 nlp = spacy.load('en_core_web_md')
+
+#initialize stop-words
+try:
+    STOPWORDS = set(w.lower() for w in stopwords.words("english"))
+except LookupError:
+    nltk.download("stopwords", quiet=True)
+    STOPWORDS = set(w.lower() for w in stopwords.words("english"))
 
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
@@ -31,23 +41,12 @@ OUTPUT_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
 
-# INPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/cleaned_metadata_sra.txt"
-# OUTPUT_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/cell_line/metadata_sra_summarized.txt"
-# FLAG_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/STEP2_2.flag"
-# AMBIG_FILE = "/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results/DATA_PER_CAT/tmp/ambiguous_cell_lines.csv"
-
 VERBOSE = args.verbose
-# VERBOSE = False
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
-MAX_TOKENS = 1200
-TOKEN_THRESHOLD = 1200
+MAX_TOKENS = 2000
+TOKEN_THRESHOLD = MAX_TOKENS
 CHUNK_SIZE = 100
-CATEGORY_KEYWORDS = [
-    'cell type', 'tissue type', 'cell line', 'organ', 'disease',
-    'host phenotype', 'library selection', 'library source',
-    'treatment', 'treatment time', 'response', 'donor information', 'instrument platform'
-]
 SEMANTIC_THRESHOLD = 0.4
 RELEVANCE_BOOST = 2.0
 TIME_BOOST = 2.0
@@ -75,12 +74,12 @@ if tok is None:
         tok_id = "gpt2 (fallback)"
 vprint(f"Tokenizer loaded: {tok_id}", flush=True)
 
-category_docs = [nlp(cat) for cat in CATEGORY_KEYWORDS]
-
 ##########################################################################################
 #FUNCTIONS
+
 def mistral_tokens(text: str) -> int:
     return len(tok.encode(text, add_special_tokens=False))
+
 
 def _safe_split_candidates(s):
     if s is None:
@@ -138,7 +137,7 @@ def _load_ambiguous_rows(path):
         f.seek(0)
         rr = csv.reader(f)
         for i, row in enumerate(rr):
-            if not row: 
+            if not row:
                 continue
             if i == 0 and len(row) >= 2 and row[0].lower() == "run_accession":
                 continue
@@ -160,6 +159,78 @@ def _write_ambiguous_rows(path, rows):
             if "note" not in r: r["note"] = ""
             dw.writerow(r)
 
+_SRA_ID_PATTERNS = [
+    re.compile(r"^(SRR|DRR|ERR)\d+", re.IGNORECASE),   # runs
+    re.compile(r"^(SRP|DRP|ERP)\d+", re.IGNORECASE),   # studies/projects SRA
+    re.compile(r"^PRJ[A-Z]{2}\d+", re.IGNORECASE),     # BioProject: PRJNA/PRJEB/PRJDB
+]
+
+def _remove_sra_ids(text: str) -> str:
+    words = text.split()
+    kept = []
+    for w in words:
+        uw = w.upper().strip('.,;:()[]{}<>"\'')
+        if any(p.match(uw) for p in _SRA_ID_PATTERNS):
+            continue
+        if uw.startswith("SRR") or uw.startswith("DRR") or uw.startswith("ERR"):
+            continue
+        kept.append(w)
+    return " ".join(kept)
+
+def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
+    cur_tokens = mistral_tokens(text)
+    if cur_tokens <= max_tokens:
+        vprint(f"trim_context_to_tokens: within limit ({cur_tokens} tokens)", flush=True)
+        return text
+
+    #1: remove SRA IDs
+    text = _remove_sra_ids(text)
+    cur_tokens = mistral_tokens(text)
+    if cur_tokens <= max_tokens:
+        vprint(f"trim_context_to_tokens: reduced by removing SRA IDs ({cur_tokens} tokens)", flush=True)
+        return text
+
+    #2: remove frequent/stopwords first
+    words = text.split()
+    if len(words) > 50:
+        freq = Counter(w.lower().strip(",.;:!?") for w in words)
+        scored = [
+            (w, (1 if w.lower() in STOPWORDS else 0) + 0.5 * freq[w.lower()])
+            for w in words
+        ]
+        scored_sorted = sorted(enumerate(scored), key=lambda x: x[1][1], reverse=True)
+        keep_mask = [True] * len(words)
+        i = 0
+        while mistral_tokens(" ".join([w for (w,m), k in zip(scored, keep_mask) if k])) > max_tokens and i < len(scored_sorted):
+            idx, _ = scored_sorted[i]
+            keep_mask[idx] = False
+            i += 1
+        reduced = " ".join([w for (w,m), k in zip(scored, keep_mask) if k])
+        cur_tokens = mistral_tokens(reduced)
+        if cur_tokens <= max_tokens:
+            vprint(f"trim_context_to_tokens: reduced by stopwords/frequent removal ({cur_tokens} tokens)", flush=True)
+            return reduced
+        text = reduced
+        vprint(f"trim_context_to_tokens: stopwords/frequent removal not enough ({cur_tokens} tokens)", flush=True)
+
+    #3: cut by sentences
+    sents = sent_tokenize(text)
+    while sents and mistral_tokens(" ".join(sents)) > max_tokens:
+        sents.pop()
+    if sents:
+        cur_tokens = mistral_tokens(" ".join(sents))
+        vprint(f"trim_context_to_tokens: reduced by sentence trimming ({cur_tokens} tokens)", flush=True)
+        return " ".join(sents)
+
+    #4: fallback proportional cut
+    words = text.split()
+    ratio = max_tokens / (cur_tokens + 1e-9)
+    new_len = max(1, int(len(words) * ratio))
+    final_text = " ".join(words[:new_len])
+    vprint(f"trim_context_to_tokens: reduced by proportional cut ({mistral_tokens(final_text)} tokens)", flush=True)
+    return final_text
+
+
 _TIME_REGEXES = [
     re.compile(r"\b\d+(\.\d+)?\s?(h|hr|hrs|hour|hours|min|mins|minute|minutes|sec|secs|second|seconds|d|day|days|wk|wks|week|weeks)\b", re.IGNORECASE),
     re.compile(r"\b(\d+(\.\d+)?)(h|m|min|d|w|wk)\b", re.IGNORECASE),
@@ -179,84 +250,6 @@ def time_score(text):
 def neg_score(text):
     return len(re.findall(_NEG_WORDS, text))
 
-def extract_clauses(text):
-    tokens = word_tokenize(text)
-    chunks = []
-    i, n = 0, len(tokens)
-    while i < n:
-        j = min(i + CHUNK_SIZE, n)
-        k = j
-        while k > i and tokens[k-1] not in '.?!;,':
-            k -= 1
-        if k == i:
-            k = j
-        chunks.append({'text': ' '.join(tokens[i:k]), 'orig_idx': i})
-        i = k
-    return chunks
-
-def score_clauses(clauses):
-    texts = [c['text'] for c in clauses] or [""]
-    vect = TfidfVectorizer(stop_words='english').fit(texts)
-    X = vect.transform(texts)
-    tfidf_scores = np.array(X.sum(axis=1)).ravel()
-    cat_scores = []
-    for t in texts:
-        doc = nlp(t)
-        s = 0.0
-        for cdoc in category_docs:
-            sim = doc.similarity(cdoc)
-            if sim > SEMANTIC_THRESHOLD:
-                s += sim
-        cat_scores.append(s)
-    times = np.array([time_score(t) for t in texts])
-    negs = np.array([neg_score(t) for t in texts])
-    combined = tfidf_scores + RELEVANCE_BOOST * np.array(cat_scores) + TIME_BOOST * times + NEG_BOOST * negs
-    return combined
-
-def summarize_by_clauses(text):
-    clauses = extract_clauses(text)
-    if not clauses:
-        return text.strip()
-    scores = score_clauses(clauses)
-    order = np.argsort(-scores)
-    summary_chunks = []
-    used = set()
-    token_total = 0
-    for i in order:
-        t = clauses[i]['text']
-        t_tokens = mistral_tokens(t)
-        if token_total + t_tokens <= MAX_TOKENS:
-            summary_chunks.append((clauses[i]['orig_idx'], t))
-            used.add(i)
-            token_total += t_tokens
-        if token_total >= MAX_TOKENS:
-            break
-    for cdoc in category_docs:
-        best_sim, best_idx = 0.0, -1
-        for i, clause in enumerate(clauses):
-            if i in used:
-                continue
-            doc = nlp(clause['text'])
-            sim = doc.similarity(cdoc)
-            if sim > best_sim:
-                best_sim, best_idx = sim, i
-        if best_sim > SEMANTIC_THRESHOLD and best_idx >= 0:
-            t = clauses[best_idx]['text']
-            t_tokens = mistral_tokens(t)
-            if token_total + t_tokens <= MAX_TOKENS:
-                summary_chunks.append((clauses[best_idx]['orig_idx'], t))
-                used.add(best_idx)
-                token_total += t_tokens
-    summary_chunks.sort(key=lambda x: x[0])
-    texts = [s for _, s in summary_chunks]
-    summary = ' '.join(t if t.endswith(('.', '?', '!')) else t + '.' for t in texts).strip()
-    if mistral_tokens(summary) > MAX_TOKENS:
-        sents = sent_tokenize(summary)
-        while sents and mistral_tokens(' '.join(sents)) > MAX_TOKENS:
-            sents.pop()
-        summary = ' '.join(sents).strip()
-    return summary
-
 amb_rows, ambiguous_map = _load_ambiguous_rows(AMBIG_FILE)
 updates = {}
 
@@ -273,12 +266,14 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
         ctx = re.sub(r'\S+?\.fastq\.gz', '', raw).strip()
         orig_tokens = mistral_tokens(ctx)
         vprint(f"{run_acc} original_tokens={orig_tokens}", flush=True)
-        if orig_tokens > TOKEN_THRESHOLD:
-            summ = summarize_by_clauses(ctx)
-            vprint(f"{run_acc} summarized_tokens={mistral_tokens(summ)}", flush=True)
+
+        if orig_tokens > MAX_TOKENS:
+            summ = trim_context_to_tokens(ctx, max_tokens=MAX_TOKENS)
+            vprint(f"{run_acc} trimmed_tokens={mistral_tokens(summ)}", flush=True)
         else:
             summ = ctx
             vprint(f"{run_acc} kept_tokens={mistral_tokens(summ)}", flush=True)
+
         if run_acc in ambiguous_map and ambiguous_map[run_acc]:
             cands = ambiguous_map[run_acc]
             chosen, method = _best_candidate_from_context(ctx if ctx else summ, cands)
@@ -293,6 +288,7 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
             summ = (summ + " " + note).strip()
             updates[run_acc] = {"chosen": chosen, "note": note.strip()}
             vprint(f"{run_acc} ambiguous_resolved={chosen} method={method}", flush=True)
+
         wtr.writerow([run_acc, summ])
         vprint(f"{run_acc} final_tokens={mistral_tokens(summ)}", flush=True)
 

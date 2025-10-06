@@ -375,11 +375,11 @@ missing_in_sra = sorted(runs_xml - runs_sra)
 missing_in_xml = sorted(runs_sra - runs_xml)
 
 if missing_in_sra:
-    vprint("[DEBUG] Présents en XML mais absents dans metadata_sra.txt (extrait): " +
+    vprint("[DEBUG] Not in metadata_sra.txt: " +
            ", ".join(missing_in_sra[:10]) + (" ..." if len(missing_in_sra) > 10 else ""))
 
 if missing_in_xml:
-    vprint("[DEBUG] Présents en SRA mais pas d'XML correspondant (extrait): " +
+    vprint("[DEBUG] In SRA but no corresponding XML: " +
            ", ".join(missing_in_xml[:10]) + (" ..." if len(missing_in_xml) > 10 else ""))
 
 dupes = sra_df['run_accession'][sra_df['run_accession'].duplicated(keep=False)]

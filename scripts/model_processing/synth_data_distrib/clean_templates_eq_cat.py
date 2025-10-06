@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os, re, csv, random, sys, time
 from pathlib import Path
 from typing import List, Tuple, Dict, Iterable, Set
@@ -114,12 +111,10 @@ def _build_lexicons():
     for t in disease_terms:
         term2cat[t.lower()] = "DISEASE"
 
-    # Noms communs candidats à supprimer (mots simples uniquement)
     COMMON_NOUNS = set()
     for ww in (organ_single | cell_single):
         if ww.isalpha() and len(ww) >= 3 and ww not in {"the","and","null"}:
             COMMON_NOUNS.add(ww)
-    # Quelques génériques très fréquents déjà inclus : fibroblast, skin, blood, plasma, serum, placenta, kidney, colon, lung, etc.
 
     return base_def, dis_alt, term2cat, COMMON_NOUNS
 
@@ -514,14 +509,12 @@ def clean_orphan_fragments(text: str) -> str:
     text = re.sub(r"\bORGAN\s+ism\b", "organism", text, flags=re.I)
     return text
 
-# ————— suppression souple des noms communs (singulier/pluriel, ponctuation autorisée)
 def _build_common_nouns_pattern() -> re.Pattern:
     if not _COMMON_NOUNS:
         return re.compile(r"$a")
     alts = []
     for w in sorted(_COMMON_NOUNS, key=len, reverse=True):
         esc = re.escape(w)
-        # pluriels simples -s / -es + tolérance apostrophes
         alts.append(rf"{esc}(?:e?s)?")
     pat = r"(?i)\b(?:%s)\b" % "|".join(alts)
     return re.compile(pat)
@@ -531,14 +524,12 @@ _COMMON_NOUNS_PAT = _build_common_nouns_pattern()
 def _remove_common_nouns(text: str) -> str:
     def repl(m: re.Match) -> str:
         g = m.group(0)
-        # ne jamais supprimer une CAT majuscule
         if g.upper() in CATS_ALL_UP:
             return g
         return " "
     text = _COMMON_NOUNS_PAT.sub(repl, text)
     return normalize_spaces_light(restore_missing_spaces(text))
 
-# ————— renforcement DISEASE via listes
 _DISEASE_LIKE = re.compile(
     r"""
     (?:\b[A-Z][a-z]+(?:’s|'s)?\s+disease\b)|
@@ -780,17 +771,15 @@ def _enforce_category_run_limit(text: str, max_run: int = 3) -> str:
     rebuilt = restore_missing_spaces(rebuilt)
     return normalize_spaces_light(rebuilt)
 
-# ————— insertion par PHRASE de toutes les CAT manquantes
 _SENT_SPLIT = re.compile(r"([.;|])")
 
 def _allowed_boundaries_in_span(span: str) -> List[int]:
-    # positions internes “sûres” (pas début/fin, pas juste à côté d’un séparateur)
     if not span.strip():
         return []
     out = []
     for m in re.finditer(r"\S+(?:\s+|$)", span):
         pos = m.end()
-        if pos <= 1 or pos >= len(span)-1:  # éviter tout début/fin
+        if pos <= 1 or pos >= len(span)-1:
             continue
         left = span[pos-1] if pos-1 >= 0 else ""
         right = span[pos] if pos < len(span) else ""
@@ -800,14 +789,12 @@ def _allowed_boundaries_in_span(span: str) -> List[int]:
     return out
 
 def _insert_cat_in_sentence(sent: str, cat: str) -> str:
-    # priorité : remplacer un CHUNK local
     m = re.search(r"\bCHUNK\b", sent)
     if m:
         return restore_missing_spaces(sent[:m.start()] + " " + cat + " " + sent[m.end():])
-    # sinon, choisir une frontière interne non adjacente à une autre CAT
     allowed = _allowed_boundaries_in_span(sent)
     RNG.shuffle(allowed)
-    for pos in allowed[:10] + allowed:  # quelques essais
+    for pos in allowed[:10] + allowed:
         left = sent[:pos].rstrip()
         right = sent[pos:].lstrip()
         if left.endswith(tuple(CATS_ALL_UP)) or any(re.search(rf"(?<![A-Z0-9_]){c}(?![A-Z0-9_])$", left) for c in CATS_ALL_UP):
@@ -815,7 +802,6 @@ def _insert_cat_in_sentence(sent: str, cat: str) -> str:
         if right.startswith(tuple(CATS_ALL_UP)) or any(re.match(rf"^(?<![A-Z0-9_]){c}(?![A-Z0-9_])", right) for c in CATS_ALL_UP):
             continue
         return restore_missing_spaces(left + " " + cat + " " + right)
-    # fallback : milieu
     mid = max(1, min(len(sent)-1, len(sent)//2))
     return restore_missing_spaces(sent[:mid] + " " + cat + " " + sent[mid:])
 
@@ -827,7 +813,6 @@ def ensure_all_categories_per_sentence(text: str) -> str:
         sep = parts[i+1] if i+1 < len(parts) else ""
         present = {c for c in CATS_UP if re.search(rf"(?<![A-Z0-9_]){re.escape(c)}(?![A-Z0-9_])", sent)}
         missing = [c for c in CATS_UP if c not in present]
-        # insérer chaque CAT manquante (respect des limites globales déjà gérées ailleurs)
         for cat in missing:
             sent = _insert_cat_in_sentence(sent, cat)
         out.append(sent + sep)
@@ -852,42 +837,25 @@ def process_summary_once(summary: str) -> str:
         return text
     text = redact_around_definition_terms(text)
     text = drop_split_category_values(text)
-
-    # SUPPRESSION des noms communs avant remplacement (pour éviter résidus : ex. fibroblast)
     text = _remove_common_nouns(text)
-
-    # Remplacement via lexiques → CAT (respect des quotas)
     text = _replace_terms_with_categories(text)
-
     text, freed = collapse_values_after_categories(text)
     text = normalize_cat_tokens(text)
     text, kept, freed2 = dedupe_categories(text)
-
-    # Insertion globale des CAT manquantes
     text = ensure_all_categories(text, kept, freed + freed2)
-
     text = purge_final(text)
     text = validate_and_fix(text)
-
-    # Renforcement maladies (suppression valeurs explicites) si ça n'altère pas trop
     text = redact_plain_disease_values(text, summary)
-
     text = add_study_prefixes_to_sentences(text)
     text = validate_and_fix(text)
     text = restore_missing_spaces(text)
     text = collapse_values_final_pass(text)
     text = validate_and_fix(text)
-
-    # Pas d'acronymes majuscule non-CAT
     cats_union = "|".join(map(re.escape, CATS_ALL_UP))
     text = re.sub(rf"\b(?!(?:{cats_union})\b)[A-Z]{{4,}}\b", "", text)
-
     text = normalize_spaces_light(text)
     text = validate_and_fix(text)
-
-    # **Nouvelle contrainte** : toutes les CAT au moins une fois **par phrase**
     text = ensure_all_categories_per_sentence(text)
-
     return text
 
 def process_summary(summary: str) -> str:

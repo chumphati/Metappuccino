@@ -23,7 +23,7 @@ parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True, help="Root folder containing PEFT adapters (cat_* or cat_all)")
 parser.add_argument("--base_model_dir", type=str, required=True, help="Base HF causal LM directory")
-parser.add_argument("--max_value_tokens", type=int, default=128)
+parser.add_argument("--max_value_tokens", type=int, default=24)
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -36,6 +36,25 @@ initial_n_ctx = args.initial_n_ctx
 adapters_root = args.model
 base_model_dir = args.base_model_dir
 max_value_tokens = args.max_value_tokens
+
+MAX_TOKENS_BY_CAT = {
+    "age": 8,
+    "sex": 80,
+    "is_cancer": 80,
+    "library_selection": 80,
+    "sequencing_source": 80,
+    "biopsy_site": 80,
+    "biopsy_type": 8,
+    "cell_line": 80,
+    "cell_type": 80,
+    "organ": 80,
+    "disease": 80,
+    "treatment": 80,
+    "treatment_time": 80,
+    "response": 80,
+    "ethnicity": 80,
+}
+default_max = max_value_tokens
 
 raw_final_info_path = os.path.join(base_path, "database_metadata_curated.csv")
 output_dir = os.path.join(base_path, "METADATA_LLM_INFERENCE")
@@ -247,10 +266,10 @@ model = load_all_category_adapters(base_model, adapters_root, categories)
 model.eval()
 
 peft_names = list(getattr(model, "peft_config", {}).keys())
-vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
 vprint("[PEFT] Adaptators", peft_names if peft_names else "(aucun)")
 loaded_set = getattr(model, "_loaded_adapters", set())
-vprint("[PEFT] Marqueurs internes:", sorted(list(loaded_set)))
+vprint("[PEFT] Internal marks:", sorted(list(loaded_set)))
 
 quote_ids = tokenizer('"', add_special_tokens=False)["input_ids"]
 quote_id = quote_ids[0] if len(quote_ids) > 0 else None
@@ -334,11 +353,12 @@ for run, summary in runs:
 
             stop_criteria = StoppingCriteriaList([StopOnQuote(quote_id)])
 
+            max_new = MAX_TOKENS_BY_CAT.get(key, default_max)
             with torch.no_grad():
                 gen = model.generate(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
-                    max_new_tokens=max_value_tokens,
+                    max_new_tokens=max_new,
                     do_sample=False,
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=None,
@@ -382,7 +402,7 @@ for run, summary in runs:
         append_error_line(error_file_path, run, summary)
         continue
 
-vprint(f"[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint(f"[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
 vprint(f"[TIMING] total: {time.perf_counter() - total_t0:.4f}s")
 
 open(FLAG_FILE, "w").close()

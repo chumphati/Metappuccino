@@ -23,7 +23,7 @@ nltk.download("stopwords", quiet=True)
 download('en_core_web_md')
 nlp = spacy.load('en_core_web_md')
 
-# Initialize STOPWORDS
+#initialize stop-words
 try:
     STOPWORDS = set(w.lower() for w in stopwords.words("english"))
 except LookupError:
@@ -183,14 +183,14 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
         vprint(f"trim_context_to_tokens: within limit ({cur_tokens} tokens)", flush=True)
         return text
 
-    #Step 1: remove SRA IDs
+    #1: remove SRA IDs
     text = _remove_sra_ids(text)
     cur_tokens = mistral_tokens(text)
     if cur_tokens <= max_tokens:
         vprint(f"trim_context_to_tokens: reduced by removing SRA IDs ({cur_tokens} tokens)", flush=True)
         return text
 
-    #Step 2: remove frequent/stopwords first
+    #2: remove frequent/stopwords first
     words = text.split()
     if len(words) > 50:
         freq = Counter(w.lower().strip(",.;:!?") for w in words)
@@ -213,7 +213,7 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
         text = reduced
         vprint(f"trim_context_to_tokens: stopwords/frequent removal not enough ({cur_tokens} tokens)", flush=True)
 
-    #Step 3: cut by sentences
+    #3: cut by sentences
     sents = sent_tokenize(text)
     while sents and mistral_tokens(" ".join(sents)) > max_tokens:
         sents.pop()
@@ -222,7 +222,7 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
         vprint(f"trim_context_to_tokens: reduced by sentence trimming ({cur_tokens} tokens)", flush=True)
         return " ".join(sents)
 
-    #Step 4: fallback proportional cut
+    #4: fallback proportional cut
     words = text.split()
     ratio = max_tokens / (cur_tokens + 1e-9)
     new_len = max(1, int(len(words) * ratio))

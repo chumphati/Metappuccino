@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os, json, argparse, time, math, numpy as np, pandas as pd
 from pathlib import Path
 os.environ.setdefault("MPLCONFIGDIR", f"/tmp/mpl_{os.getpid()}")

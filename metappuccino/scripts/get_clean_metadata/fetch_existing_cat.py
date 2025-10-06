@@ -85,7 +85,7 @@ def enrich_from_cell_df(record: dict, mapped: str):
     if mapped in cell_df["name"].values:
         row = cell_df[cell_df["name"] == mapped].iloc[0]
         for f in [
-            "disease", "age", "sex", "ethnicity", "localization",
+            "disease", "age", "sex", "ethnicity",
             "biopsy_type", "biopsy_site", "uberon_code", "cell_type",
         ]:
             v = row.get(f, "")
@@ -141,7 +141,7 @@ cols = [
     "biopsy_site", "bs_uberon_code", "biopsy_type", "cell_line", "cell_type",
     "organ", "organ_uberon_code", "disease", "do_code",
     "treatment", "treatment_time", "response",
-    "age", "sex", "ethnicity", "localization"
+    "age", "sex", "ethnicity"
 ]
 
 stopwords = r"\b(?:for|to|and|in|with|via|on|of|the)\b"
@@ -174,6 +174,48 @@ regex_pattern = re.compile(r"\b[A-Za-z0-9]{4,}\b")
 ambiguous_rows = []
 out = []
 
+def _bs_norm(s):
+    return re.sub(r"[^a-z0-9]+", "_", (s or "").strip().lower()).strip("_")
+
+BS_CACHE = {}
+def _load_biosample_attrs(run):
+    if run in BS_CACHE:
+        return BS_CACHE[run]
+    p = os.path.join(xml_dir, f"{run}_biosample.xml")
+    d = {}
+    if os.path.exists(p):
+        try:
+            txt = open(p, "r", encoding="utf-8", errors="ignore").read()
+            attrs = re.findall(r'<Attribute[^>]*?(?:attribute_name|harmonized_name)="([^"]+)"[^>]*>(.*?)</Attribute>', txt, flags=re.IGNORECASE|re.DOTALL)
+            for k, v in attrs:
+                nk = _bs_norm(k)
+                val = re.sub(r"\s+", " ", v).strip()
+                if nk and val and nk not in d:
+                    d[nk] = val
+        except Exception:
+            pass
+    BS_CACHE[run] = d
+    return d
+
+def _bs_get(run, tag, extra_aliases=None):
+    d = _load_biosample_attrs(run)
+    alts = [tag, tag.replace("_", "-"), tag.replace("_", " ")]
+    if extra_aliases:
+        alts.extend(extra_aliases)
+    keys = {_bs_norm(a) for a in alts}
+    for k in keys:
+        if k in d:
+            return d[k]
+    for alias in alts:
+        parts = [p for p in re.split(r"[\s_\-]+", alias.strip().lower()) if p]
+        if not parts:
+            continue
+        pat = r"[_\-\s]+".join(re.escape(p) for p in parts)
+        for k in d:
+            if re.fullmatch(pat, k):
+                return d[k]
+    return ""
+
 for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     run = os.path.basename(path).split("_metadata.xml")[0]
     vprint(run)
@@ -191,6 +233,14 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
         vprint(o["cell_line"])
         enrich_from_cell_df(o, o["cell_line"])
         found = True
+    if not found:
+        bs_cl = _bs_get(run, "cell_line", ["cell type","cell-type","cell_type"])
+        if bs_cl and bs_cl.lower() not in invalid_entries:
+            vprint("biosample_cell_line")
+            mapped = resolve_cell_line(bs_cl.strip())
+            o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
+            enrich_from_cell_df(o, o["cell_line"])
+            found = True
     if not found:
         src_name = extract_tag(ctx, "source_name")
         sample_title = extract_sample_title(ctx)
@@ -246,13 +296,25 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             vprint("regex")
             found = True
 
-    for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "localization", "biopsy_site",
+    for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "biopsy_site",
                 "biopsy_type", "organ", "disease"]:
         if tag in ["treatment", "treatment_time"]:
             continue
         if o.get(tag) and o.get(tag + "_source") == "cellosaurus":
             continue
         val = extract_tag(ctx, tag)
+        if not val:
+            aliases = {
+                "sex": ["gender"],
+                "age": ["host_age","subject_age"],
+                "ethnicity": ["race","population"],
+                "biopsy_site": ["host body site","host_body_site","body site","organism part","organism_part","tissue","tissue type","tissue_type","organ"],
+                "biopsy_type": ["biopsy type","sample type","sample_type","specimen type","specimen_type"],
+                "organ": ["organism part","organism_part","tissue","tissue type","tissue_type","anatomical location","anatomical_location"],
+                "disease": ["disease state","phenotype","diagnosis"]
+            }.get(tag, [])
+            val = _bs_get(run, tag, aliases)
+            if val: vprint(f"biosample::{tag}")
         if val and val.lower() not in invalid_entries:
             o[tag] = val
     if not o["library_selection"]:
@@ -281,9 +343,11 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
 
     if is_ambiguous:
         vprint("ambiguous")
+        out.append(o)
     elif not is_official:
         ambiguous_rows.append({"run_accession": run, "candidates": o.get("cell_line", "")})
         vprint("unresolved_or_not_official")
+        out.append(o)
     else:
         out.append(o)
 
@@ -311,11 +375,11 @@ missing_in_sra = sorted(runs_xml - runs_sra)
 missing_in_xml = sorted(runs_sra - runs_xml)
 
 if missing_in_sra:
-    vprint("[DEBUG] Présents en XML mais absents dans metadata_sra.txt (extrait): " +
+    vprint("[DEBUG] Not in metadata_sra.txt: " +
            ", ".join(missing_in_sra[:10]) + (" ..." if len(missing_in_sra) > 10 else ""))
 
 if missing_in_xml:
-    vprint("[DEBUG] Présents en SRA mais pas d'XML correspondant (extrait): " +
+    vprint("[DEBUG] In SRA but no corresponding XML: " +
            ", ".join(missing_in_xml[:10]) + (" ..." if len(missing_in_xml) > 10 else ""))
 
 dupes = sra_df['run_accession'][sra_df['run_accession'].duplicated(keep=False)]

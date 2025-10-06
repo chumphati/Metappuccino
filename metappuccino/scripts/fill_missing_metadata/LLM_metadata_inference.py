@@ -21,7 +21,7 @@ parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
-parser.add_argument("--max_value_tokens", type=int, default=128)
+parser.add_argument("--max_value_tokens", type=int, default=80)
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -100,25 +100,24 @@ STRICT_MATCH_TRAINING = True
 categories = [
     "library_selection", "sequencing_source", "biopsy_site", "biopsy_type",
     "cell_line", "cell_type", "organ", "disease", "treatment",
-    "treatment_time", "response", "age", "sex", "ethnicity", "localization", "is_cancer"
+    "treatment_time", "response", "age", "sex", "ethnicity", "is_cancer"
 ]
 
 definitions = {
-    "library_selection": "one of: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or extract other rare value (exclude cDNA or similar that are previous steps before real library selection). IF not in those categories, state 'other'",
-    "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. search for transcriptomics information in context",
-    "biopsy_site": "organ, body part or fluid WHERE TISSUE WAS SAMPLED",
-    "biopsy_type": "state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES",
-    "cell_line": "exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Get the cell line code anywhere in the text",
-    "cell_type": "extract cell type: if known, specify it (e.g., 'T cell', 'fibroblast', etc). state specific cell type; otherwise, write 'primary tissue'. If the cell type is not directly available, TRY to deduce it from the organ before answering 'primary tissue'.",
-    "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site)",
+    "library_selection": "based on the given context, determine the library selection fixed category by searching for specific keywords or synonyms that match one of the five strict categories: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other'. Assign 'polyA' if the context contains any of the following terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'PolyA', 'poly.A', 'oligo.dT', 'oligodT', 'truseq.mrna', 'truseq.stranded.mrna', 'truseq.standard.mrna', 'smarter.mRNA', 'stran ded.mRNA'. Assign 'inverse rRNA' if the context mentions depletion of ribosomal RNA with any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'ribominus', 'ribodep', 'ribozero', 'ribo.zero', 'riboerase', 'ribogone', 'ribocop', 'ribo-dep', 'ribo-mi', 'ribo minus', 'depleted ribosom', 'remove ribosom', 'TruSeq.Stranded.Total', 'TruSeq.Total', 'SMARTer.Stranded.Total', 'SMARTer.Total'. Assign 'hybrid selection' if the context refers to hybrid capture or exon selection using any of these terms OR SIMIILAR MEANING THAT CAN BE INFERRED: 'Hybrid.Selection', 'Exon.capture', 'Exome.capture', 'RNA.Exome', 'geoMX'. Assign 'small RNA' if the context refers to small RNA isolation with keywords such as 'TruSeq.Small', 'size.fraction' OR SIMIILAR MEANING THAT CAN BE INFERRED. Assign 'other' if none of the above terms are found. Return only the exact category name: 'polyA', 'inverse rRNA', 'hybrid selection', 'small RNA', or 'other', with no additional text.",
+    "sequencing_source": "one of: 'spatial', 'bulk', 'single cell'. Spatial refers to transcriptomics that preserves in-tissue localization of molecules, mapping expression directly onto the tissue architecture. Bulk means sequencing a mixture of cells together, producing an aggregate average signal across the population. Single cell captures RNA from individual cells, yielding per-cell expression profiles and cellular heterogeneity.",
+    "biopsy_site": "organ, body part or fluid WHERE TISSUE WAS SAMPLED. same as organ if not cancer. If it is a xenograft mention it here. Must not be related to the disease, just the tissue sampled. If possible DEDUCE IT FROM WHERE THE CELL LINE COMES FROM",
+    "biopsy_type": "state 'metastasis' IF CANCER AND METASTASIS MENTIONNED, OR 'blood' if no metastasis and blood related information mentionned, OTHERWISE state 'primary'. DO NOT STATE METASTASIS OR BLOOD IF NOT EXPLICITELY IN THE CONTEXT. CAN ONLY STATE THOSE THREE INFORMATION, YOU SHOULD ALWAYS BE CAPABLE TO DETERMINE ONE OF THE 3 VALUES",
+    "cell_line": "exact cell line, ie standardized names of cultured/immortalized laboratory cell populations. Specify the cell line, or state 'Primary tissue' if the sample is from a primary tissue and not a cell line.",
+    "cell_type": "The type of cell in the sample (e.g., neuron, fibroblast, CD8 T cell, CD4 T cell, monocyte NK cell, mast cell, melanocyte, dendritic cell, etc...). If not provided, deduce based on context. otherwise, state 'primary tissue'",
+    "organ": "organ studied or affected (not where the sample is from, very different from biopsy_site). Must not be related to the disease, just the tissue concerned.",
     "disease": "report associated disease (BE SPECIFIC) or 'healthy' status (be careful to specific vocabulary that could indicate that the sample is healthy, for eg. adjacent is something next to the disease, or normal, etc...)",
-    "treatment": "treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, infer from the context. DON'T STATE the disease, get info just from treatment",
-    "treatment_time": "time or phase relative to treatment (qualitative or quantitative information, but favour quantitative data). BE CAREFUL TO GET THE TIME RELATED TO THE DEDUCED TREATMENT(S)",
-    "response": "treatment response, state of the cell after treatment, without mention again the treatment any kind of event after treatment if applicable. if no clear statement, try to infer from context the stage of the disease after treatment if possible",
-    "age": "sample donor age. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC)",
-    "sex": "sample donor sex",
-    "ethnicity": "sample donor ethnicity (origins, genetics)",
-    "localization": "all geographical information available, if several list them all",
+    "treatment": "treatment applied treatment applied = may be molecules or drug treatments or surgical operations, or something implanted, or events altering the state of the organism, etc. if not explicitly stated, infer from the context. DON'T STATE the disease, get info just from treatment. Also state a treatment if it's planed to be done, as a pre-treatment step.",
+    "treatment_time": "time or phase relative to treatment. if you state a quantitative information state if it it post, pre or on treatment",
+    "response": "type of reaction to the treatment, can be: no treatment, unknown, stable, progressive, success",
+    "age": "sample donor ageif human. if not possible to infer, state 'unknown'. Can be quantitative (range or exact age) or qualitative (eg: child, teenage, adult, senior, ETC). careful to find an age not just a random number",
+    "sex": "sample donor sex if human. if not possible to infer, state 'unknown'",
+    "ethnicity": "sample donor ethnicity if human (e.g. caucasian, black, asian). if not possible to infer, state 'unknown'",
     "is_cancer": "return 'True' if the disease is cancer related, 'False' otherwise"
 }
 
@@ -184,8 +183,6 @@ def build_prompt_single_category_train_like(run, summary, key, definition):
                 BE CAREFUL: Sometimes the information concerns several samples from the same study. It is important to distinguish between them and semantically extract what applies to the current run, so everything must be consistent.
                 FOR EACH CATEGORY SEVERAL ANSWERS CAN BE POSSIBLE, CITE THEM ALL WITH A ',' OR ';' SEPARATOR
 
-                Respond strictly in a few words with valid JSON (double quotes around keys and values), no extra keys. ONLY THE CATEGORIES CITED UNDER 'Categories and definitions'
-
                 Here is the output:
                 """
 
@@ -219,7 +216,7 @@ vprint(f"[LLM] use_gpu={use_gpu} n_gpu_layers={n_gpu_layers_val} n_threads={n_th
 
 runs = read_runs(input_metadata_path)
 
-vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
 vprint("[INFO] Model (gguf):", base_model_path)
 
 ambiguous_map = load_ambiguous_map(ambi_cl_path)
@@ -278,7 +275,7 @@ for run, summary in runs:
                     prompt_general = prompt_general + f"\nAdditional context (cell line candidates): {extra_ctx}\n"
                 prefix_text = prompt_general + "{\n" + f"\"{key}\": \""
 
-            vprint(f"[PEFT] {run} | {key:16s} -> actif: (none; llama.cpp)")
+            vprint(f"[PEFT] {run} | {key:16s} -> active: (none; llama.cpp)")
             vprint(f"[PROMPT] {run} | {key}\n{prefix_text}")
 
             cat_t0 = time.perf_counter()
@@ -321,7 +318,7 @@ for run, summary in runs:
     if run_failed:
         append_skipped_and_error(run, summary)
 
-vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
-vprint(f"[TIMING] total: {time.perf_counter() - total_t0:.4f}s")
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint(f"[TIMING] Total: {time.perf_counter() - total_t0:.4f}s")
 
 open(FLAG_FILE, "w").close()

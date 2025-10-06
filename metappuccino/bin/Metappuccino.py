@@ -102,7 +102,7 @@ def main():
                         help="Path to the results directory")
     parser.add_argument("--env_requirement", type=str, required=True,
                         help="Path to the venv builded with requirement.txt")
-    parser.add_argument("--model", type=str, required=True,
+    parser.add_argument("--model", type=str,
                         help="Path to LLM model used for inference. A specific model trained for the task can be downloaded.")
     parser.add_argument("--gguf", action="store_true",
                         help="LLM  inference based on a gguf model (!= Metappuccino fine-tuned model).")

@@ -48,6 +48,8 @@ MKDIR_PATH = _find_cmd("mkdir")
 CAT_PATH = _find_cmd("cat")
 GREP_PATH = _find_cmd("grep")
 
+os.makedirs(METADATA_DIR, exist_ok=True)
+
 ########################################################################################################################
 #FUNCTIONS
 
@@ -115,13 +117,24 @@ def execute_bash_download_metadata():
                     echo \"{METADATA_DIR} already downloaded.\"
                 else
                     \"$MKDIR\" -p \"{METADATA_DIR}\"
-                    \"$CAT\" \"{RUNS_TSV}\" | \"$GREP\" -v '^\\s*$' | while IFS=$'\t' read -r RUN_ACCESSION; do
-                        RUN_ACCESSION=$(echo \"$RUN_ACCESSION\" | tr -d '\r' | tr -d '\n' | tr -d ' ')
+                    \"$CAT\" \"{RUNS_TSV}\" | \"$GREP\" -v '^\\s*$' | while IFS=$'\\t' read -r RUN_ACCESSION; do
+                        RUN_ACCESSION=$(echo \"$RUN_ACCESSION\" | tr -d '\\r' | tr -d '\\n' | tr -d ' ')
                         OUTPUT_FILE=\"{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml\"
+                        TMP_FILE=\"${{OUTPUT_FILE}}.tmp\"
                         if [ ! -f \"$OUTPUT_FILE\" ]; then
                             echo \"Download metadata for $RUN_ACCESSION\"
-                            \"$CURL\" -s \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=text\" \
-                                 -o \"$OUTPUT_FILE\"
+                            \"$CURL\" -SsfL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 120 \\
+                                 \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=xml\" \\
+                                 -o \"$TMP_FILE\" && \\
+                            if head -c 1 \"$TMP_FILE\" | grep -q '<'; then
+                                if grep -q '<\\(STUDY\\|SAMPLE\\)\\b' \"$TMP_FILE\"; then
+                                    mv \"$TMP_FILE\" \"$OUTPUT_FILE\"
+                                else
+                                    rm -f \"$TMP_FILE\"
+                                fi
+                            else
+                                rm -f \"$TMP_FILE\"
+                            fi
                             sleep 1
                         fi
                     done
@@ -130,29 +143,222 @@ def execute_bash_download_metadata():
     subprocess.run(bash_script, shell=True, check=True, executable=BASH_PATH)
 
 
+def _looks_like_xml(path):
+    try:
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            return False
+        with open(path, "rb") as f:
+            start = f.read(4096)
+        if not start.lstrip().startswith(b"<"):
+            return False
+        txt = start.decode("utf-8", errors="ignore")
+        if ("<STUDY" not in txt) and ("<SAMPLE" not in txt):
+            if os.path.getsize(path) <= 2_000_000:
+                with open(path, "r", encoding="utf-8", errors="ignore") as f2:
+                    alltxt = f2.read()
+                if ("<STUDY" not in alltxt) and ("<SAMPLE" not in alltxt):
+                    return False
+        return True
+    except Exception:
+        return False
+
+def _download_xml_ncbi(run_accession, dest, max_retries=3):
+    headers = {"User-Agent": "metappuccino/1.0 (contact: none)"}
+    params = {"db": "sra", "id": run_accession, "retmode": "xml"}
+    tmp = dest + ".tmp"
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+                params=params, headers=headers, timeout=60,
+            )
+            if r.status_code == 200 and r.text.strip().startswith("<") and (("<STUDY" in r.text) or ("<SAMPLE" in r.text)):
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                with open(tmp, "w", encoding="utf-8") as fxml:
+                    fxml.write(r.text)
+                os.replace(tmp, dest)
+                time.sleep(1.0)
+                return True
+        except Exception:
+            pass
+        time.sleep(1 * attempt)
+    return False
+
+def _parse_xml_with_retry(xml_file, max_retries=2):
+    last_exc = None
+    for attempt in range(max_retries + 1):
+        try:
+            tree = ET.parse(xml_file)
+            return tree.getroot()
+        except ET.ParseError as e:
+            last_exc = e
+            time.sleep(1 + attempt)
+            if attempt < max_retries:
+                _download_xml_ncbi(os.path.basename(xml_file).split("_metadata.xml")[0], xml_file, max_retries=2)
+    if last_exc:
+        raise last_exc
+    return None
+
+def _fetch_biosample_xml(samn_accession: str, dest_path: str, max_retries: int = 3) -> bool:
+    headers = {"User-Agent": "metappuccino/1.0 (contact: none)"}
+    params = {"db": "biosample", "id": samn_accession, "retmode": "xml"}
+    tmp = dest_path + ".tmp"
+    for attempt in range(1, max_retries + 1):
+        try:
+            r = requests.get(
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+                params=params, headers=headers, timeout=60,
+            )
+            txt = (r.text or "").lstrip()
+            if r.status_code == 200 and txt.startswith("<"):
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                with open(tmp, "w", encoding="utf-8") as fxml:
+                    fxml.write(txt)
+                os.replace(tmp, dest_path)
+                time.sleep(1.0)
+                return True
+        except Exception:
+            pass
+        time.sleep(1 * attempt)
+    return False
+
+def _extract_biosample_attributes_from_file(biosample_xml_path: str) -> str:
+    try:
+        root = ET.parse(biosample_xml_path).getroot()
+    except Exception:
+        return ""
+    attrs = []
+    for a in root.findall(".//BioSample/Attributes/Attribute"):
+        name = a.get("attribute_name") or a.get("harmonized_name") or ""
+        val = (a.text or "").strip()
+        if name and val:
+            name = " ".join(name.split())
+            val = " ".join(val.split())
+            attrs.append(f"{name}: {val}")
+    return "; ".join(attrs)
+
+def _extract_sra_sample_attributes_as_fallback(root) -> str:
+    pairs = []
+    for sa in root.findall(".//SAMPLE/SAMPLE_ATTRIBUTES/SAMPLE_ATTRIBUTE"):
+        tag = (sa.findtext("TAG") or "").strip()
+        val = (sa.findtext("VALUE") or "").strip()
+        if tag and val:
+            pairs.append(f"{tag}: {val}")
+    return "; ".join(pairs)
+
+def _find_samn_in_sra_root(root) -> str:
+    def _local(tag):
+        return tag.rsplit('}', 1)[-1] if '}' in tag else tag
+    for x in root.iter():
+        if _local(getattr(x, 'tag', '')) != "XREF_LINK":
+            continue
+        db = None
+        idv = None
+        for child in x:
+            ln = _local(getattr(child, 'tag', ''))
+            if ln == "DB":
+                db = (child.text or "").strip() if child.text else ""
+            elif ln == "ID":
+                idv = (child.text or "").strip() if child.text else ""
+        if (db or "").lower() == "biosample" and idv and idv.startswith("SAMN"):
+            return idv
+    for ext in root.iter():
+        if _local(getattr(ext, 'tag', '')) == "EXTERNAL_ID":
+            ns = (ext.get("namespace") or "").strip().lower()
+            val = (ext.text or "").strip()
+            if "biosample" in ns and val.startswith("SAMN"):
+                return val
+    import re
+    sampat = re.compile(r"\bSAMN\d+\b")
+    for node in root.iter():
+        txt = (getattr(node, 'text', None) or "").strip()
+        if txt:
+            m = sampat.search(txt)
+            if m:
+                return m.group(0)
+    return ""
+
+def _find_samn_anywhere_from_file(xml_path: str) -> str:
+    try:
+        with open(xml_path, "r", encoding="utf-8", errors="ignore") as f:
+            txt = f.read()
+    except Exception:
+        return ""
+    import re
+    m = re.search(r"\bSAMN\d+\b", txt)
+    return m.group(0) if m else ""
+
+def _get_biosample_acc_from_ena(run_accession: str) -> str:
+    try:
+        payload = (
+            "result=read_run"
+            f"&query=run_accession%3D{run_accession}"
+            "&format=tsv"
+            "&fields=run_accession,biosample_accession,secondary_sample_accession,sample_accession"
+            "&limit=1"
+        )
+        resp = requests.post(
+            "https://www.ebi.ac.uk/ena/portal/api/search",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data=payload,
+            timeout=30
+        )
+        lines = resp.text.strip().splitlines()
+        if len(lines) >= 2:
+            header = lines[0].split("\t")
+            row = lines[1].split("\t")
+            idx = {h:i for i,h in enumerate(header)}
+            for key in ("biosample_accession", "secondary_sample_accession", "sample_accession"):
+                if key in idx and len(row) > idx[key]:
+                    v = row[idx[key]].strip()
+                    if v.startswith("SAMN"):
+                        return v
+    except Exception:
+        pass
+    return ""
+
+
 #get specific metadata from xml
 def extract_and_save_metadata(run_accession):
     xml_file = os.path.join(METADATA_DIR, f"{run_accession}_metadata.xml")
 
     if not os.path.exists(xml_file):
         try:
-            r = requests.get(
-                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
-                params={"db": "sra", "id": run_accession, "retmode": "text"},
-                timeout=60,
-            )
-            if r.status_code == 200 and r.text.strip():
-                os.makedirs(METADATA_DIR, exist_ok=True)
-                with open(xml_file, "w", encoding="utf-8") as fxml:
-                    fxml.write(r.text)
+            ok = _download_xml_ncbi(run_accession, xml_file, max_retries=3)
+            if not ok:
+                pass
         except Exception:
             pass
 
     try:
         #get xml
-        tree = ET.parse(xml_file)
-        root = tree.getroot()
-        sample_metadata = " ".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
+        if not _looks_like_xml(xml_file):
+            _download_xml_ncbi(run_accession, xml_file, max_retries=2)
+        root = _parse_xml_with_retry(xml_file)
+
+        sample_metadata = ""
+
+        samn = _find_samn_in_sra_root(root)
+        if not samn:
+            samn = _find_samn_anywhere_from_file(xml_file)
+        if not samn:
+            samn = _get_biosample_acc_from_ena(run_accession)
+        if samn:
+            biosample_xml_path = os.path.join(METADATA_DIR, f"{run_accession}_biosample.xml")
+            if (not os.path.exists(biosample_xml_path)) or os.path.getsize(biosample_xml_path) == 0:
+                _fetch_biosample_xml(samn, biosample_xml_path, max_retries=3)
+            biosample_attrs = _extract_biosample_attributes_from_file(biosample_xml_path)
+            if biosample_attrs:
+                sample_metadata = biosample_attrs
+
+        if not sample_metadata:
+            sra_attrs = _extract_sra_sample_attributes_as_fallback(root)
+            if sra_attrs:
+                sample_metadata = sra_attrs
+
+        if not sample_metadata:
+            sample_metadata = " ".join(root.findall(".//SAMPLE")[0].itertext()).replace('\n', ' ')
+
         study_metadata = " ".join(root.findall(".//STUDY")[0].itertext()).replace('\n', ' ')
 
         time.sleep(4)
@@ -183,10 +389,55 @@ def extract_and_save_metadata(run_accession):
 
     except FileNotFoundError as e:
         vprint(f"Error: XML file not found {e}")
+        try:
+            with open(xml_file, 'r', encoding='utf-8') as xf:
+                xml_raw = xf.read().replace('\n', ' ')
+        except FileNotFoundError:
+            xml_raw = ""
+        curl_command = [
+            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
+            "https://www.ebi.ac.uk/ena/portal/api/search"
+        ]
+        proc = subprocess.run(curl_command, capture_output=True, text=True)
+        ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
+        ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
+        with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
+            f_out.write(f"{ena_data}\terror\terror\n")
     except ET.ParseError as e:
         vprint(f"Error: Failed to parse XML {e}")
+        try:
+            with open(xml_file, 'r', encoding='utf-8') as xf:
+                xml_raw = xf.read().replace('\n', ' ')
+        except FileNotFoundError:
+            xml_raw = ""
+        curl_command = [
+            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
+            "https://www.ebi.ac.uk/ena/portal/api/search"
+        ]
+        proc = subprocess.run(curl_command, capture_output=True, text=True)
+        ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
+        ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
+        with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
+            f_out.write(f"{ena_data}\terror\terror\n")
     except subprocess.SubprocessError as e:
         vprint(f"Error: Subprocess execution failed {e}")
+        try:
+            with open(xml_file, 'r', encoding='utf-8') as xf:
+                xml_raw = xf.read().replace('\n', ' ')
+        except FileNotFoundError:
+            xml_raw = ""
+        curl_command = [
+            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
+            "https://www.ebi.ac.uk/ena/portal/api/search"
+        ]
+        proc = subprocess.run(curl_command, capture_output=True, text=True)
+        ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
+        ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
+        with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
+            f_out.write(f"{ena_data}\terror\terror\n")
     except Exception as e:
         vprint(f"Unexpected error {run_accession}: {e}")
 

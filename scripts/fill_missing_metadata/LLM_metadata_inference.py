@@ -21,7 +21,7 @@ parser.add_argument("--log_file_path", type=str, required=True)
 parser.add_argument("--flag_file", type=str, required=True)
 parser.add_argument("--initial_n_ctx", type=int, default=3500)
 parser.add_argument("--model", type=str, required=True)
-parser.add_argument("--max_value_tokens", type=int, default=128)
+parser.add_argument("--max_value_tokens", type=int, default=80)
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -216,7 +216,7 @@ vprint(f"[LLM] use_gpu={use_gpu} n_gpu_layers={n_gpu_layers_val} n_threads={n_th
 
 runs = read_runs(input_metadata_path)
 
-vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
 vprint("[INFO] Model (gguf):", base_model_path)
 
 ambiguous_map = load_ambiguous_map(ambi_cl_path)
@@ -275,7 +275,7 @@ for run, summary in runs:
                     prompt_general = prompt_general + f"\nAdditional context (cell line candidates): {extra_ctx}\n"
                 prefix_text = prompt_general + "{\n" + f"\"{key}\": \""
 
-            vprint(f"[PEFT] {run} | {key:16s} -> actif: (none; llama.cpp)")
+            vprint(f"[PEFT] {run} | {key:16s} -> active: (none; llama.cpp)")
             vprint(f"[PROMPT] {run} | {key}\n{prefix_text}")
 
             cat_t0 = time.perf_counter()
@@ -318,7 +318,7 @@ for run, summary in runs:
     if run_failed:
         append_skipped_and_error(run, summary)
 
-vprint("[INFO] Mode prompt:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
-vprint(f"[TIMING] total: {time.perf_counter() - total_t0:.4f}s")
+vprint("[INFO] Prompt mode:", "STRICT_MATCH_TRAINING" if STRICT_MATCH_TRAINING else "GENERAL_MULTI_CATEGORIES")
+vprint(f"[TIMING] Total: {time.perf_counter() - total_t0:.4f}s")
 
 open(FLAG_FILE, "w").close()
