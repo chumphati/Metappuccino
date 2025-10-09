@@ -42,7 +42,7 @@ To install Metappuccino, three steps have to be completed: fetching the LLM mode
 
 ### Download the LLM Model
 
-#### MetappuccinoLLModel: Metappuccino's LLM
+#### [MetappuccinoLLModel](https://huggingface.co/chumphati/MetappuccinoLLModel): Metappuccino's LLM
 A specific model based on Mistral 7B has been fine-tuned to achieve better performance than open source models (by Sept. 2025). 
 It can be used in Metappuccino by downloading it and providing the path to it in the settings when launching (`--model`).
 

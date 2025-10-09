@@ -62,8 +62,8 @@ def normalize_term(raw_value, names_set, syn_dict):
         val = original.lower()
         for expr in to_remove:
             val = re.sub(expr, "", val, flags=re.IGNORECASE)
-        val = re.sub(r"^[\s\-\–\—\:\.\,;]+", "", val)  # début
-        val = re.sub(r"[\s\-\–\—\:\.\,;]+$", "", val)  # fin
+        val = re.sub(r"^[\s\-\–\—\:\.\,;]+", "", val)
+        val = re.sub(r"[\s\-\–\—\:\.\,;]+$", "", val)
         return val.strip(), original.strip()
 
     results = []
@@ -154,7 +154,6 @@ for _, r in cell_df.iterrows():
     for s in syns + [name]:
         cell_syn[s.lower()] = name
 
-# Canonical case maps to recover original-case canonical names from lowercase keys
 disease_canon_case = {k.lower(): k for k in disease_code.keys()}
 organ_canon_case = {k.lower(): k for k in organ_code.keys()}
 
@@ -258,7 +257,7 @@ for _, row in df.iterrows():
         entry["response"] = "not applicable"
         entry["confidence_entropy_treatment_time"] = "unknown"
         entry["confidence_entropy_response"] = "unknown"
-        
+
     augmented_data.append(entry)
 
 out_df = pd.DataFrame(augmented_data, columns=output_cols)
