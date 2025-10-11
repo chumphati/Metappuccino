@@ -283,6 +283,8 @@ for run, summary in runs:
         t0 = time.perf_counter()
         dev = model.device
         out = {}
+        nlls = {}
+        ppls = {}
         entropies = {}
 
         for key in categories:
@@ -372,27 +374,31 @@ for run, summary in runs:
             trim_last = bool(
                 quote_id is not None and new_tokens_full.size(0) > 0 and new_tokens_full[-1].item() == quote_id)
             gen_tokens = new_tokens_full[:-1] if trim_last else new_tokens_full
+            scores_eff = gen.scores[:-1] if trim_last else gen.scores
 
-            if len(gen.scores) > 0:
-                scores_eff = gen.scores[:-1] if trim_last else gen.scores
-                ents = []
-                for s in scores_eff:
-                    e = torch.distributions.Categorical(logits=s).entropy()[0]
-                    ents.append(e.item())
-                ent_val = float(np.mean(ents)) if len(ents) > 0 else 0.0
+            if len(gen_tokens) == 0:
+                nll_val = float("inf")
+                ppl_val = float("inf")
             else:
-                ent_val = 0.0
+                nll_steps = []
+                for t, logits in enumerate(scores_eff[:len(gen_tokens)]):
+                    log_probs = torch.log_softmax(logits, dim=-1)[0]
+                    y_t = gen_tokens[t].item()
+                    nll_steps.append(float(-log_probs[y_t]))
+                nll_val = float(np.mean(nll_steps))
+                ppl_val = float(np.exp(nll_val))
 
             text = tokenizer.decode(gen_tokens, skip_special_tokens=True)
             out[key] = clean_val(text)
-            entropies[key] = ent_val
+            nlls[key] = nll_val
+            ppls[key] = ppl_val
 
-            vprint(f"[OUT] {run} | {key}: {out[key]} | H={entropies[key]:.6f}")
+            vprint(f"[OUT] {run} | {key}: {out[key]} | NLL={nll_val:.4f} | PPL={ppl_val:.3f}")
             vprint(f"[TIMING][cat] {run} | {key}: {time.perf_counter() - cat_t0:.4f}s")
             vprint("----------------------------------------------------------------------------")
 
         with open(os.path.join(output_dir, f"{run}.json"), "w") as f:
-            json.dump({run: out, "entropy": entropies}, f, indent=2)
+            json.dump({run: out, "nll": nlls, "ppl": ppls}, f, indent=2)
         vprint(f"[TIMING] run {run}: {time.perf_counter() - t0:.4f}s")
 
     except Exception as e:

@@ -8,7 +8,10 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt, matplotlib.image as mpimg
 import numpy as np
 
-ENTROPY_PREFIX = "confidence_entropy_"
+NLL_PREFIX = "nll_"
+PPL_PREFIX = "ppl_"
+DEFAULT_METRIC_PREFIX = PPL_PREFIX
+
 MISSING_TOKENS = {"", "none", "null", "na", "n/a", "nan", "unk", "unknown",
                   "not applicable", "not_applicable"}
 IMPORTANT_FIELDS = [
@@ -35,11 +38,18 @@ def normalize_token(x):
     s = str(x).strip() if x is not None else ""
     return "" if s.lower() in MISSING_TOKENS else s
 
-def bucket_entropy(e):
-    if e is None or math.isnan(e): return "missing", "missing"
-    if 0 <= e <= 1:  return "green",  "confident"
-    if 1 < e <= 2:   return "orange", "medium"
-    if e > 2:        return "red",    "uncertain"
+def bucket_nll(v):
+    if v is None or math.isnan(v): return "missing", "missing"
+    if 0 <= v <= 1:  return "green",  "confident"
+    if 1 < v <= 2:   return "orange", "medium"
+    if v > 2:        return "red",    "uncertain"
+    return "missing", "missing"
+
+def bucket_ppl(v):
+    if v is None or math.isnan(v): return "missing", "missing"
+    if 0 <= v <= 3:  return "green",  "confident"
+    if 3 < v <= 6:   return "orange", "medium"
+    if v > 6:        return "red",    "uncertain"
     return "missing", "missing"
 
 def ensure_dir(p): p.mkdir(parents=True, exist_ok=True)
@@ -52,15 +62,13 @@ def slugify(text, max_len=80):
     h = hashlib.md5(text.encode()).hexdigest()[:8]
     return f"{text[:max_len-9]}_{h}"
 
-def save_hist(values, title, outpath):
+def save_hist(values, title, outpath, xlabel="Value"):
     if not values: return
     vmin, vmax = min(values), max(values)
-    start = -0.1
-    bins  = np.arange(start, vmax + 0.2, 0.2)
+    bins = 50 if vmin == vmax else max(20, min(80, int( (vmax - vmin) / max(1e-6, (vmax - vmin)/50 ) )))
     plt.figure(figsize=(8, 5))
     plt.hist(values, bins=bins)
-    for v in (1, 2): plt.axvline(v, linestyle="--")
-    plt.title(title); plt.xlabel("Entropy"); plt.ylabel("Count")
+    plt.title(title); plt.xlabel(xlabel); plt.ylabel("Count")
     plt.tight_layout(); plt.savefig(outpath, dpi=150); plt.close()
 
 def save_bar(labels, counts, title, outpath, rotation=45):
@@ -98,29 +106,25 @@ def numeric_hist(values, title, outpath, log=False, bins=50, xlabel="Value"):
     plt.title(title); plt.xlabel(xlabel); plt.ylabel("Count")
     plt.tight_layout(); plt.savefig(outpath, dpi=150); plt.close()
 
-def entropy_summary_plot(entropy_values_by_col, dir_stats):
-    cols = list(entropy_values_by_col.keys())
-    data = [entropy_values_by_col[c] for c in cols]
+def metric_summary_boxplot(values_by_col, label_map, ylabel, out_png):
+    cols = list(values_by_col.keys())
+    data = [values_by_col[c] for c in cols]
     if not data: return
     plt.figure(figsize=(max(6, len(cols)*0.6), 6))
-    plt.boxplot(data,
-                labels=[c[len(ENTROPY_PREFIX):] for c in cols],
-                vert=True, showmeans=True)
-    plt.axhline(1, linestyle="--"); plt.axhline(2, linestyle="--")
-    plt.xticks(rotation=60, ha="right"); plt.ylabel("Entropy")
+    plt.boxplot(data, labels=[label_map(c) for c in cols], vert=True, showmeans=True)
+    plt.xticks(rotation=60, ha="right"); plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.savefig(dir_stats/"entropy_summary.png", dpi=150); plt.close()
+    plt.savefig(out_png, dpi=150); plt.close()
 
-def entropy_stats_plot(stats_summary, dir_stats):
+def metric_stats_bar(stats_summary, ylabel, out_png):
     if not stats_summary: return
     bases = list(stats_summary.keys())
     means = [stats_summary[b]["mean"] for b in bases]
     plt.figure(figsize=(max(6, len(bases)*0.6), 5))
     plt.bar(bases, means)
-    for v in (1, 2): plt.axhline(v, linestyle="--")
-    plt.xticks(rotation=60, ha="right"); plt.ylabel("Mean entropy")
+    plt.xticks(rotation=60, ha="right"); plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.savefig(dir_stats/"entropy_stats_means.png", dpi=150); plt.close()
+    plt.savefig(out_png, dpi=150); plt.close()
 
 def combine_category_images(cat_slug, cat_dir):
     imgs, files = [], []
@@ -148,30 +152,32 @@ def combine_category_images(cat_slug, cat_dir):
         except OSError:
             pass
 
-def write_html(header, rows, base2eidx, out_html, max_rows=None):
-    non_entropy = [c for c in header if not c.startswith(ENTROPY_PREFIX)]
-    idxs = [header.index(c) for c in non_entropy]
+def write_html(header, rows, base2metric_idx, out_html, max_rows=None):
+    non_metric_cols = [c for c in header if not c.startswith(NLL_PREFIX) and not c.startswith(PPL_PREFIX)]
+    idxs = [header.index(c) for c in non_metric_cols]
     css = ("<style>body{font-family:Arial,Helvetica,sans-serif;}table{border-collapse:collapse;width:100%;}"
-           "th,td{border:1px solid #ddd;padding:4px 6px;font-size:12px;}th{position:sticky;top:0;background:#f2f2f2;z-index:2;}"
+           "th,td{border:1px solid #ddd;padding:4px 6px;font-size:12px;}th{position:sticky;top:0;background:#f2f2f2;z-index=2;}"
            "tr:nth-child(even){background:#fafafa;}.conf-green{background:#d9f2d9;}.conf-orange{background:#ffe5cc;}"
            ".conf-red{background:#ffd6d6;}.conf-missing{background:#eeeeee;}.nowrap{white-space:nowrap;}</style>")
     with open(out_html, "w", encoding="utf-8") as f:
         f.write("<!DOCTYPE html><html><head><meta charset='utf-8'><title>Colored table</title>"
                 + css + "</head><body><table><thead><tr>")
-        for col in non_entropy: f.write(f"<th class='nowrap'>{col}</th>")
+        for col in non_metric_cols: f.write(f"<th class='nowrap'>{col}</th>")
         f.write("</tr></thead><tbody>")
         for i, row in enumerate(rows):
             if max_rows is not None and i >= max_rows: break
             f.write("<tr>")
-            for idx, col in zip(idxs, non_entropy):
-                val = row[idx]; cls = ""
-                if col in base2eidx:
-                    e = safe_float(row[base2eidx[col]])
-                    bucket, _ = bucket_entropy(e)
-                    cls   = f" conf-{bucket}"
-                    title = f" title='entropy={e if e is not None else 'NA'}'"
-                else:
-                    title = ""
+            for idx, col in zip(idxs, non_metric_cols):
+                val = row[idx]; cls = ""; title = ""
+                if col in base2metric_idx:
+                    v = safe_float(row[base2metric_idx[col]])
+                    if DEFAULT_METRIC_PREFIX == PPL_PREFIX:
+                        bucket, _ = bucket_ppl(v)
+                        title = f" title='ppl={v if v is not None else 'NA'}'"
+                    else:
+                        bucket, _ = bucket_nll(v)
+                        title = f" title='nll={v if v is not None else 'NA'}'"
+                    cls = f" conf-{bucket}"
                 f.write(f"<td class='nowrap{cls}'{title}>{'' if val is None else val}</td>")
             f.write("</tr>")
         f.write("</tbody></table></body></html>")
@@ -183,7 +189,7 @@ def main():
     p.add_argument("--input", required=True)
     p.add_argument("--outdir", required=True)
     p.add_argument("--topn", type=int, default=10)
-    p.add_argument("--html_max_rows", type=int, default=None)
+    p.add_argument("--html_max_rows", type=int)
     p.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
     p.add_argument("--verbose", action="store_true", help="Verbose output")
     args = p.parse_args()
@@ -194,7 +200,7 @@ def main():
     FLAG_FILE = os.path.join(base_path, "STEP4_2.flag")
     VERBOSE = args.verbose
     vprint = print if VERBOSE else (lambda *a, **k: None)
-    for d in ("entropies", "categories", "tables", "stats"):
+    for d in ("model_confidence", "categories", "tables", "stats"):
         ensure_dir(out_dir/d)
 
     with open(in_path, "r", encoding="utf-8") as fh:
@@ -205,68 +211,110 @@ def main():
         reader = csv.reader(fh, delimiter=delimiter)
         header = next(reader)
         col2idx = {c: i for i, c in enumerate(header)}
-        entropy_cols = [c for c in header if c.startswith(ENTROPY_PREFIX)]
-        base_cols    = [c for c in header if not c.startswith(ENTROPY_PREFIX)]
-        base2eidx = {c[len(ENTROPY_PREFIX):]: col2idx[c]
-                     for c in entropy_cols if c[len(ENTROPY_PREFIX):] in col2idx}
+
+        nll_cols = [c for c in header if c.startswith(NLL_PREFIX)]
+        ppl_cols = [c for c in header if c.startswith(PPL_PREFIX)]
+        base_cols = [c for c in header if not c.startswith(NLL_PREFIX) and not c.startswith(PPL_PREFIX)]
+
+        if DEFAULT_METRIC_PREFIX == PPL_PREFIX:
+            metric_cols = ppl_cols
+            base2metric_idx = {c[len(PPL_PREFIX):]: col2idx[c]
+                               for c in ppl_cols if c[len(PPL_PREFIX):] in col2idx}
+        else:
+            metric_cols = nll_cols
+            base2metric_idx = {c[len(NLL_PREFIX):]: col2idx[c]
+                               for c in nll_cols if c[len(NLL_PREFIX):] in col2idx}
 
         rows = []
-        entropy_values_by_col = defaultdict(list)
-        bucket_counts = defaultdict(Counter)
+        nll_values_by_col = defaultdict(list)
+        ppl_values_by_col = defaultdict(list)
+        bucket_counts_ppl = defaultdict(Counter)
+        bucket_counts_nll = defaultdict(Counter)
         value_counts  = defaultdict(Counter)
         pair_counts   = Counter()
         numeric       = {"age": [], "base_count": []}
 
         for row in reader:
             rows.append(row)
-            for ec in entropy_cols:
-                e = safe_float(row[col2idx[ec]])
-                if e is not None:
-                    entropy_values_by_col[ec].append(e)
+
+            for nc in nll_cols:
+                v = safe_float(row[col2idx[nc]])
+                if v is not None:
+                    nll_values_by_col[nc].append(v)
+            for pc in ppl_cols:
+                v = safe_float(row[col2idx[pc]])
+                if v is not None:
+                    ppl_values_by_col[pc].append(v)
+
             for base in base_cols:
                 val = normalize_token(row[col2idx[base]])
                 value_counts[base][val] += 1
-                if base in base2eidx:
-                    e = safe_float(row[base2eidx[base]])
-                    bucket, _ = bucket_entropy(e)
-                    bucket_counts[base][bucket] += 1
+
+                ppl_col = f"{PPL_PREFIX}{base}"
+                if ppl_col in col2idx:
+                    vp = safe_float(row[col2idx[ppl_col]])
+                    b, _ = bucket_ppl(vp)
+                    bucket_counts_ppl[base][b] += 1
+
+                nll_col = f"{NLL_PREFIX}{base}"
+                if nll_col in col2idx:
+                    vn = safe_float(row[col2idx[nll_col]])
+                    b, _ = bucket_nll(vn)
+                    bucket_counts_nll[base][b] += 1
+
             d = normalize_token(row[col2idx.get("disease", -1)]) if "disease" in col2idx else ""
             t = normalize_token(row[col2idx.get("treatment", -1)]) if "treatment" in col2idx else ""
             if d or t: pair_counts[f"{d}|{t}"] += 1
             if "age" in col2idx: numeric["age"].append(safe_float(row[col2idx["age"]]))
             if "base_count" in col2idx: numeric["base_count"].append(safe_float(row[col2idx["base_count"]]))
 
-    dir_ent, dir_cat = out_dir/"entropies", out_dir/"categories"
-    for ec, vals in entropy_values_by_col.items():
-        base = ec[len(ENTROPY_PREFIX):]
+    dir_ent, dir_cat = out_dir/"model_confidence", out_dir/"categories"
+    for nc, vals in nll_values_by_col.items():
+        base = nc[len(NLL_PREFIX):]
         slug = slugify(base)
-        save_hist(vals, f"Entropy distribution: {base}", dir_ent/f"entropy_{slug}.png")
+        save_hist(vals, f"NLL distribution: {base}", dir_ent/f"nll_{slug}.png", xlabel="NLL")
 
-    stats_path = out_dir/"stats"/"entropy_stats.txt"
-    stats_summary = {}
-    with open(stats_path, "w") as f:
-        for ec, vals in sorted(entropy_values_by_col.items()):
-            base = ec[len(ENTROPY_PREFIX):]
-            vals = sorted(vals)
-            if not vals: continue
-            m, med = mean(vals), median(vals)
-            p10, p90 = vals[int(.1*(len(vals)-1))], vals[int(.9*(len(vals)-1))]
-            stats_summary[base] = {"mean": m, "median": med,
-                                   "p10": p10, "p90": p90, "n": len(vals)}
-            f.write(f"{base}\tn={len(vals)}\tmean={m:.4f}\tmedian={med:.4f}"
-                    f"\tp10={p10:.4f}\tp90={p90:.4f}\n")
+    for pc, vals in ppl_values_by_col.items():
+        base = pc[len(PPL_PREFIX):]
+        slug = slugify(base)
+        save_hist(vals, f"PPL distribution: {base}", dir_ent/f"ppl_{slug}.png", xlabel="Perplexity")
 
-    entropy_summary_plot(entropy_values_by_col, out_dir/"stats")
-    entropy_stats_plot(stats_summary,              out_dir/"stats")
+    def write_stats(values_by_col, prefix, out_txt):
+        stats_summary = {}
+        with open(out_txt, "w") as f:
+            for ec, vals in sorted(values_by_col.items()):
+                base = ec[len(prefix):]
+                vals = sorted(vals)
+                if not vals: continue
+                m, med = mean(vals), median(vals)
+                p10, p90 = vals[int(.1*(len(vals)-1))], vals[int(.9*(len(vals)-1))]
+                stats_summary[base] = {"mean": m, "median": med, "p10": p10, "p90": p90, "n": len(vals)}
+                f.write(f"{base}\tn={len(vals)}\tmean={m:.4f}\tmedian={med:.4f}\tp10={p10:.4f}\tp90={p90:.4f}\n")
+        return stats_summary
+
+    stats_nll = write_stats(nll_values_by_col, NLL_PREFIX, out_dir/"stats"/"nll_stats.txt")
+    stats_ppl = write_stats(ppl_values_by_col, PPL_PREFIX, out_dir/"stats"/"ppl_stats.txt")
+    metric_summary_boxplot(nll_values_by_col, lambda c: c[len(NLL_PREFIX):], "NLL", out_dir/"stats"/"nll_summary.png")
+    metric_summary_boxplot(ppl_values_by_col, lambda c: c[len(PPL_PREFIX):], "Perplexity", out_dir/"stats"/"ppl_summary.png")
+    metric_stats_bar(stats_nll, "Mean NLL", out_dir/"stats"/"nll_stats_means.png")
+    metric_stats_bar(stats_ppl, "Mean Perplexity", out_dir/"stats"/"ppl_stats_means.png")
 
     topn = max(5, args.topn)
-    for base, cnt in bucket_counts.items():
+    for base, cnt in bucket_counts_ppl.items():
         slug = slugify(base)
         save_bar(["confident","medium","uncertain","missing"],
                  [cnt.get("green",0), cnt.get("orange",0),
                   cnt.get("red",0),   cnt.get("missing",0)],
-                 f"Confidence levels: {base}",
-                 dir_cat/f"{slug}_confidence.png", rotation=0)
+                 f"Confidence levels (PPL): {base}",
+                 dir_cat/f"{slug}_ppl.png", rotation=0)
+
+    for base, cnt in bucket_counts_nll.items():
+        slug = slugify(base)
+        save_bar(["confident","medium","uncertain","missing"],
+                 [cnt.get("green",0), cnt.get("orange",0),
+                  cnt.get("red",0),   cnt.get("missing",0)],
+                 f"Confidence levels (NLL): {base}",
+                 dir_cat/f"{slug}_nll.png", rotation=0)
 
     for base, cnt in value_counts.items():
         items  = sorted(cnt.items(), key=lambda kv: kv[1], reverse=True)[:topn]
@@ -286,14 +334,13 @@ def main():
                      dir_cat/"base_count_hist_log.png", log=True, bins=60, xlabel="base_count")
 
     if pair_counts:
-        items  = sorted(pair_counts.items(),
-                        key=lambda kv: kv[1], reverse=True)[:topn]
+        items  = sorted(pair_counts.items(), key=lambda kv: kv[1], reverse=True)[:topn]
         labels = ["(empty)" if k=="" else k.replace("|"," | ") for k,_ in items]
         counts = [v for _, v in items]
         save_bar(labels, counts, f"Top {topn} disease|treatment pairs",
                  dir_cat/"disease_treatment_pairs_top{topn}.png")
 
-    write_html(header, rows, base2eidx,
+    write_html(header, rows, base2metric_idx,
                out_dir/"tables"/"completed_metadata_confidence.html", args.html_max_rows)
 
     for base in base_cols:
@@ -301,7 +348,7 @@ def main():
 
     with open(out_dir/"README_VISUALISATION.txt", "w") as f:
         f.write("Metappuccino visualization outputs\n")
-        f.write("entropies/: confidence information\n")
+        f.write("model_confidence/: confidence information\n")
         f.write("categories/: one combined file per category showing confidence and top values\n")
         f.write("tables/table_colored.html: full table with cells coloured by entropy\n")
         f.write("stats/: numeric stats summary per category\n")
@@ -310,4 +357,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

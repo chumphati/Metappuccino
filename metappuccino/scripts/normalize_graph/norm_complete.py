@@ -29,9 +29,8 @@ STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "a
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
 
-
 ##########################################################################################
-# FUNCTIONS
+#FUNCTIONS
 def load_syn(csv, sc, nc, cc):
     with open(csv, "r", encoding="utf-8") as f:
         sep = "\t" if "\t" in f.readline() else ","
@@ -62,8 +61,8 @@ def normalize_term(raw_value, names_set, syn_dict):
         val = original.lower()
         for expr in to_remove:
             val = re.sub(expr, "", val, flags=re.IGNORECASE)
-        val = re.sub(r"^[\s\-\–\—\:\.\,;]+", "", val)  # début
-        val = re.sub(r"[\s\-\–\—\:\.\,;]+$", "", val)  # fin
+        val = re.sub(r"^[\s\-\–\—\:\.\,;]+", "", val)
+        val = re.sub(r"[\s\-\–\—\:\.\,;]+$", "", val)
         return val.strip(), original.strip()
 
     results = []
@@ -137,7 +136,7 @@ def _compute_codes_with_partial_tokens(raw_value, normalized_parts, names_set, s
 
 
 ##########################################################################################
-# MAIN
+#MAIN
 df = pd.read_csv(CSV_INPUT, sep='\t', dtype=str, on_bad_lines='skip').fillna('')
 df.columns = df.columns.str.strip()
 assert "run_accession" in df.columns, "Colonne 'run_accession' manquante"
@@ -154,7 +153,6 @@ for _, r in cell_df.iterrows():
     for s in syns + [name]:
         cell_syn[s.lower()] = name
 
-# Canonical case maps to recover original-case canonical names from lowercase keys
 disease_canon_case = {k.lower(): k for k in disease_code.keys()}
 organ_canon_case = {k.lower(): k for k in organ_code.keys()}
 
@@ -164,12 +162,12 @@ fields = ["run_accession", "study_accession", "instrument_platform", "library_se
           "response", "age", "sex", "ethnicity"]
 
 no_entropy_fields = {"do_code", "organ_uberon_code", "bs_uberon_code"}
-entropy_cols = [f"confidence_entropy_{f}" for f in fields if f not in no_entropy_fields and f != "run_accession"]
 output_cols = []
 for f in fields:
     output_cols.append(f)
-    if f not in no_entropy_fields and f != "run_accession":
-        output_cols.append(f"confidence_entropy_{f}")
+    if f not in no_entropy_fields and f != "run_accession" and f != "study_accession" and f != "instrument_platform" and f != "base_count" and f != "library_strategy":
+        output_cols.append(f"nll_{f}")
+        output_cols.append(f"ppl_{f}")
 
 augmented_data = []
 for _, row in df.iterrows():
@@ -182,12 +180,14 @@ for _, row in df.iterrows():
         if value and value.lower() not in INVALID_ENTRIES:
             entry[f] = value
             if f != "run_accession" and f not in no_entropy_fields:
-                entry[f"confidence_entropy_{f}"] = "0"
+                entry[f"nll_{f}"] = "not applicable"
+                entry[f"ppl_{f}"] = "not applicable"
                 locked_fields.add(f)
         else:
             entry[f] = ""
             if f != "run_accession" and f not in no_entropy_fields:
-                entry[f"confidence_entropy_{f}"] = "0"
+                entry[f"nll_{f}"] = "not applicable"
+                entry[f"ppl_{f}"] = "not applicable"
 
     json_file = os.path.join(INFERENCE_DIR, f"{run}.json")
     if os.path.exists(json_file):
@@ -201,7 +201,12 @@ for _, row in df.iterrows():
                             val = "; ".join(map(str, val))
                         val = val.strip() if isinstance(val, str) else str(val)
                         entry[k] = val if val else "unknown"
-                        entry[f"confidence_entropy_{k}"] = str(js.get("entropy", {}).get(k, "unknown"))
+                        # lire les nouvelles métriques nll/ppl
+                        nll_val = js.get("nll", {}).get(k, "unknown")
+                        ppl_val = js.get("ppl", {}).get(k, "unknown")
+                        if k not in no_entropy_fields and k != "run_accession":
+                            entry[f"nll_{k}"] = str(nll_val)
+                            entry[f"ppl_{k}"] = str(ppl_val)
 
     if "cell_line" not in locked_fields and entry["cell_line"].lower() not in INVALID_ENTRIES:
         cleaned = clean_cell_line_name(entry["cell_line"])
@@ -214,12 +219,16 @@ for _, row in df.iterrows():
                     if k not in locked_fields:
                         if k == "uberon_code":
                             entry["bs_uberon_code"] = v
-                            entry["confidence_entropy_bs_uberon_code"] = "0"
+                            entry["nll_bs_uberon_code"] = "not applicable"
+                            entry["ppl_bs_uberon_code"] = "not applicable"
                         else:
                             entry[k] = v
-                            ent_k = f"confidence_entropy_{k}"
-                            if ent_k in entry:
-                                entry[ent_k] = "0"
+                            ent_k_nll = f"nll_{k}"
+                            ent_k_ppl = f"ppl_{k}"
+                            if ent_k_nll in entry:
+                                entry[ent_k_nll] = "not applicable"
+                            if ent_k_ppl in entry:
+                                entry[ent_k_ppl] = "not applicable"
         else:
             entry["cell_line"] = cleaned
 
@@ -250,15 +259,18 @@ for _, row in df.iterrows():
     for k in fields:
         if not entry.get(k) or entry[k].strip().lower() in INVALID_ENTRIES:
             entry[k] = "unknown"
-            if k != "run_accession":
-                entry[f"confidence_entropy_{k}"] = "unknown"
+            if k != "run_accession" and k not in no_entropy_fields:
+                entry[f"nll_{k}"] = "not applicable"
+                entry[f"ppl_{k}"] = "not applicable"
 
     if entry.get("treatment", "").strip().lower() == "unknown":
         entry["treatment_time"] = "not applicable"
         entry["response"] = "not applicable"
-        entry["confidence_entropy_treatment_time"] = "unknown"
-        entry["confidence_entropy_response"] = "unknown"
-        
+        entry["nll_treatment_time"] = "not applicable"
+        entry["ppl_treatment_time"] = "not applicable"
+        entry["nll_response"] = "not applicable"
+        entry["ppl_response"] = "not applicable"
+
     augmented_data.append(entry)
 
 out_df = pd.DataFrame(augmented_data, columns=output_cols)
@@ -389,28 +401,30 @@ if "age" in out_df.columns and "run_accession" in out_df.columns:
         if _age.strip().lower() not in INVALID_ENTRIES and not _age.strip().lower() == "unknown":
             if not _age_is_confirmed_in_summary(_age, _summary):
                 _age = "unknown"
-                if "confidence_entropy_age" in out_df.columns:
-                    out_df.at[_i, "confidence_entropy_age"] = "unknown"
+                if "nll_age" in out_df.columns:
+                    out_df.at[_i, "nll_age"] = "not applicable"
+                if "ppl_age" in out_df.columns:
+                    out_df.at[_i, "ppl_age"] = "not applicable"
         _validated_ages.append(_age)
     out_df["age"] = _validated_ages
 
 ##########################################################################################
-# SAVE
-# .csv
+#SAVE
+#.csv
 out_df.to_csv(CSV_OUTPUT, index=False)
-# .xlsx
+#.xlsx
 excel_output = CSV_OUTPUT.replace('.csv', '.xlsx')
 out_df.to_excel(excel_output, index=False)
-# .parquet
+#.parquet
 parquet_output = CSV_OUTPUT.replace('.csv', '.parquet')
 out_df.to_parquet(parquet_output, index=False)
-# .json
+#.json
 json_output = CSV_OUTPUT.replace('.csv', '.json')
 out_df.to_json(json_output, orient='records', lines=True, force_ascii=False)
-# .tsv
+#.tsv
 tsv_output = CSV_OUTPUT.replace('.csv', '.tsv')
 out_df.to_csv(tsv_output, sep='\t', index=False)
-# .feather
+#.feather
 feather_output = CSV_OUTPUT.replace('.csv', '.feather')
 out_df.reset_index(drop=True).to_feather(feather_output)
 

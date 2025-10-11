@@ -222,24 +222,19 @@ vprint("[INFO] Model (gguf):", base_model_path)
 ambiguous_map = load_ambiguous_map(ambi_cl_path)
 
 
-def calc_entropy_from_logprobs(lp_list):
+def mean_nll_from_token_logprobs(lp_list):
     vals = [x for x in lp_list if x is not None]
     if not vals:
-        return 0.0
-    arr = np.array(vals, dtype=np.float64)
-    arr -= np.max(arr)
-    probs = np.exp(arr)
-    probs /= probs.sum()
-    ent = -np.sum(probs * np.log(probs + 1e-12))
-    return float(ent)
-
+        return float("inf")
+    return float(np.mean([-v for v in vals]))  # mean NLL
 
 total_t0 = time.perf_counter()
 
 for run, summary in runs:
     t0 = time.perf_counter()
     out = {}
-    entropies = {}
+    nlls = {}
+    ppls = {}
     run_failed = False
 
     for key in categories:
@@ -295,9 +290,12 @@ for run, summary in runs:
                 run_failed = True
 
             out[key] = clean_val(text or "")
-            entropies[key] = calc_entropy_from_logprobs(logp)
+            nll_val = mean_nll_from_token_logprobs(logp)
+            ppl_val = float(np.exp(nll_val))
+            nlls[key] = nll_val
+            ppls[key] = ppl_val
 
-            vprint(f"[OUT] {run} | {key}: {out[key]} | H={entropies[key]:.6f}")
+            vprint(f"[OUT] {run} | {key}: {out[key]} | NLL={nll_val:.4f} | PPL={ppl_val:.3f}")
             vprint(f"[TIMING][cat] {run} | {key}: {time.perf_counter() - cat_t0:.4f}s")
             vprint("----------------------------------------------------------------------------")
 
@@ -309,7 +307,7 @@ for run, summary in runs:
 
     try:
         with open(os.path.join(output_dir, f"{run}.json"), "w") as f:
-            json.dump({run: out, "entropy": entropies}, f, indent=2)
+            json.dump({run: out, "nll": nlls, "ppl": ppls}, f, indent=2)
     except Exception as e:
         vprint(f"[ERROR] Failed to write JSON for {run}: {e}")
 
