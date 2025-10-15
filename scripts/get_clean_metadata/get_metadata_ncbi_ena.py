@@ -9,6 +9,7 @@ from multiprocessing import Pool
 import argparse
 import time
 import shutil
+import sys
 
 ########################################################################################################################
 #PATHS
@@ -32,6 +33,7 @@ HEADER_LINE = "run_accession\tfirst_public\tstudy_title\tproject_name\tstudy_acc
 
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
+ERR_LOG = os.path.join(base_path, "download_metadata.err")
 
 def _find_cmd(name, extra_paths=None):
     p = shutil.which(name)
@@ -47,6 +49,10 @@ CURL_PATH = _find_cmd("curl", ["/usr/bin/curl", "/bin/curl", "/usr/local/bin/cur
 MKDIR_PATH = _find_cmd("mkdir")
 CAT_PATH = _find_cmd("cat")
 GREP_PATH = _find_cmd("grep")
+
+orig_meta_dir = os.path.join(base_path, "metadata")
+if os.path.isdir(orig_meta_dir):
+    METADATA_DIR = orig_meta_dir
 
 os.makedirs(METADATA_DIR, exist_ok=True)
 
@@ -113,32 +119,28 @@ def execute_bash_download_metadata():
                 CAT=\"{CAT_PATH}\"
                 GREP=\"{GREP_PATH}\"
                 CURL=\"{CURL_PATH}\"
-                if [ -d \"{METADATA_DIR}\" ]; then
-                    echo \"{METADATA_DIR} already downloaded.\"
-                else
-                    \"$MKDIR\" -p \"{METADATA_DIR}\"
-                    \"$CAT\" \"{RUNS_TSV}\" | \"$GREP\" -v '^\\s*$' | while IFS=$'\\t' read -r RUN_ACCESSION; do
-                        RUN_ACCESSION=$(echo \"$RUN_ACCESSION\" | tr -d '\\r' | tr -d '\\n' | tr -d ' ')
-                        OUTPUT_FILE=\"{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml\"
-                        TMP_FILE=\"${{OUTPUT_FILE}}.tmp\"
-                        if [ ! -f \"$OUTPUT_FILE\" ]; then
-                            echo \"Download metadata for $RUN_ACCESSION\"
-                            \"$CURL\" -SsfL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 120 \\
-                                 \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=xml\" \\
-                                 -o \"$TMP_FILE\" && \\
-                            if head -c 1 \"$TMP_FILE\" | grep -q '<'; then
-                                if grep -q '<\\(STUDY\\|SAMPLE\\)\\b' \"$TMP_FILE\"; then
-                                    mv \"$TMP_FILE\" \"$OUTPUT_FILE\"
-                                else
-                                    rm -f \"$TMP_FILE\"
-                                fi
+                \"$MKDIR\" -p \"{METADATA_DIR}\"
+                \"$CAT\" \"{RUNS_TSV}\" | \"$GREP\" -v '^\\s*$' | while IFS=$'\\t' read -r RUN_ACCESSION; do
+                    RUN_ACCESSION=$(echo \"$RUN_ACCESSION\" | tr -d '\\r' | tr -d '\\n' | tr -d ' ')
+                    OUTPUT_FILE=\"{METADATA_DIR}/${{RUN_ACCESSION}}_metadata.xml\"
+                    TMP_FILE=\"${{OUTPUT_FILE}}.tmp\"
+                    if [ ! -f \"$OUTPUT_FILE\" ]; then
+                        echo \"Download metadata for $RUN_ACCESSION\"
+                        \"$CURL\" -SsfL --retry 5 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 120 \\
+                             \"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=sra&id=${{RUN_ACCESSION}}&retmode=xml\" \\
+                             -o \"$TMP_FILE\" && \\
+                        if head -c 1 \"$TMP_FILE\" | grep -q '<'; then
+                            if grep -q '<\\(STUDY\\|SAMPLE\\)\\b' \"$TMP_FILE\"; then
+                                mv \"$TMP_FILE\" \"$OUTPUT_FILE\"
                             else
                                 rm -f \"$TMP_FILE\"
                             fi
-                            sleep 1
+                        else
+                            rm -f \"$TMP_FILE\"
                         fi
-                    done
-                fi
+                        sleep 1
+                    fi
+                done
                 """
     subprocess.run(bash_script, shell=True, check=True, executable=BASH_PATH)
 
@@ -179,8 +181,8 @@ def _download_xml_ncbi(run_accession, dest, max_retries=3):
                 os.replace(tmp, dest)
                 time.sleep(1.0)
                 return True
-        except Exception:
-            pass
+        except Exception as ex:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] download error attempt {attempt}: {ex}\n")
         time.sleep(1 * attempt)
     return False
 
@@ -217,8 +219,8 @@ def _fetch_biosample_xml(samn_accession: str, dest_path: str, max_retries: int =
                 os.replace(tmp, dest_path)
                 time.sleep(1.0)
                 return True
-        except Exception:
-            pass
+        except Exception as ex:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{samn_accession}] biosample download error attempt {attempt}: {ex}\n")
         time.sleep(1 * attempt)
     return False
 
@@ -313,10 +315,9 @@ def _get_biosample_acc_from_ena(run_accession: str) -> str:
                     v = row[idx[key]].strip()
                     if v.startswith("SAMN"):
                         return v
-    except Exception:
-        pass
+    except Exception as ex:
+        with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] ENA biosample lookup error: {ex}\n")
     return ""
-
 
 #get specific metadata from xml
 def extract_and_save_metadata(run_accession):
@@ -326,15 +327,17 @@ def extract_and_save_metadata(run_accession):
         try:
             ok = _download_xml_ncbi(run_accession, xml_file, max_retries=3)
             if not ok:
-                pass
-        except Exception:
-            pass
+                with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] failed to download SRA XML\n")
+        except Exception as ex:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] download exception: {ex}\n")
 
     try:
         #get xml
         if not _looks_like_xml(xml_file):
             _download_xml_ncbi(run_accession, xml_file, max_retries=2)
         root = _parse_xml_with_retry(xml_file)
+        if root is None:
+            raise ET.ParseError("empty root")
 
         sample_metadata = ""
 
@@ -365,7 +368,7 @@ def extract_and_save_metadata(run_accession):
 
         #search in sample and study
         curl_command = [
-            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-S", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
@@ -373,14 +376,16 @@ def extract_and_save_metadata(run_accession):
         response = subprocess.run(curl_command, capture_output=True, text=True)
         vprint("RUN: ", run_accession)
         vprint("RAW ENA RESPONSE:", response.stdout)
-        ena_data = response.stdout.strip().split("\n")[-1]
+        ena_data = response.stdout.strip().split("\n")[-1] if response.stdout.strip() else ""
         vprint("ENA DATA: ", ena_data)
 
         if not response.stdout.strip():
-            vprint(f"Warning: No data returned from ENA API for run accession {run_accession}.")
+            msg = f"Warning: No data returned from ENA API for run accession {run_accession}."
+            vprint(msg)
+            with open(ERR_LOG, "a") as ef: ef.write(msg + "\n")
         if response.returncode != 0:
-            vprint(f"Error: curl command failed with return code {response.returncode}.")
-            vprint("stderr:", response.stderr)
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] curl return code {response.returncode}. stderr: {response.stderr}\n")
+            print(f"[{run_accession}] curl error: {response.stderr}", file=sys.stderr, flush=True)
 
         #first line
         with open(OUTPUT_FILE, 'a') as f_out:
@@ -395,11 +400,13 @@ def extract_and_save_metadata(run_accession):
         except FileNotFoundError:
             xml_raw = ""
         curl_command = [
-            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-S", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
         proc = subprocess.run(curl_command, capture_output=True, text=True)
+        if proc.returncode != 0:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] curl return code {proc.returncode}. stderr: {proc.stderr}\n")
         ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
         ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
@@ -412,11 +419,13 @@ def extract_and_save_metadata(run_accession):
         except FileNotFoundError:
             xml_raw = ""
         curl_command = [
-            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-S", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
         proc = subprocess.run(curl_command, capture_output=True, text=True)
+        if proc.returncode != 0:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] curl return code {proc.returncode}. stderr: {proc.stderr}\n")
         ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
         ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
@@ -429,11 +438,13 @@ def extract_and_save_metadata(run_accession):
         except FileNotFoundError:
             xml_raw = ""
         curl_command = [
-            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-S", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
         proc = subprocess.run(curl_command, capture_output=True, text=True)
+        if proc.returncode != 0:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] curl return code {proc.returncode}. stderr: {proc.stderr}\n")
         ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
         ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
@@ -448,16 +459,19 @@ def extract_and_save_metadata(run_accession):
             xml_raw = ""
 
         curl_command = [
-            CURL_PATH, "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
+            CURL_PATH, "-S", "-s", "-X", "POST", "-H", "Content-Type: application/x-www-form-urlencoded",
             "-d", f"result=read_run&query=run_accession%3D{run_accession}&format=tsv&fields={FIELDS}&limit=1",
             "https://www.ebi.ac.uk/ena/portal/api/search"
         ]
         proc = subprocess.run(curl_command, capture_output=True, text=True)
+        if proc.returncode != 0:
+            with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] curl return code {proc.returncode}. stderr: {proc.stderr}\n")
         ena_lines = proc.stdout.strip().split("\n") if proc.stdout else []
         ena_data = ena_lines[-1] if len(ena_lines) > 1 else (ena_lines[0] if ena_lines else "")
 
         with open(OUTPUT_FILE, 'a', encoding='utf-8') as f_out:
             f_out.write(f"{ena_data}\terror\terror\n")
+        with open(ERR_LOG, "a") as ef: ef.write(f"[{run_accession}] unexpected exception: {e}\n")
 
 ########################################################################################################################
 #MAIN FUNCTION
@@ -476,6 +490,21 @@ def main():
         if not run_accessions:
             vprint("Error: no run accessions found")
             return
+
+    already = set()
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r", encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f):
+                if i == 0:
+                    continue
+                parts = line.rstrip("\n").split("\t")
+                if parts and parts[0]:
+                    already.add(parts[0])
+    run_accessions = [r for r in run_accessions if r not in already]
+    if not run_accessions:
+        vprint("All runs already processed.")
+        open(FLAG_FILE, 'w').close()
+        return
 
     #download metadata
     execute_bash_download_metadata()

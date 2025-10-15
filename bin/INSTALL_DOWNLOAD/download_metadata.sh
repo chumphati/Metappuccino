@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #PBS -N download_metadata
-#PBS -l walltime=12:00:00
+#PBS -l walltime=5000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=download_metadata
 #SBATCH --nodes=1
-#SBATCH --time=12:00:00
+#SBATCH --time=5000:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
@@ -67,6 +67,7 @@ fi
 
 cp "$METAPPUCCINO/scripts/get_clean_metadata/get_metadata_ncbi_ena.py" "$SCRATCH_DIR/"
 cp "$RUNS_INPUTS" "$SCRATCH_DIR/runs.txt"
+cp -r "$RES/ORIGINAL_METADATA/metadata" "$SCRATCH_DIR/" || echo "No metadata directory to resume"
 
 echo "Start $(date)"
 

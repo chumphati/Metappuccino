@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -N reload_context_llm
-#PBS -l walltime=500:00:00
+#PBS -l walltime=9999:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=reload_context_llm
-#SBATCH --time=500:00:00
+#SBATCH --time=9999:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1

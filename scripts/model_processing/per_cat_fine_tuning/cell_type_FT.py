@@ -16,8 +16,8 @@ from sentence_transformers import SentenceTransformer
 parser = argparse.ArgumentParser(description="Fine-tune cell_type (multitask) with semantic alignment + constrained decoding")
 parser.add_argument("--base_path", type=str, required=True)
 parser.add_argument("--cls_loss_weight", type=float, default=0.4)
-parser.add_argument("--sem_loss_weight", type=float, default=0.15)   # poids de la perte sémantique
-parser.add_argument("--aug_ratio", type=float, default=0.35)         # part de lignes dupliquées avec bruit contextuel
+parser.add_argument("--sem_loss_weight", type=float, default=0.15)
+parser.add_argument("--aug_ratio", type=float, default=0.35)
 parser.add_argument("--seed", type=int, default=42)
 args = parser.parse_args()
 base_path = args.base_path
@@ -104,7 +104,6 @@ df_train = read_two_col_csv(train_file)
 df_val   = read_two_col_csv(val_file)
 df_test  = read_two_col_csv(test_file)
 
-# Nettoyage léger: dédupes et supprime sorties vides (on ne modifie PAS le contenu "positive/negative")
 df_train = df_train.drop_duplicates(subset=["prompt"]).copy()
 df_train = df_train[df_train["output"].astype(str).strip()!=""].copy()
 
@@ -122,13 +121,10 @@ def _extract_value(txt):
         m = re.search(r'"cell_type"\s*:\s*"([^"]*)"', str(txt))
         return m.group(1) if m else str(txt)
 
-# Ajoute colonnes JSON (on garde le label tel quel, y compris “positive/negative”)
 for _df in (df_train, df_val, df_test):
     _df["output_raw"]  = _df["output"].astype(str)
     _df["output_json"] = _df["output_raw"].apply(lambda v: f'{{"cell_type": "{_escape_json_val(v)}"}}')
 
-# ======= AUGMENTATION GÉNÉRIQUE (optionnelle) =======
-# Duplique ~aug_ratio des lignes d'entraînement en injectant du bruit contextuel neutre
 def augment_prompts(df, ratio=0.35, seed=42):
     if ratio <= 0 or len(df) == 0:
         return df
@@ -171,7 +167,6 @@ def augment_prompts(df, ratio=0.35, seed=42):
 
 df_train = augment_prompts(df_train, ratio=args.aug_ratio, seed=args.seed)
 
-# ======= LABEL SPACE =======
 labels_train = sorted(set(df_train["output_raw"].tolist()))
 label2id = {lbl:i for i,lbl in enumerate(labels_train)}
 id2label = {i:lbl for lbl,i in label2id.items()}
@@ -187,7 +182,6 @@ datasets = {
 }
 print({k: len(v) for k,v in datasets.items()}, flush=True)
 
-# ======= SentenceTransformer pour métriques + perte sémantique =======
 sem_model_name = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
 model_sem = SentenceTransformer(sem_model_name)
 SIM_THRESH = 0.4
@@ -195,7 +189,6 @@ with torch.no_grad():
     _tmp = model_sem.encode(["test"], convert_to_numpy=True)
 SEM_DIM = int(_tmp.shape[1])
 
-# ======= Tokenization + ajout de l'embedding cible pour la perte sem =======
 def tokenize_fn(example):
     prompt   = example["prompt"].strip()
     out_json = example["output_json"].strip()
@@ -222,7 +215,6 @@ def tokenize_fn(example):
     if len(ids) > max_total:
         ids = ids[:max_total]; attn = attn[:max_total]; labels = labels[:max_total]
 
-    # Embedding sémantique de la valeur cible (normalisé)
     sem_emb = model_sem.encode(value_str, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32).tolist()
 
     return {
@@ -264,17 +256,14 @@ class CausalLMPadCollator:
 
 data_collator = CausalLMPadCollator(tokenizer)
 
-# ======= Évaluation par génération (avec contrainte) =======
 def _cos_sim(a, b):
     an = a / max(np.linalg.norm(a), 1e-12)
     bn = b / max(np.linalg.norm(b), 1e-12)
     return float(np.dot(an, bn))
 
-# Trie des labels pour contraindre le décodage
 CANDIDATES = labels_train
 CAND_TOKEN_IDS = [tokenizer(c, add_special_tokens=False)["input_ids"] for c in CANDIDATES]
-# construit un trie simple (dictionnaire imbriqué)
-TRIE = [{}]  # liste de noeuds; chaque noeud: dict id->next_idx, et clé "_end" pour fin
+TRIE = [{}]
 def add_to_trie(seq):
     node = 0
     for tid in seq:
@@ -284,19 +273,16 @@ def add_to_trie(seq):
         node = TRIE[node][tid]
     TRIE[node]["_end"] = True
 for seq in CAND_TOKEN_IDS:
-    if len(seq) == 0:  # ignorer labels vides
+    if len(seq) == 0:
         continue
     add_to_trie(seq)
 
-# Variables globales pour la contrainte, mises à jour avant chaque .generate()
 _PREFIX_TOKENS = tokenizer('{"cell_type": "', add_special_tokens=False)["input_ids"]
 _START_POS_BY_BATCH = {}
 
 def _find_start_pos(input_ids_list, prefix_tokens):
-    # cherche la dernière occurrence de prefix_tokens dans input_ids_list
     n = len(input_ids_list); m = len(prefix_tokens)
     if m == 0 or n < m: return None
-    # on parcourt à rebours pour capter le dernier préfixe
     for start in range(n - m, -1, -1):
         if input_ids_list[start:start+m] == prefix_tokens:
             return start + m
@@ -306,36 +292,28 @@ def prefix_allowed_tokens_fn(batch_id, input_ids):
     seq = input_ids.tolist()
     start_pos = _START_POS_BY_BATCH.get(int(batch_id), None)
     if start_pos is None:
-        # essaie de le détecter dynamiquement
         start_pos = _find_start_pos(seq, _PREFIX_TOKENS)
         if start_pos is None:
-            # pas dans la zone contrainte (on laisse tout)
             return list(range(tokenizer.vocab_size))
-    # on marche dans le trie à partir de la séquence générée après start_pos
     node = 0
     for tid in seq[start_pos:]:
         if tid in TRIE[node]:
             node = TRIE[node][tid]
         else:
-            # chemin invalide => aucune continuation autorisée (on retombe au début des labels)
             node = 0
             break
-    # autorisés = clefs sortantes du noeud courant
     allowed = [tid for tid in TRIE[node].keys() if tid != "_end"]
-    # si on est sur un noeud terminal, autoriser le guillemet de fermeture pour clore la valeur
     if TRIE[node].get("_end", False):
         quote_id = tokenizer.convert_tokens_to_ids('"')
         if quote_id is not None:
             allowed = allowed + [quote_id]
-    # garde un fallback minimal pour éviter blocage (rare)
     return allowed if len(allowed) > 0 else list(range(tokenizer.vocab_size))
 
 def generate_constrained(model, tokenizer, prompt, dev):
     prefix = prompt + '{"cell_type": "'
     inp = tokenizer(prefix, return_tensors="pt").to(dev)
-    # setup positions pour la fonction de contrainte
     global _START_POS_BY_BATCH
-    _START_POS_BY_BATCH = {0: inp["input_ids"].size(1)}  # batch=1
+    _START_POS_BY_BATCH = {0: inp["input_ids"].size(1)}
     with torch.no_grad():
         out_ids = model.generate(
             **inp,
@@ -427,7 +405,6 @@ writer.flush()
 hidden_size = getattr(peft_model.config, "hidden_size", None) or getattr(peft_model.config, "n_embd", None)
 num_classes = len(label2id)
 
-# Tête de classification
 cls_head = nn.Sequential(
     nn.Linear(hidden_size, hidden_size),
     nn.ReLU(),
@@ -435,7 +412,6 @@ cls_head = nn.Sequential(
     nn.Linear(hidden_size, num_classes)
 ).to(next(peft_model.parameters()).device)
 
-# Proj pour perte sémantique (projette l'embedding STS vers l'espace hidden)
 sem_proj = nn.Linear(SEM_DIM, hidden_size, bias=False).to(next(peft_model.parameters()).device)
 
 class MultiTaskTrainer(Trainer):
@@ -476,15 +452,14 @@ class MultiTaskTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None, **kwargs):
         split_idx = inputs.pop("split_idx")
         cls_label = inputs.pop("cls_label")
-        sem_emb   = inputs.pop("sem_emb")  # [B, SEM_DIM] tensor float32
+        sem_emb   = inputs.pop("sem_emb")
         outputs   = model(**inputs, output_hidden_states=True)
         lm_loss   = outputs.loss
-        hidden    = outputs.hidden_states[-1]            # [B, T, H]
+        hidden    = outputs.hidden_states[-1]
         B = hidden.size(0)
         idx = torch.clamp(split_idx - 1, min=0)
-        gather = hidden[torch.arange(B, device=hidden.device), idx, :]  # [B, H]
+        gather = hidden[torch.arange(B, device=hidden.device), idx, :]
 
-        # classification
         if next(self.cls_head.parameters()).device != gather.device:
             self.cls_head.to(gather.device)
         logits = self.cls_head(gather)
@@ -494,14 +469,13 @@ class MultiTaskTrainer(Trainer):
         else:
             cls_loss = torch.tensor(0.0, device=hidden.device)
 
-        # perte sémantique (1 - cos(proj(sem_emb), gather))
         if next(self.sem_proj.parameters()).device != gather.device:
             self.sem_proj.to(gather.device)
         sem_emb = sem_emb.to(gather.device)
-        proj = self.sem_proj(sem_emb)                    # [B, H]
+        proj = self.sem_proj(sem_emb)
         proj = nn.functional.normalize(proj, p=2, dim=-1)
         gath = nn.functional.normalize(gather, p=2, dim=-1)
-        cos_sim = self.cos(proj, gath)                   # [B]
+        cos_sim = self.cos(proj, gath)      
         sem_loss = (1.0 - cos_sim).mean()
 
         loss = lm_loss + self.cls_weight * cls_loss + self.sem_weight * sem_loss
