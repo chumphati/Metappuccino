@@ -1,0 +1,6592 @@
+{
+  "library_selection": {
+    "hybrid selection": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "inverse rna": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "other": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "polya": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "small rna": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "sequencing_source": {
+    "bulk": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "single cell": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "spatial": [
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ]
+  },
+  "biopsy_site": {
+    "adipose tissue": [
+      "test_real"
+    ],
+    "adrenal gland": [
+      "train"
+    ],
+    "airway": [
+      "test_real"
+    ],
+    "anterior palate": [
+      "test_real"
+    ],
+    "anus": [
+      "test_real"
+    ],
+    "appendix": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ascending aorta": [
+      "test_real"
+    ],
+    "ascites": [
+      "test_real"
+    ],
+    "bile": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "bile duct": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "biliary tract": [
+      "test_real"
+    ],
+    "bladder": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "blood": [
+      "train",
+      "test_real"
+    ],
+    "bone": [
+      "train",
+      "test_real"
+    ],
+    "bone marrow": [
+      "train",
+      "test_real"
+    ],
+    "bone marrow (xenograft mouse)": [
+      "test_real"
+    ],
+    "brain": [
+      "train",
+      "test_real"
+    ],
+    "breast": [
+      "train",
+      "test_real"
+    ],
+    "breast cancer adjacent tissue": [
+      "test_real"
+    ],
+    "bronchoalveolar lavage": [
+      "test_real"
+    ],
+    "bronchus": [
+      "test_real"
+    ],
+    "buccal mucosa": [
+      "test_real"
+    ],
+    "cartilage": [
+      "train",
+      "test_real"
+    ],
+    "cervix": [
+      "train",
+      "test_real"
+    ],
+    "clear cell renal cell": [
+      "test_real"
+    ],
+    "colon": [
+      "train",
+      "test_real"
+    ],
+    "colon; rectum": [
+      "test_real"
+    ],
+    "colorectal": [
+      "test_real"
+    ],
+    "colorectal mucosa": [
+      "test_real"
+    ],
+    "cumulus cells": [
+      "test_real"
+    ],
+    "duodenum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ear": [
+      "val"
+    ],
+    "embryonic stem cell": [
+      "test_real"
+    ],
+    "endometrium": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "epithelium": [
+      "test_real"
+    ],
+    "esophagus": [
+      "val",
+      "test_real"
+    ],
+    "eye": [
+      "val",
+      "test_real"
+    ],
+    "facelift skin": [
+      "test_real"
+    ],
+    "fallopian tube": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "foreskin": [
+      "test_real"
+    ],
+    "gallbladder": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gastric mucosa": [
+      "test_real"
+    ],
+    "hand": [
+      "test_real"
+    ],
+    "head and neck tumor; hnscc tumor tissue": [
+      "test_real"
+    ],
+    "heart": [
+      "train",
+      "test_real"
+    ],
+    "hesc culture": [
+      "test_real"
+    ],
+    "hippocampus": [
+      "test_real"
+    ],
+    "hipsc derived cortical organoids": [
+      "test_real"
+    ],
+    "ileum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "inner cell mass": [
+      "test_real"
+    ],
+    "intestine": [
+      "train"
+    ],
+    "jejunum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "kidney": [
+      "train",
+      "test_real"
+    ],
+    "larynx": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "lateral ganglionic eminence": [
+      "test_real"
+    ],
+    "left ventricle apex": [
+      "test_real"
+    ],
+    "liver": [
+      "train",
+      "test_real"
+    ],
+    "liver right lobe": [
+      "test_real"
+    ],
+    "liver xenograft": [
+      "test_real"
+    ],
+    "lung": [
+      "train",
+      "test_real"
+    ],
+    "lymph node": [
+      "test_real"
+    ],
+    "m. gastrocnemius": [
+      "test_real"
+    ],
+    "meninges": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mesentery": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mouse xenograft tumor": [
+      "test_real"
+    ],
+    "mouth": [
+      "test_real"
+    ],
+    "nasopharynx": [
+      "test_real"
+    ],
+    "neurons (culture)": [
+      "test_real"
+    ],
+    "ocular": [
+      "test_real"
+    ],
+    "oral mucosa": [
+      "test_real"
+    ],
+    "organoid": [
+      "test_real"
+    ],
+    "oropharyngeal mucosa": [
+      "test_real"
+    ],
+    "ovaries": [
+      "val"
+    ],
+    "ovary": [
+      "test_real"
+    ],
+    "palmar dermis": [
+      "test_real"
+    ],
+    "pancreas": [
+      "train",
+      "test_real"
+    ],
+    "parathyroid": [
+      "train"
+    ],
+    "pbmc": [
+      "test_real"
+    ],
+    "peripheral blood": [
+      "test_real"
+    ],
+    "peritoneum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pharynx": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pituitary": [
+      "train"
+    ],
+    "placenta": [
+      "train",
+      "test_real"
+    ],
+    "placental artery": [
+      "test_real"
+    ],
+    "placental villous tissue": [
+      "test_real"
+    ],
+    "pleural effusion": [
+      "test_real"
+    ],
+    "prostate": [
+      "train",
+      "test_real"
+    ],
+    "pulmonary artery": [
+      "test_real"
+    ],
+    "renal cortex": [
+      "test_real"
+    ],
+    "retina": [
+      "test_real"
+    ],
+    "retinal pigment epithelium": [
+      "test_real"
+    ],
+    "salivary gland": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sebaceous gland": [
+      "test_real"
+    ],
+    "serum": [
+      "test_real"
+    ],
+    "skeletal muscle": [
+      "test_real"
+    ],
+    "skin": [
+      "train",
+      "test_real"
+    ],
+    "small bowel": [
+      "test_real"
+    ],
+    "sperm": [
+      "test_real"
+    ],
+    "spinal cord": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "spleen": [
+      "train"
+    ],
+    "sputum": [
+      "test_real"
+    ],
+    "stomach": [
+      "train",
+      "test_real"
+    ],
+    "subcutaneous xenograft": [
+      "test_real"
+    ],
+    "supraclavicular adipose tissue": [
+      "test_real"
+    ],
+    "synovial fluid": [
+      "test_real"
+    ],
+    "testis": [
+      "test_real"
+    ],
+    "thymus": [
+      "train",
+      "test_real"
+    ],
+    "thyroid": [
+      "train",
+      "test_real"
+    ],
+    "tongue": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "tonsil": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "trabecular bone": [
+      "test_real"
+    ],
+    "trabecular meshwork": [
+      "test_real"
+    ],
+    "trachea": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "trophoblast": [
+      "test_real"
+    ],
+    "tumor": [
+      "test_real"
+    ],
+    "tumor tissue": [
+      "test_real"
+    ],
+    "umbilical vein": [
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "ureter": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urethra": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urine": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "uveal region": [
+      "test_real"
+    ],
+    "vasculature": [
+      "test_real"
+    ],
+    "vastus lateralis": [
+      "test_real"
+    ],
+    "visceral adipose": [
+      "test_real"
+    ],
+    "whole blood": [
+      "test_real"
+    ],
+    "xenograft": [
+      "test_real"
+    ],
+    "xenograft (mouse)": [
+      "test_real"
+    ],
+    "xenograft primary tumor": [
+      "test_real"
+    ],
+    "xenograft tumor": [
+      "test_real"
+    ]
+  },
+  "biopsy_type": {
+    "blood": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "metastasis": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "primary": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "cell_line": {
+    "12t": [
+      "test_real"
+    ],
+    "12z": [
+      "test_real"
+    ],
+    "201b7": [
+      "test_real"
+    ],
+    "293t": [
+      "test_real"
+    ],
+    "293t; 3t3": [
+      "test_real"
+    ],
+    "451lu": [
+      "test_real"
+    ],
+    "501 mel": [
+      "test_real"
+    ],
+    "501mel": [
+      "test_real"
+    ],
+    "5637": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "786 o": [
+      "test_real"
+    ],
+    "888 mel": [
+      "test_real"
+    ],
+    "92 1": [
+      "test_real"
+    ],
+    "92.1": [
+      "test_real"
+    ],
+    "a 375": [
+      "test_real"
+    ],
+    "a253": [
+      "test_real"
+    ],
+    "a2780": [
+      "test_real"
+    ],
+    "a375": [
+      "test_real"
+    ],
+    "a427": [
+      "test_real"
+    ],
+    "a549": [
+      "train",
+      "test_real"
+    ],
+    "a673": [
+      "test_real"
+    ],
+    "abl": [
+      "test_real"
+    ],
+    "ags": [
+      "test_real"
+    ],
+    "akata": [
+      "test_real"
+    ],
+    "arp1": [
+      "test_real"
+    ],
+    "arpe 19": [
+      "val"
+    ],
+    "astrocytes": [
+      "test_real"
+    ],
+    "atdc5": [
+      "val"
+    ],
+    "ben men 1": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "bj": [
+      "test_real"
+    ],
+    "bj tert": [
+      "test_real"
+    ],
+    "bt474": [
+      "test_real"
+    ],
+    "bxpc 3": [
+      "test_real"
+    ],
+    "c006": [
+      "test_real"
+    ],
+    "c2c12": [
+      "train"
+    ],
+    "c42": [
+      "test_real"
+    ],
+    "c666 1": [
+      "test_real"
+    ],
+    "ca1": [
+      "test_real"
+    ],
+    "caco2": [
+      "test_real"
+    ],
+    "caki 1": [
+      "test_real"
+    ],
+    "cal 27": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "cama1": [
+      "test_real"
+    ],
+    "cc lp 1": [
+      "test_real"
+    ],
+    "ccd 1077sk": [
+      "test_real"
+    ],
+    "cl 3188": [
+      "test_real"
+    ],
+    "cm142": [
+      "test_real"
+    ],
+    "colo 800": [
+      "test_real"
+    ],
+    "crl2429 mafbmtagbfp2/gata3mcherry": [
+      "test_real"
+    ],
+    "cs thl1": [
+      "test_real"
+    ],
+    "csm152": [
+      "test_real"
+    ],
+    "ctrl 1": [
+      "test_real"
+    ],
+    "cvb": [
+      "test_real"
+    ],
+    "d10 ifngr1 ko": [
+      "test_real"
+    ],
+    "detroit 562": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "dms 53": [
+      "test_real"
+    ],
+    "ecc 1": [
+      "val"
+    ],
+    "em e6/e7/htert": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "fadu": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ftc 133": [
+      "test_real"
+    ],
+    "g01": [
+      "test_real"
+    ],
+    "gbc sd": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gbc t": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gist t1": [
+      "test_real"
+    ],
+    "gm18516": [
+      "test_real"
+    ],
+    "h tert rpe 1": [
+      "test_real"
+    ],
+    "h1": [
+      "test_real"
+    ],
+    "h1 hesc": [
+      "test_real"
+    ],
+    "h1573": [
+      "test_real"
+    ],
+    "h441": [
+      "test_real"
+    ],
+    "h660": [
+      "test_real"
+    ],
+    "h69": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "h9": [
+      "test_real"
+    ],
+    "h9 imsc": [
+      "test_real"
+    ],
+    "h929": [
+      "test_real"
+    ],
+    "hacat": [
+      "test_real"
+    ],
+    "hc 04": [
+      "test_real"
+    ],
+    "hca2 htert": [
+      "test_real"
+    ],
+    "hcc1954 bl": [
+      "test_real"
+    ],
+    "hct 116": [
+      "test_real"
+    ],
+    "hct116": [
+      "train",
+      "test_real"
+    ],
+    "hdmb03": [
+      "test_real"
+    ],
+    "hei oc1": [
+      "val"
+    ],
+    "hek 293flp": [
+      "test_real"
+    ],
+    "hek 293t": [
+      "test_real"
+    ],
+    "hek293": [
+      "train",
+      "test_real"
+    ],
+    "hek293t": [
+      "test_real"
+    ],
+    "hela": [
+      "train",
+      "test_real"
+    ],
+    "hela s3": [
+      "test_real"
+    ],
+    "hep3b": [
+      "test_real"
+    ],
+    "hepg2": [
+      "train",
+      "test_real"
+    ],
+    "hesc": [
+      "test_real"
+    ],
+    "hff 1": [
+      "test_real"
+    ],
+    "hipsc": [
+      "test_real"
+    ],
+    "hipsc ec": [
+      "test_real"
+    ],
+    "hipsc l1": [
+      "test_real"
+    ],
+    "hmecs": [
+      "test_real"
+    ],
+    "hpsc1": [
+      "test_real"
+    ],
+    "hs 944.t": [
+      "test_real"
+    ],
+    "hs401": [
+      "test_real"
+    ],
+    "hsc 1": [
+      "test_real"
+    ],
+    "hsc 3": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "hsc 4": [
+      "test_real"
+    ],
+    "hsg": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ht 1376": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "htert pf179t caf": [
+      "test_real"
+    ],
+    "htert rpe1": [
+      "test_real"
+    ],
+    "huh 7": [
+      "test_real"
+    ],
+    "huh7": [
+      "test_real"
+    ],
+    "human embryonic stem cells": [
+      "test_real"
+    ],
+    "human primary adipose stem cells": [
+      "test_real"
+    ],
+    "human vitiligo melanocytes cell line": [
+      "test_real"
+    ],
+    "huvec": [
+      "test_real"
+    ],
+    "impcs": [
+      "test_real"
+    ],
+    "imr 32": [
+      "test_real"
+    ],
+    "imr32": [
+      "test_real"
+    ],
+    "imr90": [
+      "test_real"
+    ],
+    "ipsc derived astrocytes": [
+      "test_real"
+    ],
+    "ipsc derived motor neurons": [
+      "test_real"
+    ],
+    "ipsc derived neurons": [
+      "test_real"
+    ],
+    "ipsc ec": [
+      "test_real"
+    ],
+    "ishikawa": [
+      "val"
+    ],
+    "jurkat": [
+      "train",
+      "test_real"
+    ],
+    "k562": [
+      "train",
+      "test_real"
+    ],
+    "kgn": [
+      "val"
+    ],
+    "kys510": [
+      "test_real"
+    ],
+    "kyse 30": [
+      "val"
+    ],
+    "lncap": [
+      "test_real"
+    ],
+    "lx33": [
+      "test_real"
+    ],
+    "m229": [
+      "test_real"
+    ],
+    "m229 r": [
+      "test_real"
+    ],
+    "m263": [
+      "test_real"
+    ],
+    "m416": [
+      "test_real"
+    ],
+    "ma mel 51": [
+      "test_real"
+    ],
+    "ma mel 86f": [
+      "test_real"
+    ],
+    "mcf 7": [
+      "test_real"
+    ],
+    "mcf10a": [
+      "test_real"
+    ],
+    "mcf7": [
+      "train",
+      "test_real"
+    ],
+    "mda mb 231": [
+      "test_real"
+    ],
+    "mda mb 435": [
+      "test_real"
+    ],
+    "mda mb 468": [
+      "test_real"
+    ],
+    "mdamb468": [
+      "test_real"
+    ],
+    "mdsl": [
+      "test_real"
+    ],
+    "mel juso": [
+      "test_real"
+    ],
+    "mel888": [
+      "test_real"
+    ],
+    "mewo": [
+      "test_real"
+    ],
+    "mo1": [
+      "test_real"
+    ],
+    "molm1": [
+      "test_real"
+    ],
+    "molm13": [
+      "test_real"
+    ],
+    "mp41": [
+      "test_real"
+    ],
+    "n91": [
+      "test_real"
+    ],
+    "nalm 6": [
+      "test_real"
+    ],
+    "nb 1": [
+      "test_real"
+    ],
+    "nci h1963": [
+      "test_real"
+    ],
+    "nci h2052": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "nci h292": [
+      "test_real"
+    ],
+    "nt2/d1": [
+      "val"
+    ],
+    "oci aml5": [
+      "test_real"
+    ],
+    "oci ly8": [
+      "test_real"
+    ],
+    "ocily1": [
+      "test_real"
+    ],
+    "ocm 1a": [
+      "test_real"
+    ],
+    "oe 33d": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "om341": [
+      "test_real"
+    ],
+    "omm 1": [
+      "test_real"
+    ],
+    "omm2.3": [
+      "test_real"
+    ],
+    "ovc316": [
+      "test_real"
+    ],
+    "pc 3": [
+      "test_real"
+    ],
+    "pc1": [
+      "test_real"
+    ],
+    "pc3": [
+      "train"
+    ],
+    "pc9; h1975": [
+      "test_real"
+    ],
+    "pnf4": [
+      "test_real"
+    ],
+    "primary cell": [
+      "test_real"
+    ],
+    "primary cells": [
+      "test_real"
+    ],
+    "primary sample": [
+      "test_real"
+    ],
+    "primary tissue": [
+      "test_real"
+    ],
+    "qgp 1": [
+      "test_real"
+    ],
+    "rg 0019 0149 c6": [
+      "test_real"
+    ],
+    "rh4": [
+      "test_real"
+    ],
+    "rko": [
+      "test_real"
+    ],
+    "rptec": [
+      "test_real"
+    ],
+    "rt4": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "rues2": [
+      "test_real"
+    ],
+    "rwpe1": [
+      "test_real"
+    ],
+    "s18": [
+      "test_real"
+    ],
+    "scc 25": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sh sy5y": [
+      "test_real"
+    ],
+    "shsy5y": [
+      "train"
+    ],
+    "siha": [
+      "test_real"
+    ],
+    "sjsa 1": [
+      "test_real"
+    ],
+    "sk mel 147": [
+      "test_real"
+    ],
+    "sk mel 2": [
+      "test_real"
+    ],
+    "sk mel 28": [
+      "test_real"
+    ],
+    "sk mel 30": [
+      "test_real"
+    ],
+    "sk mel 5": [
+      "test_real"
+    ],
+    "sk n as": [
+      "test_real"
+    ],
+    "sk n be2c": [
+      "test_real"
+    ],
+    "skco1": [
+      "test_real"
+    ],
+    "skmel28": [
+      "test_real"
+    ],
+    "skov3": [
+      "test_real"
+    ],
+    "sng m": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "snu 1076": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "snu398": [
+      "test_real"
+    ],
+    "sum159": [
+      "test_real"
+    ],
+    "sw1353": [
+      "val"
+    ],
+    "sz95": [
+      "test_real"
+    ],
+    "t24": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "t84": [
+      "test_real"
+    ],
+    "t98g": [
+      "test_real"
+    ],
+    "tcc meso 2": [
+      "test_real"
+    ],
+    "te 1": [
+      "val"
+    ],
+    "thp 1": [
+      "test_real"
+    ],
+    "thp1": [
+      "train",
+      "test_real"
+    ],
+    "tig3 tert": [
+      "test_real"
+    ],
+    "tigk": [
+      "test_real"
+    ],
+    "tyuc 1": [
+      "test_real"
+    ],
+    "u2os": [
+      "train",
+      "test_real"
+    ],
+    "u373 mg (u251)": [
+      "test_real"
+    ],
+    "u937": [
+      "test_real"
+    ],
+    "uacc 62": [
+      "test_real"
+    ],
+    "um scc 1": [
+      "test_real"
+    ],
+    "um uc 3": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "unknown": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "uw426": [
+      "test_real"
+    ],
+    "vcap": [
+      "test_real"
+    ],
+    "wa09": [
+      "test_real"
+    ],
+    "wi 38": [
+      "test_real"
+    ],
+    "wm1341d": [
+      "test_real"
+    ],
+    "wm164": [
+      "test_real"
+    ],
+    "wm3734": [
+      "test_real"
+    ],
+    "wm4265.2": [
+      "test_real"
+    ],
+    "wm852": [
+      "test_real"
+    ],
+    "wm902b": [
+      "test_real"
+    ],
+    "wm989": [
+      "test_real"
+    ],
+    "y79": [
+      "test_real"
+    ]
+  },
+  "cell_type": {
+    "acsa 2 positive astroytes": [
+      "val"
+    ],
+    "acute monocytic leukemia cell": [
+      "test_real"
+    ],
+    "acute myeloid leukemia cell": [
+      "test_real"
+    ],
+    "adenocarcinoma": [
+      "train"
+    ],
+    "adherent": [
+      "train"
+    ],
+    "adherent myoblast": [
+      "train"
+    ],
+    "adipocyte": [
+      "test_real"
+    ],
+    "adipose stem cell": [
+      "test_real"
+    ],
+    "adipose stromal cell": [
+      "test_real"
+    ],
+    "airway basal cell": [
+      "test_real"
+    ],
+    "alveolar epithelial cell": [
+      "test_real"
+    ],
+    "alveolar type ii cell": [
+      "test_real"
+    ],
+    "antigen presenting cell": [
+      "test_real"
+    ],
+    "aortic smooth muscle cell": [
+      "train"
+    ],
+    "astrocyte": [
+      "val",
+      "test_real"
+    ],
+    "astrocytes": [
+      "val"
+    ],
+    "b cell": [
+      "train",
+      "test_real"
+    ],
+    "b lymphoblastoid cell": [
+      "test_real"
+    ],
+    "basal cell": [
+      "test_real"
+    ],
+    "basal epidermal cell": [
+      "test_real"
+    ],
+    "basal urothelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "beta cell": [
+      "train"
+    ],
+    "biliary tract cancer cell": [
+      "test_real"
+    ],
+    "blood cells": [
+      "train"
+    ],
+    "bone cell": [
+      "val"
+    ],
+    "bone cells": [
+      "train"
+    ],
+    "bone marrow": [
+      "train"
+    ],
+    "bone marrow cell": [
+      "train"
+    ],
+    "bone marrow derived cell line": [
+      "test_real"
+    ],
+    "bone marrow derived dendritic cell": [
+      "val"
+    ],
+    "bone marrow derived dendritic cells (bm dcs)": [
+      "train"
+    ],
+    "bone marrow derived neutrophil": [
+      "train"
+    ],
+    "bone marrow macrophages": [
+      "train"
+    ],
+    "bone marrow mononuclear cells": [
+      "test_real"
+    ],
+    "bovine spleen derived endothelial cell": [
+      "train"
+    ],
+    "brain endothelial cell": [
+      "test_real"
+    ],
+    "breast cancer": [
+      "train"
+    ],
+    "breast cancer cell": [
+      "test_real"
+    ],
+    "breast tissue": [
+      "test_real"
+    ],
+    "bronchial epithelial cell": [
+      "test_real"
+    ],
+    "burkitt lymphoma cell": [
+      "test_real"
+    ],
+    "cancer cell line": [
+      "test_real"
+    ],
+    "cardiac mesoderm": [
+      "train"
+    ],
+    "cardiac progenitor cell": [
+      "test_real"
+    ],
+    "cardiac stem cell": [
+      "train"
+    ],
+    "cardiomyocyte": [
+      "test_real"
+    ],
+    "cartilage cells": [
+      "train",
+      "val"
+    ],
+    "cd11b positive microglia": [
+      "val"
+    ],
+    "cd138+ cell": [
+      "test_real"
+    ],
+    "cd14 monocyte": [
+      "test_real"
+    ],
+    "cd34+ hematopoietic cell": [
+      "test_real"
+    ],
+    "cd4 car t cell": [
+      "test_real"
+    ],
+    "cd4 cd8 dn thymocytes": [
+      "train"
+    ],
+    "cd4 positive helper t cell": [
+      "train"
+    ],
+    "cd4 positive,cd3 positive,cd62l negative": [
+      "val"
+    ],
+    "cd4 t cell": [
+      "test_real"
+    ],
+    "cd4 tcell": [
+      "train"
+    ],
+    "cd4+ t cell": [
+      "train",
+      "test_real"
+    ],
+    "cd4+cd25 cd44lo": [
+      "train"
+    ],
+    "cd4+cd25 gfp ": [
+      "train"
+    ],
+    "cd4+cd8 cd24+cd25 gfp ": [
+      "val"
+    ],
+    "cd4+cd8 cd24+cd25+gitr+gfp ": [
+      "train"
+    ],
+    "cd4+cd8 cd25+gfp+": [
+      "val"
+    ],
+    "cd4+cd8+": [
+      "train"
+    ],
+    "cd4+cd8+ dp thymocytes": [
+      "train"
+    ],
+    "cd4+foxp3 gitrlocd62l cxcr5 ": [
+      "train"
+    ],
+    "cerebral organoid": [
+      "test_real"
+    ],
+    "cervical cancer cell": [
+      "test_real"
+    ],
+    "cervical carcinoma cell": [
+      "test_real"
+    ],
+    "cervix": [
+      "train"
+    ],
+    "cho k1": [
+      "val"
+    ],
+    "cholangiocyte": [
+      "test_real"
+    ],
+    "chondrocyte": [
+      "test_real"
+    ],
+    "chondrocytes": [
+      "val"
+    ],
+    "circulating tumor cell": [
+      "test_real"
+    ],
+    "classical monocyte": [
+      "test_real"
+    ],
+    "clear cell renal cell": [
+      "test_real"
+    ],
+    "cochlear hair cells": [
+      "val"
+    ],
+    "colon cancer cell": [
+      "test_real"
+    ],
+    "colon epithelial cell": [
+      "test_real"
+    ],
+    "connective cells": [
+      "train"
+    ],
+    "corneal endothelial cell": [
+      "train"
+    ],
+    "cultured cell": [
+      "train"
+    ],
+    "cumulus cells": [
+      "train"
+    ],
+    "cutaneous squamous cell carcinoma cell": [
+      "test_real"
+    ],
+    "cytotrophoblast": [
+      "test_real"
+    ],
+    "decidual cells": [
+      "val"
+    ],
+    "definitive endoderm cell": [
+      "test_real"
+    ],
+    "dendritic cell": [
+      "train"
+    ],
+    "dermal fibroblast": [
+      "test_real"
+    ],
+    "differentiated embryonic stem cell": [
+      "train"
+    ],
+    "differentiating thymic epithelial cell": [
+      "test_real"
+    ],
+    "diffuse large b cell lymphoma cell line": [
+      "test_real"
+    ],
+    "ductal epithelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ebv positive burkitt lymphoma": [
+      "val"
+    ],
+    "embryo": [
+      "val"
+    ],
+    "embryonic cell": [
+      "train"
+    ],
+    "embryonic fibroblast": [
+      "val"
+    ],
+    "embryonic kidney cell": [
+      "test_real"
+    ],
+    "embryonic stem cell": [
+      "train",
+      "test_real"
+    ],
+    "embryonic stem cells": [
+      "train"
+    ],
+    "endometrial epithelial cell": [
+      "train"
+    ],
+    "endometrial epithelial cells": [
+      "val"
+    ],
+    "endothelial cell": [
+      "train",
+      "test_real"
+    ],
+    "endothelial cell of umbilical vein": [
+      "test_real"
+    ],
+    "endothelial cells": [
+      "test_real"
+    ],
+    "enteric neurons": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "epcam+ cd45 pdac cells": [
+      "train"
+    ],
+    "epcam+ cell": [
+      "test_real"
+    ],
+    "ependymal cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "epiblast like cell": [
+      "train"
+    ],
+    "epicardial cell": [
+      "test_real"
+    ],
+    "epilc": [
+      "train"
+    ],
+    "epistem cells": [
+      "val"
+    ],
+    "epithelia": [
+      "test_real"
+    ],
+    "epithelial": [
+      "train",
+      "test_real"
+    ],
+    "epithelial cell": [
+      "val",
+      "test_real"
+    ],
+    "epithelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "epithelial like": [
+      "val"
+    ],
+    "epithelium": [
+      "test_real"
+    ],
+    "erythroblast": [
+      "train"
+    ],
+    "erythroleukemic": [
+      "test_real"
+    ],
+    "es": [
+      "val"
+    ],
+    "es cell": [
+      "train"
+    ],
+    "es like": [
+      "val"
+    ],
+    "escc": [
+      "test_real"
+    ],
+    "esophageal epithelial cells": [
+      "val"
+    ],
+    "ewing sarcoma": [
+      "test_real"
+    ],
+    "ewing sarcoma cells": [
+      "test_real"
+    ],
+    "extraradical mycelium": [
+      "train"
+    ],
+    "f36p": [
+      "train"
+    ],
+    "fat cells": [
+      "train"
+    ],
+    "fibroblast": [
+      "test_real"
+    ],
+    "fibroblast cell": [
+      "val"
+    ],
+    "fibroblast of dermis": [
+      "train"
+    ],
+    "fibroblast; lung fibroblast": [
+      "test_real"
+    ],
+    "fibroblasts": [
+      "train",
+      "test_real"
+    ],
+    "follicular endometrial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gastric epithelial cell": [
+      "test_real"
+    ],
+    "gastrointestinal stromal tumor cell": [
+      "test_real"
+    ],
+    "gcb type dlbcl": [
+      "test_real"
+    ],
+    "germ cells": [
+      "val"
+    ],
+    "germ tube": [
+      "train"
+    ],
+    "germinal center b cell": [
+      "test_real"
+    ],
+    "germinal centre b cell": [
+      "train"
+    ],
+    "germinated spores and hyphae": [
+      "train"
+    ],
+    "germinating spore": [
+      "val"
+    ],
+    "germline stem cell": [
+      "train"
+    ],
+    "germline stem cell derived pluripotent cell": [
+      "val"
+    ],
+    "glioblastoma": [
+      "test_real"
+    ],
+    "glioblastoma cell": [
+      "test_real"
+    ],
+    "goblet cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gonocyte": [
+      "train"
+    ],
+    "grade ii squamous cell carcinoma": [
+      "test_real"
+    ],
+    "granulocyte/monocyte progenitor": [
+      "train"
+    ],
+    "granulosa cell": [
+      "test_real"
+    ],
+    "granulosa cells": [
+      "val"
+    ],
+    "gsc like cell": [
+      "train"
+    ],
+    "head and neck squamous cell carcinoma": [
+      "train"
+    ],
+    "head and neck squamous cell carcinoma cell": [
+      "test_real"
+    ],
+    "hek293": [
+      "test_real"
+    ],
+    "hela tet off cell": [
+      "train"
+    ],
+    "hematopoietic stem cell": [
+      "train",
+      "test_real"
+    ],
+    "hematopoietic stem/progenitor cell": [
+      "test_real"
+    ],
+    "hepatic cd161+ cd8+ non mait t cell": [
+      "test_real"
+    ],
+    "hepatic stellate cell": [
+      "train"
+    ],
+    "hepatocellular carcinoma cell": [
+      "test_real"
+    ],
+    "hepatocyte": [
+      "val",
+      "test_real"
+    ],
+    "hepatocytes": [
+      "train"
+    ],
+    "hepatoma": [
+      "train"
+    ],
+    "hepatoma cell": [
+      "test_real"
+    ],
+    "hesc": [
+      "test_real"
+    ],
+    "hippocampal cell": [
+      "train"
+    ],
+    "hippocampal dentate gyrus granule neuron": [
+      "test_real"
+    ],
+    "hipsc derived cortical organoids": [
+      "test_real"
+    ],
+    "human coronary artery endothelial cells": [
+      "val"
+    ],
+    "human dermal fibroblasts (hdf)": [
+      "train"
+    ],
+    "human embryonic stem cell": [
+      "test_real"
+    ],
+    "human limbal epithelial cells": [
+      "train"
+    ],
+    "human non small cell lung carcinoma": [
+      "test_real"
+    ],
+    "human pulmonary artery endothelial cells": [
+      "train"
+    ],
+    "human subclavian artery endothelial cells": [
+      "val"
+    ],
+    "human umbilical artery endothelial cells": [
+      "train"
+    ],
+    "human umbilical vein endothelial cell": [
+      "test_real"
+    ],
+    "icos+ cd38+ ctfh": [
+      "test_real"
+    ],
+    "iga b cell": [
+      "train"
+    ],
+    "igm b cell": [
+      "train"
+    ],
+    "immune cell": [
+      "test_real"
+    ],
+    "induced pluripotent stem cell": [
+      "train"
+    ],
+    "induced pluripotent stem cells": [
+      "train"
+    ],
+    "inferior olive nuclei": [
+      "train"
+    ],
+    "interstitial cells of cajal": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "intraradical mycelium": [
+      "val"
+    ],
+    "ips cell": [
+      "train"
+    ],
+    "ipsc": [
+      "train",
+      "test_real"
+    ],
+    "ipsc like cell": [
+      "train"
+    ],
+    "irf8ko lmpp": [
+      "train"
+    ],
+    "itgb4 negative melanocytes": [
+      "test_real"
+    ],
+    "itgb4 positive melanocytes": [
+      "test_real"
+    ],
+    "k562 cell": [
+      "test_real"
+    ],
+    "keratinocyte": [
+      "test_real"
+    ],
+    "keratinocyte; melanocyte": [
+      "test_real"
+    ],
+    "keratocyte": [
+      "train"
+    ],
+    "kidney": [
+      "test_real"
+    ],
+    "kidney cells": [
+      "train"
+    ],
+    "kidney epithelium": [
+      "train"
+    ],
+    "ksl cell": [
+      "train"
+    ],
+    "large granulosa cell without follicular fluid": [
+      "train"
+    ],
+    "laryngeal epithelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "lens epithelial cell": [
+      "test_real"
+    ],
+    "leukemia cells": [
+      "test_real"
+    ],
+    "leukocyte": [
+      "train",
+      "test_real"
+    ],
+    "leydig cell": [
+      "train"
+    ],
+    "leydig cells": [
+      "val"
+    ],
+    "liver cancer cell": [
+      "test_real"
+    ],
+    "liver cells": [
+      "train"
+    ],
+    "liver tissue": [
+      "test_real"
+    ],
+    "low density neutrophil": [
+      "test_real"
+    ],
+    "lung cancer cell": [
+      "test_real"
+    ],
+    "lung cells": [
+      "train"
+    ],
+    "lung epithelial cell": [
+      "test_real"
+    ],
+    "lymphoblast": [
+      "test_real"
+    ],
+    "lymphoblastoid cell": [
+      "test_real"
+    ],
+    "lymphocyte": [
+      "train",
+      "test_real"
+    ],
+    "lymphocytes; t cells": [
+      "test_real"
+    ],
+    "lymphoma cell": [
+      "test_real"
+    ],
+    "macrophage": [
+      "train"
+    ],
+    "mammary adenocarcinoma cell": [
+      "test_real"
+    ],
+    "mammary epithelial cell": [
+      "test_real"
+    ],
+    "mammary epithelial cells": [
+      "test_real"
+    ],
+    "mammary gland epithelial cell": [
+      "train"
+    ],
+    "mast cell": [
+      "train"
+    ],
+    "mature sperm": [
+      "train"
+    ],
+    "medulloblastoma cell": [
+      "test_real"
+    ],
+    "melanocyte": [
+      "test_real"
+    ],
+    "melanocytes": [
+      "test_real"
+    ],
+    "melanoma cell": [
+      "test_real"
+    ],
+    "melanoma cells": [
+      "test_real"
+    ],
+    "memory b cell": [
+      "train"
+    ],
+    "mesenchymal stem cell": [
+      "val",
+      "test_real"
+    ],
+    "mesenchymal stem cell of the bone marrow": [
+      "train"
+    ],
+    "mesenchymal stromal cell": [
+      "train",
+      "test_real"
+    ],
+    "mesoderm progenitor": [
+      "test_real"
+    ],
+    "mesothelial cell": [
+      "test_real"
+    ],
+    "mesothelial cell from ascites": [
+      "train"
+    ],
+    "mesothelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "metastatic human prostate cancer cell": [
+      "test_real"
+    ],
+    "microglia": [
+      "train"
+    ],
+    "migratory cells": [
+      "train"
+    ],
+    "monoblast": [
+      "train"
+    ],
+    "monocyte": [
+      "val",
+      "test_real"
+    ],
+    "monocyte macrophage cell": [
+      "test_real"
+    ],
+    "mononuclear cell": [
+      "val",
+      "test_real"
+    ],
+    "motor neuron": [
+      "test_real"
+    ],
+    "mouse embryonic fibroblast cell": [
+      "train"
+    ],
+    "mouse mouse synkaryon": [
+      "train"
+    ],
+    "mouse primary cd4+ splenocytes": [
+      "val"
+    ],
+    "mp cell": [
+      "train"
+    ],
+    "mucoepidermoid carcinoma cell": [
+      "test_real"
+    ],
+    "mucosal epithelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "multiple myeloma cell": [
+      "test_real"
+    ],
+    "multipotent progenitor cell": [
+      "test_real"
+    ],
+    "muscle cells": [
+      "train"
+    ],
+    "mycelia": [
+      "val"
+    ],
+    "myeloid": [
+      "test_real"
+    ],
+    "myeloid cells": [
+      "train"
+    ],
+    "myoblast": [
+      "train"
+    ],
+    "myofibroblast": [
+      "test_real"
+    ],
+    "myotube": [
+      "test_real"
+    ],
+    "myotube cells": [
+      "val"
+    ],
+    "naive cd4 t cell": [
+      "test_real"
+    ],
+    "natural killer cell": [
+      "test_real"
+    ],
+    "natural killer t cell": [
+      "test_real"
+    ],
+    "nerve cells": [
+      "train"
+    ],
+    "neural cell": [
+      "train",
+      "test_real"
+    ],
+    "neural crest progenitor": [
+      "train"
+    ],
+    "neural stem cell": [
+      "train",
+      "test_real"
+    ],
+    "neural tissue": [
+      "test_real"
+    ],
+    "neuroblastoma cell": [
+      "test_real"
+    ],
+    "neuroblastoma cells": [
+      "test_real"
+    ],
+    "neuroendocrine carcinoma cell": [
+      "test_real"
+    ],
+    "neuroendocrine cell": [
+      "test_real"
+    ],
+    "neuron": [
+      "test_real"
+    ],
+    "neuronal progenitor": [
+      "test_real"
+    ],
+    "neutrophil": [
+      "test_real"
+    ],
+    "neutrophils": [
+      "test_real"
+    ],
+    "nk cell": [
+      "test_real"
+    ],
+    "npc": [
+      "test_real"
+    ],
+    "ocular melanocyte": [
+      "test_real"
+    ],
+    "ocular melanoma cells": [
+      "test_real"
+    ],
+    "olfactory receptor neuron precursor": [
+      "train"
+    ],
+    "oligodendrocytes": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "oral squamous cell carcinoma cell": [
+      "test_real"
+    ],
+    "organoid": [
+      "test_real"
+    ],
+    "organoids from tongue epithelium": [
+      "train"
+    ],
+    "osteoblast": [
+      "test_real"
+    ],
+    "osteoclast": [
+      "train"
+    ],
+    "osteoclast progenitor cell": [
+      "train"
+    ],
+    "osteoclasts": [
+      "train"
+    ],
+    "osteosarcoma cell": [
+      "test_real"
+    ],
+    "ovarian adenocarcinoma cell": [
+      "test_real"
+    ],
+    "ovarian cancer cell": [
+      "test_real"
+    ],
+    "pancreatic ductal adenocarcinoma cell": [
+      "test_real"
+    ],
+    "paneth cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "parthenogenetic blastocyst": [
+      "train"
+    ],
+    "pbmc": [
+      "test_real"
+    ],
+    "pericyte": [
+      "test_real"
+    ],
+    "peripheral blood mononuclear cell": [
+      "test_real"
+    ],
+    "peripheral blood mononuclear cells": [
+      "test_real"
+    ],
+    "peripheral mononuclear blood cell": [
+      "test_real"
+    ],
+    "peritoneal macrophage": [
+      "train"
+    ],
+    "photoreceptor cells": [
+      "val"
+    ],
+    "placental cell": [
+      "test_real"
+    ],
+    "plasmablast": [
+      "test_real"
+    ],
+    "plasmacytoid dendritic cell": [
+      "test_real"
+    ],
+    "platelet": [
+      "test_real"
+    ],
+    "pluripotent stem cell": [
+      "test_real"
+    ],
+    "pmn progenitor cell": [
+      "test_real"
+    ],
+    "podocyte": [
+      "test_real"
+    ],
+    "polychromatophil erythroblast": [
+      "test_real"
+    ],
+    "pre osteoclasts": [
+      "train"
+    ],
+    "preadipocyte": [
+      "train"
+    ],
+    "primary bone marrow cells": [
+      "val"
+    ],
+    "primary culture pericytes": [
+      "train"
+    ],
+    "primary human muscle stem cells 1": [
+      "val"
+    ],
+    "primary human skeletal muscle derived mesenchymal stromal cells 1": [
+      "train"
+    ],
+    "primary human skeletal muscle derived mesenchymal stromal cells 2": [
+      "train"
+    ],
+    "primary podocyte": [
+      "train"
+    ],
+    "primary t cell": [
+      "test_real"
+    ],
+    "primary tissue": [
+      "test_real"
+    ],
+    "primed escs": [
+      "test_real"
+    ],
+    "primodial germ cell like cells (pgclcs) derived from embryonic stem cells (escs)": [
+      "train"
+    ],
+    "primordial germ cell": [
+      "train"
+    ],
+    "prostate cancer cell": [
+      "test_real"
+    ],
+    "prostatic adenocarcinoma": [
+      "test_real"
+    ],
+    "prostatic epithelial cell": [
+      "test_real"
+    ],
+    "pulmonary artery adventitial fibroblast": [
+      "test_real"
+    ],
+    "purkinje cell": [
+      "val"
+    ],
+    "renal carcinoma cell": [
+      "test_real"
+    ],
+    "renal cortex tissue": [
+      "test_real"
+    ],
+    "renal epithelial cell": [
+      "test_real"
+    ],
+    "retinal ganglion cells": [
+      "val"
+    ],
+    "retinal pigment epithelial cell": [
+      "test_real"
+    ],
+    "retinal pigment epithelial cells": [
+      "val"
+    ],
+    "retinal pigment epithelium": [
+      "train"
+    ],
+    "retinal pigment epithelium cell": [
+      "test_real"
+    ],
+    "retinoblastoma cell": [
+      "test_real"
+    ],
+    "rhabdomyosarcoma cell": [
+      "test_real"
+    ],
+    "rubella virus resistant": [
+      "train"
+    ],
+    "salivary acinar cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "schwann cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sclc cell": [
+      "test_real"
+    ],
+    "sclc small cell lung cancer cell": [
+      "test_real"
+    ],
+    "sebocyte": [
+      "test_real"
+    ],
+    "secondary spermatocyte": [
+      "train"
+    ],
+    "sertoli cells": [
+      "val"
+    ],
+    "skeletal muscle cell": [
+      "val",
+      "test_real"
+    ],
+    "skin fibroblasts": [
+      "val"
+    ],
+    "small cell lung cancer cell": [
+      "test_real"
+    ],
+    "small granulosa cell": [
+      "train"
+    ],
+    "smooth muscle cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "specialized integrated cells": [
+      "train"
+    ],
+    "sperm": [
+      "test_real"
+    ],
+    "spermatocytes": [
+      "val"
+    ],
+    "spermatogonia": [
+      "val"
+    ],
+    "stomach cells": [
+      "train"
+    ],
+    "stromal cell": [
+      "train"
+    ],
+    "t cell": [
+      "val",
+      "test_real"
+    ],
+    "t follicular helper cell": [
+      "train",
+      "val"
+    ],
+    "t lymphocyte; tumor infiltrating lymphocyte (til)": [
+      "test_real"
+    ],
+    "taste receptor cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "tdtomato cd11c+ and cd11b+ dendritic cells": [
+      "train"
+    ],
+    "tdtomato+ cd11c+ and cd11b+ dendritic cells": [
+      "train"
+    ],
+    "th1 cell": [
+      "train"
+    ],
+    "th17": [
+      "val"
+    ],
+    "thp 1 cells": [
+      "test_real"
+    ],
+    "thp 1 macrophages": [
+      "test_real"
+    ],
+    "thp 1, monocyte": [
+      "train"
+    ],
+    "thymocytes": [
+      "train"
+    ],
+    "thyroid epithelial cell": [
+      "test_real"
+    ],
+    "tnbc cells": [
+      "test_real"
+    ],
+    "tonsillar lymphocytes": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "total white blood cells": [
+      "test_real"
+    ],
+    "trabecular meshwork cell": [
+      "test_real"
+    ],
+    "tracheal ciliated cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "trophoblast": [
+      "test_real"
+    ],
+    "tumor": [
+      "test_real"
+    ],
+    "umbrella cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "unknown": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "urothelial cells": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "uveal melanocyte": [
+      "test_real"
+    ],
+    "uveal melanoma cell": [
+      "test_real"
+    ],
+    "vascular smooth muscle cell": [
+      "test_real"
+    ],
+    "vitiligo melanocyte": [
+      "test_real"
+    ]
+  },
+  "organ": {
+    "adipose tissue": [
+      "test_real"
+    ],
+    "adrenal gland": [
+      "train"
+    ],
+    "anus": [
+      "test_real"
+    ],
+    "aorta": [
+      "test_real"
+    ],
+    "appendix": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "bile duct": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "biliary tract": [
+      "test_real"
+    ],
+    "bladder": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "blood": [
+      "train",
+      "test_real"
+    ],
+    "bone": [
+      "train",
+      "test_real"
+    ],
+    "bone marrow": [
+      "train",
+      "test_real"
+    ],
+    "brain": [
+      "train",
+      "test_real"
+    ],
+    "breast": [
+      "train",
+      "test_real"
+    ],
+    "cartilage": [
+      "train",
+      "val",
+      "test_real"
+    ],
+    "cerebral cortex": [
+      "test_real"
+    ],
+    "cervix": [
+      "train",
+      "test_real"
+    ],
+    "colon": [
+      "train",
+      "test_real"
+    ],
+    "colon; rectum": [
+      "test_real"
+    ],
+    "colorectal": [
+      "test_real"
+    ],
+    "duodenum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ear": [
+      "val"
+    ],
+    "endometrium": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "esophagus": [
+      "val",
+      "test_real"
+    ],
+    "eye": [
+      "val",
+      "test_real"
+    ],
+    "fallopian tube": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gallbladder": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gingiva": [
+      "test_real"
+    ],
+    "hand": [
+      "test_real"
+    ],
+    "head and neck region": [
+      "test_real"
+    ],
+    "heart": [
+      "train",
+      "test_real"
+    ],
+    "hippocampus": [
+      "test_real"
+    ],
+    "ileum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "intestine": [
+      "train"
+    ],
+    "jejunum": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "kidney": [
+      "train",
+      "test_real"
+    ],
+    "knee": [
+      "test_real"
+    ],
+    "larynx": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "liver": [
+      "train",
+      "test_real"
+    ],
+    "lung": [
+      "train",
+      "test_real"
+    ],
+    "lung; blood": [
+      "test_real"
+    ],
+    "lung; bronchi": [
+      "test_real"
+    ],
+    "lymph node": [
+      "test_real"
+    ],
+    "meninges": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mesentery": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mouth": [
+      "test_real"
+    ],
+    "muscle": [
+      "train",
+      "test_real"
+    ],
+    "n3 kethoxal (pds), in vitro": [
+      "test_real"
+    ],
+    "nasopharynx": [
+      "test_real"
+    ],
+    "organoid": [
+      "test_real"
+    ],
+    "oropharynx": [
+      "test_real"
+    ],
+    "ovaries": [
+      "val"
+    ],
+    "ovary": [
+      "test_real"
+    ],
+    "palate": [
+      "test_real"
+    ],
+    "pancreas": [
+      "train",
+      "test_real"
+    ],
+    "parathyroid": [
+      "train"
+    ],
+    "peripheral blood": [
+      "test_real"
+    ],
+    "peritoneum": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "pharynx": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pituitary": [
+      "train"
+    ],
+    "placenta": [
+      "train",
+      "test_real"
+    ],
+    "prostate": [
+      "train",
+      "test_real"
+    ],
+    "pulmonary artery": [
+      "test_real"
+    ],
+    "retina": [
+      "test_real"
+    ],
+    "salivary gland": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sebaceous gland": [
+      "test_real"
+    ],
+    "skeletal muscle": [
+      "test_real"
+    ],
+    "skin": [
+      "train",
+      "test_real"
+    ],
+    "small intestine": [
+      "test_real"
+    ],
+    "sperm": [
+      "test_real"
+    ],
+    "spinal cord": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "spleen": [
+      "train"
+    ],
+    "stomach": [
+      "train",
+      "test_real"
+    ],
+    "testes": [
+      "val"
+    ],
+    "testis": [
+      "test_real"
+    ],
+    "thymus": [
+      "train",
+      "test_real"
+    ],
+    "thyroid": [
+      "train",
+      "test_real"
+    ],
+    "tongue": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "tonsil": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "trachea": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "umbilical cord": [
+      "test_real"
+    ],
+    "umbilical vein": [
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "ureter": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urethra": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "uterus": [
+      "val",
+      "test_real"
+    ],
+    "uveal region": [
+      "test_real"
+    ],
+    "vasculature": [
+      "test_real"
+    ]
+  },
+  "disease": {
+    "acute chikungunya virus infection": [
+      "test_real"
+    ],
+    "acute cholecystitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "acute cystitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "acute monocytic leukemia": [
+      "test_real"
+    ],
+    "acute myeloid leukemia": [
+      "test_real"
+    ],
+    "addison's disease": [
+      "train"
+    ],
+    "adjacent to renal cell carcinoma": [
+      "test_real"
+    ],
+    "adrenocortical carcinoma": [
+      "train"
+    ],
+    "adult t cell leukemia": [
+      "test_real"
+    ],
+    "age related macular degeneration": [
+      "val"
+    ],
+    "alcohol use disorder": [
+      "test_real"
+    ],
+    "allergy": [
+      "test_real"
+    ],
+    "als/ftd": [
+      "test_real"
+    ],
+    "anal squamous cell carcinoma": [
+      "test_real"
+    ],
+    "appendicitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "astroblastoma": [
+      "test_real"
+    ],
+    "ataxia telangiectasia": [
+      "test_real"
+    ],
+    "barrett's esophagus": [
+      "val"
+    ],
+    "benign nevus": [
+      "test_real"
+    ],
+    "biliary tract cancer": [
+      "test_real"
+    ],
+    "bipolar disorder": [
+      "test_real"
+    ],
+    "brafv600e melanoma": [
+      "test_real"
+    ],
+    "breast cancer": [
+      "train",
+      "test_real"
+    ],
+    "breast cancer brain metastasis": [
+      "test_real"
+    ],
+    "breast ductal carcinoma": [
+      "test_real"
+    ],
+    "burkitt lymphoma": [
+      "test_real"
+    ],
+    "cancer associated fibroblasts prostate (caf)": [
+      "test_real"
+    ],
+    "cavernous hemangioma": [
+      "test_real"
+    ],
+    "celiac disease": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "central neurocytoma": [
+      "test_real"
+    ],
+    "cervical cancer": [
+      "test_real"
+    ],
+    "cervical carcinoma": [
+      "test_real"
+    ],
+    "cholangiocarcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "cholelithiasis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "chronic kidney disease": [
+      "train"
+    ],
+    "chronic myelogenous leukemia": [
+      "test_real"
+    ],
+    "chronic myeloid leukemia (cml)": [
+      "test_real"
+    ],
+    "chronic nonatrophic gastritis": [
+      "test_real"
+    ],
+    "cirrhosis": [
+      "train"
+    ],
+    "clear cell renal cell carcinoma": [
+      "test_real"
+    ],
+    "colon adenocarcinoma": [
+      "test_real"
+    ],
+    "colon cancer": [
+      "test_real"
+    ],
+    "colorectal cancer": [
+      "test_real"
+    ],
+    "colorectal carcinoma": [
+      "test_real"
+    ],
+    "control": [
+      "test_real"
+    ],
+    "covid 19": [
+      "test_real"
+    ],
+    "crohn's disease": [
+      "train"
+    ],
+    "cushing's syndrome": [
+      "train"
+    ],
+    "cutaneous nodular melanoma": [
+      "test_real"
+    ],
+    "cutaneous squamous cell carcinoma": [
+      "test_real"
+    ],
+    "diabetes mellitus": [
+      "train"
+    ],
+    "diffuse large b cell lymphoma": [
+      "test_real"
+    ],
+    "dilated cardiomyopathy": [
+      "test_real"
+    ],
+    "duodenal ulcer": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "dupuytren's disease": [
+      "test_real"
+    ],
+    "endometrial carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "endometrioid ovarian carcinoma (enoc)": [
+      "test_real"
+    ],
+    "endometriosis": [
+      "val"
+    ],
+    "endometriosis i/ii; infertility": [
+      "test_real"
+    ],
+    "epithelial cell": [
+      "test_real"
+    ],
+    "erythroleukemia": [
+      "test_real"
+    ],
+    "escc": [
+      "test_real"
+    ],
+    "esophageal squamous cell carcinoma": [
+      "val"
+    ],
+    "ewing sarcoma": [
+      "test_real"
+    ],
+    "fallopian tube carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "fatty liver": [
+      "test_real"
+    ],
+    "gastric cancer": [
+      "test_real"
+    ],
+    "gastric signet ring cell carcinoma": [
+      "test_real"
+    ],
+    "gastrointestinal stromal tumor": [
+      "test_real"
+    ],
+    "generalized pustular psoriasis": [
+      "test_real"
+    ],
+    "glaucoma": [
+      "val"
+    ],
+    "glioblastoma": [
+      "train",
+      "test_real"
+    ],
+    "glioblastoma multiforme": [
+      "test_real"
+    ],
+    "gtf2i knockout model": [
+      "test_real"
+    ],
+    "hashimoto's thyroiditis": [
+      "train"
+    ],
+    "hbv infection": [
+      "test_real"
+    ],
+    "head and neck cancer": [
+      "test_real"
+    ],
+    "head and neck squamous cell carcinoma": [
+      "test_real"
+    ],
+    "head and neck squamous cell carcinoma (hnscc)": [
+      "test_real"
+    ],
+    "healthy": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "hepatoblastoma": [
+      "test_real"
+    ],
+    "hepatocellular carcinoma": [
+      "train",
+      "test_real"
+    ],
+    "high grade b cell lymphoma": [
+      "test_real"
+    ],
+    "high grade serous ovarian carcinoma": [
+      "test_real"
+    ],
+    "hyperparathyroidism": [
+      "train"
+    ],
+    "idiopathic pulmonary arterial hypertension": [
+      "test_real"
+    ],
+    "idiopathic pulmonary fibrosis": [
+      "test_real"
+    ],
+    "igg4 related disease": [
+      "test_real"
+    ],
+    "infectious ileitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "influenza": [
+      "test_real"
+    ],
+    "influenza a virus infection": [
+      "test_real"
+    ],
+    "jejunitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "knee osteoarthritis": [
+      "test_real"
+    ],
+    "laryngeal squamous cell carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "laryngitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "leukemia": [
+      "train",
+      "test_real"
+    ],
+    "li fraumeni syndrome": [
+      "test_real"
+    ],
+    "listeria monocytogenes infection": [
+      "test_real"
+    ],
+    "liver cancer": [
+      "test_real"
+    ],
+    "lung adenocarcinoma": [
+      "test_real"
+    ],
+    "lung cancer": [
+      "train",
+      "test_real"
+    ],
+    "lymphoma": [
+      "train"
+    ],
+    "lynch syndrome": [
+      "test_real"
+    ],
+    "malaria (plasmodium falciparum infection)": [
+      "test_real"
+    ],
+    "malignant pleural mesothelioma": [
+      "test_real"
+    ],
+    "mammary adenocarcinoma": [
+      "test_real"
+    ],
+    "medulloblastoma": [
+      "test_real"
+    ],
+    "melanoma": [
+      "test_real"
+    ],
+    "meningitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "metastatic castration resistant prostate cancer": [
+      "test_real"
+    ],
+    "mucoepidermoid carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "multiple myeloma": [
+      "test_real"
+    ],
+    "myelodysplastic syndrome": [
+      "test_real"
+    ],
+    "myeloid leukemia": [
+      "test_real"
+    ],
+    "myocardial infarction": [
+      "train"
+    ],
+    "nasopharyngeal carcinoma": [
+      "test_real"
+    ],
+    "nasopharyngeal carcinoma (npc)": [
+      "test_real"
+    ],
+    "neuroblastoma": [
+      "test_real"
+    ],
+    "neuroendocrine esophageal carcinoma": [
+      "test_real"
+    ],
+    "neuroendocrine prostate cancer": [
+      "test_real"
+    ],
+    "non small cell lung cancer": [
+      "test_real"
+    ],
+    "non small cell lung carcinoma": [
+      "test_real"
+    ],
+    "nras metastatic melanoma": [
+      "test_real"
+    ],
+    "oral lichen planus": [
+      "test_real"
+    ],
+    "oral squamous cell carcinoma": [
+      "test_real"
+    ],
+    "osteoarthritis": [
+      "val",
+      "test_real"
+    ],
+    "osteoarthritis knee": [
+      "test_real"
+    ],
+    "osteosarcoma": [
+      "test_real"
+    ],
+    "ovarian adenocarcinoma": [
+      "test_real"
+    ],
+    "ovarian cancer": [
+      "test_real"
+    ],
+    "pancreatic adenocarcinoma": [
+      "train"
+    ],
+    "pancreatic ductal adenocarcinoma": [
+      "test_real"
+    ],
+    "pancreatic neuroendocrine tumor": [
+      "test_real"
+    ],
+    "papillary thyroid carcinoma": [
+      "train"
+    ],
+    "parkinson's disease": [
+      "test_real"
+    ],
+    "peritoneal mesothelioma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "peritonitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pharyngitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pituitary adenoma": [
+      "train"
+    ],
+    "plasmodium vivax malaria": [
+      "test_real"
+    ],
+    "polycystic ovary syndrome": [
+      "val"
+    ],
+    "polycythemia vera": [
+      "test_real"
+    ],
+    "preeclampsia": [
+      "train"
+    ],
+    "prostate cancer": [
+      "train",
+      "test_real"
+    ],
+    "retinitis pigmentosa": [
+      "val"
+    ],
+    "retinoblastoma": [
+      "test_real"
+    ],
+    "rhabdomyosarcoma": [
+      "test_real"
+    ],
+    "rheumatoid arthritis": [
+      "test_real"
+    ],
+    "sars cov 2": [
+      "test_real"
+    ],
+    "sclc small cell lung cancer cell": [
+      "test_real"
+    ],
+    "sensorineural hearing loss": [
+      "val"
+    ],
+    "sepsis": [
+      "test_real"
+    ],
+    "sessile serrated adenoma/polyp": [
+      "test_real"
+    ],
+    "sessile serrated polyp": [
+      "test_real"
+    ],
+    "severe dengue": [
+      "test_real"
+    ],
+    "sigmoid colon carcinoma": [
+      "test_real"
+    ],
+    "small cell lung cancer": [
+      "test_real"
+    ],
+    "spinal cord injury": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "testicular germ cell tumor": [
+      "val"
+    ],
+    "thrombocytopenia microcephaly syndrome": [
+      "test_real"
+    ],
+    "thymoma": [
+      "train"
+    ],
+    "thyroid cancer": [
+      "test_real"
+    ],
+    "tonsillitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "toxoplasma gondii infection": [
+      "test_real"
+    ],
+    "tracheitis": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "triple negative breast cancer": [
+      "test_real"
+    ],
+    "ulcerative colitis": [
+      "train"
+    ],
+    "undifferentiated embryonic sarcoma of the liver": [
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "ureteral carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urethral carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urothelial carcinoma": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "uveal melanoma": [
+      "test_real"
+    ],
+    "vitiligo": [
+      "test_real"
+    ]
+  },
+  "treatment": {
+    "1 µm 1a": [
+      "test_real"
+    ],
+    "1% o2 hypoxia": [
+      "test_real"
+    ],
+    "100 nm dabrafenib; 10 nm trametinib; ectopic pik3ca h1047r overexpression": [
+      "test_real"
+    ],
+    "3 nalm6 rechallenges": [
+      "test_real"
+    ],
+    "5 fluorouracil": [
+      "train"
+    ],
+    "9 oxo odas (0 µm)": [
+      "test_real"
+    ],
+    "a3b knockdown": [
+      "test_real"
+    ],
+    "a771726": [
+      "test_real"
+    ],
+    "acetalax": [
+      "test_real"
+    ],
+    "adherent culture": [
+      "test_real"
+    ],
+    "aimp1 knockdown": [
+      "test_real"
+    ],
+    "alc1 sgrna (in brca1 ko background)": [
+      "test_real"
+    ],
+    "amiloride": [
+      "test_real"
+    ],
+    "amoxicillin": [
+      "train"
+    ],
+    "anti cd3 stimulation": [
+      "test_real"
+    ],
+    "anti ctla4; anti pd1": [
+      "test_real"
+    ],
+    "anti pd1": [
+      "test_real"
+    ],
+    "anti vegf intravitreal injection": [
+      "val"
+    ],
+    "apg (200)": [
+      "test_real"
+    ],
+    "apl 16 5": [
+      "test_real"
+    ],
+    "appendectomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "arthroscopic debridement": [
+      "val"
+    ],
+    "berberine chloride": [
+      "test_real"
+    ],
+    "bglf2 containing exosomes; ebv infection (bglf2 ko)": [
+      "test_real"
+    ],
+    "biliary drainage": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "biotinylated mir 16 transfection": [
+      "test_real"
+    ],
+    "braf inhibitor": [
+      "test_real"
+    ],
+    "broad spectrum antibiotics": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "camptothecin (cpt)": [
+      "test_real"
+    ],
+    "candida albicans": [
+      "test_real"
+    ],
+    "card11 k344del": [
+      "test_real"
+    ],
+    "ccg 222740": [
+      "test_real"
+    ],
+    "cd248 sirna": [
+      "test_real"
+    ],
+    "cd40l": [
+      "test_real"
+    ],
+    "cdk8/19 inhibitor; p38 inhibitor; jnk inhibitor": [
+      "test_real"
+    ],
+    "celastrol": [
+      "test_real"
+    ],
+    "cfasn": [
+      "test_real"
+    ],
+    "cholecystectomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "circipo7 sirna knockdown": [
+      "test_real"
+    ],
+    "cisplatin": [
+      "train"
+    ],
+    "cisplatin (cddp)": [
+      "test_real"
+    ],
+    "co culture with wildtype mdf": [
+      "test_real"
+    ],
+    "cochlear implant": [
+      "val"
+    ],
+    "coculture with pbs treated fhc cells": [
+      "test_real"
+    ],
+    "collagenase d; matrigel collagen i 3d culture": [
+      "test_real"
+    ],
+    "collagenase i digestion": [
+      "test_real"
+    ],
+    "control": [
+      "test_real"
+    ],
+    "control (ehf)": [
+      "test_real"
+    ],
+    "control (no stimulation)": [
+      "test_real"
+    ],
+    "control (sh ctrl)": [
+      "test_real"
+    ],
+    "control media": [
+      "test_real"
+    ],
+    "control shrna": [
+      "test_real"
+    ],
+    "control sirna": [
+      "test_real"
+    ],
+    "control sirna oligo": [
+      "test_real"
+    ],
+    "corin": [
+      "test_real"
+    ],
+    "cwc22 dsirna": [
+      "test_real"
+    ],
+    "cycloheximide": [
+      "test_real"
+    ],
+    "d cp21 + s4u": [
+      "test_real"
+    ],
+    "d2hg": [
+      "test_real"
+    ],
+    "devitalized synoviocyte matrix; physioxic 5% o2": [
+      "test_real"
+    ],
+    "dexamethasone": [
+      "train"
+    ],
+    "dexamethasone; abiraterone": [
+      "test_real"
+    ],
+    "dmso": [
+      "test_real"
+    ],
+    "dmso (vehicle)": [
+      "test_real"
+    ],
+    "dmso 10 μm; high growth factor (high gf) media": [
+      "test_real"
+    ],
+    "dox + dapt": [
+      "test_real"
+    ],
+    "doxorubicin": [
+      "train"
+    ],
+    "doxycycline": [
+      "test_real"
+    ],
+    "e2; p4; camp; prl; dapt; dbz; iwp 2; xav939; y 27632; chir99021; r spondin 1 deprivation": [
+      "test_real"
+    ],
+    "ebf1 q196p (mutant ebf1) overexpression": [
+      "test_real"
+    ],
+    "empty vector": [
+      "test_real"
+    ],
+    "empty vector cas9 (control)": [
+      "test_real"
+    ],
+    "endoscopic mucosal resection": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "enti 4 (4 µm)": [
+      "test_real"
+    ],
+    "epz 6438; dmso; doxycycline": [
+      "test_real"
+    ],
+    "ercp with stenting": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "erlotinib": [
+      "train"
+    ],
+    "esophagectomy": [
+      "val"
+    ],
+    "ethanol vehicle": [
+      "test_real"
+    ],
+    "etoposide 100 µm": [
+      "test_real"
+    ],
+    "etoposide; verteporfin": [
+      "test_real"
+    ],
+    "f24": [
+      "test_real"
+    ],
+    "fhnd008": [
+      "test_real"
+    ],
+    "flag mock transfection": [
+      "test_real"
+    ],
+    "gdf6 overexpression": [
+      "test_real"
+    ],
+    "gefitinib": [
+      "test_real"
+    ],
+    "gentamicin": [
+      "train"
+    ],
+    "gli2 targeting sirna": [
+      "test_real"
+    ],
+    "glis1 shrna": [
+      "test_real"
+    ],
+    "gluten free diet": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "gqicombi": [
+      "test_real"
+    ],
+    "grk2 knockout": [
+      "test_real"
+    ],
+    "gsk j2": [
+      "test_real"
+    ],
+    "gtf2i knockout": [
+      "test_real"
+    ],
+    "hormonal therapy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "hydroxychloroquine": [
+      "test_real"
+    ],
+    "hypothermic oxygenated machine perfusion": [
+      "test_real"
+    ],
+    "hypoxia": [
+      "test_real"
+    ],
+    "hysterectomy": [
+      "val"
+    ],
+    "hysteroscopic curettage": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ifn": [
+      "test_real"
+    ],
+    "ifn λ": [
+      "test_real"
+    ],
+    "il 13 stimulation": [
+      "test_real"
+    ],
+    "il 4": [
+      "test_real"
+    ],
+    "il 4 ; anti cd40 ; arctigenin": [
+      "test_real"
+    ],
+    "imatinib": [
+      "train"
+    ],
+    "immune checkpoint blockade": [
+      "test_real"
+    ],
+    "imrt radiotherapy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "in vitro fertilization": [
+      "val"
+    ],
+    "intravesical bcg": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "irradiation": [
+      "train"
+    ],
+    "isochronic culture": [
+      "test_real"
+    ],
+    "jg231": [
+      "test_real"
+    ],
+    "jq1": [
+      "test_real"
+    ],
+    "keratinocyte conditioned media (shnt)": [
+      "test_real"
+    ],
+    "laparoscopic ovarian cystectomy": [
+      "val"
+    ],
+    "laryngectomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "lenti crispr vhl knockout": [
+      "test_real"
+    ],
+    "leptin 0.25 ng/ml": [
+      "test_real"
+    ],
+    "lghf (100 µm oleic acid), fasting–refeeding cycles": [
+      "test_real"
+    ],
+    "listeria monocytogenes infection": [
+      "test_real"
+    ],
+    "lithium": [
+      "test_real"
+    ],
+    "llc1 conditioned medium": [
+      "test_real"
+    ],
+    "lncrna overexpression": [
+      "test_real"
+    ],
+    "lps": [
+      "test_real"
+    ],
+    "lurbinectedin 10xic50": [
+      "test_real"
+    ],
+    "lysophosphatidic acid (lpa)": [
+      "test_real"
+    ],
+    "machine perfusion control": [
+      "test_real"
+    ],
+    "mango consumption": [
+      "test_real"
+    ],
+    "mapk inhibitors (brafi, meki)": [
+      "test_real"
+    ],
+    "mapkap1 deletion": [
+      "test_real"
+    ],
+    "mcm5 overexpression": [
+      "test_real"
+    ],
+    "mdl 28170": [
+      "test_real"
+    ],
+    "meningitis antimicrobial therapy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mesenchymal stem cell cartilage regeneration": [
+      "val"
+    ],
+    "methotrexate": [
+      "train"
+    ],
+    "mir 592 mimics transfection": [
+      "test_real"
+    ],
+    "mitomycin intravesical": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ml792; ethanol": [
+      "test_real"
+    ],
+    "mock": [
+      "test_real"
+    ],
+    "mock transfection": [
+      "test_real"
+    ],
+    "ms023": [
+      "test_real"
+    ],
+    "myc t58a overexpression": [
+      "test_real"
+    ],
+    "n3 kethoxal (pds), in vitro": [
+      "test_real"
+    ],
+    "nbsa": [
+      "test_real"
+    ],
+    "nc1": [
+      "test_real"
+    ],
+    "nivolumab; vidutolimod": [
+      "test_real"
+    ],
+    "no infection (control)": [
+      "test_real"
+    ],
+    "no tofacitinib; th0 activation": [
+      "test_real"
+    ],
+    "no treatment": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "no treatment (control)": [
+      "test_real"
+    ],
+    "no treatment (nonstressed)": [
+      "test_real"
+    ],
+    "nocodazole": [
+      "test_real"
+    ],
+    "non targeting sgrna electroporation": [
+      "test_real"
+    ],
+    "non targeting shrna; untreated": [
+      "test_real"
+    ],
+    "non targeting sirna; pik3ca h1047r vector; vehicle": [
+      "test_real"
+    ],
+    "non transduced (control)": [
+      "test_real"
+    ],
+    "norna (control)": [
+      "test_real"
+    ],
+    "ns1stop mutant infection": [
+      "test_real"
+    ],
+    "nst 628": [
+      "test_real"
+    ],
+    "nv2 competition": [
+      "test_real"
+    ],
+    "osimertinib 10 mg/kg": [
+      "test_real"
+    ],
+    "oxygen 20%": [
+      "test_real"
+    ],
+    "oxytocin 100 nm": [
+      "test_real"
+    ],
+    "paclitaxel": [
+      "train"
+    ],
+    "palbociclib (combination of cdk4/6 and mek inhibitors)": [
+      "test_real"
+    ],
+    "pbabe junb transduction; puromycin selection": [
+      "test_real"
+    ],
+    "pbs": [
+      "test_real"
+    ],
+    "pbs control": [
+      "test_real"
+    ],
+    "pcdna3 circsmarca5 overexpression; untreated": [
+      "test_real"
+    ],
+    "pdxk knockout": [
+      "test_real"
+    ],
+    "pectolinarigenin": [
+      "test_real"
+    ],
+    "peritoneal lavage": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pex5 targeting sirna": [
+      "test_real"
+    ],
+    "pgc 1a ad transfection": [
+      "test_real"
+    ],
+    "photodynamic therapy": [
+      "val"
+    ],
+    "placebo": [
+      "test_real"
+    ],
+    "plasmodium falciparum infected red blood cells (irbcs); no tnf": [
+      "test_real"
+    ],
+    "platinum based chemotherapy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pp enrichment": [
+      "test_real"
+    ],
+    "prime editing": [
+      "test_real"
+    ],
+    "proton pump inhibitor therapy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pten knockout": [
+      "test_real"
+    ],
+    "rest overexpression": [
+      "test_real"
+    ],
+    "restimulation with cd19 k562; control culture": [
+      "test_real"
+    ],
+    "rhtfam; buffer": [
+      "test_real"
+    ],
+    "rocaglamide a": [
+      "test_real"
+    ],
+    "rrsv infection": [
+      "test_real"
+    ],
+    "rs2280381 region knockout (crispr cas9)": [
+      "test_real"
+    ],
+    "runx2 plasmid transfection": [
+      "test_real"
+    ],
+    "s4u labeling; chemical treatment": [
+      "test_real"
+    ],
+    "saline": [
+      "test_real"
+    ],
+    "sall4 knockdown": [
+      "test_real"
+    ],
+    "salpingectomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sars cov 2 infection": [
+      "test_real"
+    ],
+    "scramble": [
+      "test_real"
+    ],
+    "scramble control": [
+      "test_real"
+    ],
+    "scramble shrna control (scr control)": [
+      "test_real"
+    ],
+    "scramble sirna (control)": [
+      "test_real"
+    ],
+    "scrambled sirna": [
+      "test_real"
+    ],
+    "sequential constricted migration": [
+      "test_real"
+    ],
+    "serum starvation; sgmir5089": [
+      "test_real"
+    ],
+    "setbp1 g870s; delta hcf1": [
+      "test_real"
+    ],
+    "sgbrpf1 expression": [
+      "test_real"
+    ],
+    "sgc cbp30": [
+      "test_real"
+    ],
+    "shcontrol infection (control)": [
+      "test_real"
+    ],
+    "shikonin": [
+      "test_real"
+    ],
+    "shrna luciferase": [
+      "test_real"
+    ],
+    "shrna scrambled control (shscr)": [
+      "test_real"
+    ],
+    "shrna tincr knockdown (shtincr)": [
+      "test_real"
+    ],
+    "shscrml control": [
+      "test_real"
+    ],
+    "shtpcn2 knockdown": [
+      "test_real"
+    ],
+    "si alyref": [
+      "test_real"
+    ],
+    "sicontrol": [
+      "test_real"
+    ],
+    "sictrl": [
+      "test_real"
+    ],
+    "sier; hormone deprivation": [
+      "test_real"
+    ],
+    "sinc": [
+      "test_real"
+    ],
+    "sirna against lad1": [
+      "test_real"
+    ],
+    "sirna rn7sk; pladienolide b; 4su labeling": [
+      "test_real"
+    ],
+    "sirna scr": [
+      "test_real"
+    ],
+    "sirna upat": [
+      "test_real"
+    ],
+    "sirt7 knockout": [
+      "test_real"
+    ],
+    "smarca4/smarca2 inhibition": [
+      "test_real"
+    ],
+    "snca knockout crispr ko": [
+      "test_real"
+    ],
+    "soft fibronectin coated hydrogel matrix": [
+      "test_real"
+    ],
+    "sorafenib": [
+      "train"
+    ],
+    "spinal decompression surgery": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "srebf1 specific sirna transfection": [
+      "test_real"
+    ],
+    "static condition (0 dyn/cm^2)": [
+      "test_real"
+    ],
+    "sting knockout; tl8 10 µg/ml; dmso": [
+      "test_real"
+    ],
+    "syncrip overexpression; cisplatin 40 µm": [
+      "test_real"
+    ],
+    "t cell coculture": [
+      "test_real"
+    ],
+    "tamoxifen": [
+      "train"
+    ],
+    "tec differentiation hoxa3 foxn1": [
+      "test_real"
+    ],
+    "testosterone replacement therapy": [
+      "val"
+    ],
+    "tgf b1": [
+      "test_real"
+    ],
+    "tnf α": [
+      "test_real"
+    ],
+    "tonsillectomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "toxoplasma gondii rh strain infection": [
+      "test_real"
+    ],
+    "tracheostomy": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "transurethral resection": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "transwell selection": [
+      "test_real"
+    ],
+    "trastuzumab; matrigel 5%": [
+      "test_real"
+    ],
+    "ttfields": [
+      "test_real"
+    ],
+    "u0126; pdgf 10 ng/ml": [
+      "test_real"
+    ],
+    "ulixertinib": [
+      "test_real"
+    ],
+    "ultimatrix": [
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "ureteral stenting": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "urethroplasty": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "uv c crosslinking; anti flag immunoprecipitation": [
+      "test_real"
+    ],
+    "vehicle": [
+      "test_real"
+    ],
+    "vehicle (control)": [
+      "test_real"
+    ],
+    "vemurafenib": [
+      "test_real"
+    ],
+    "vemurafenib; acalabrutinib": [
+      "test_real"
+    ],
+    "vemurafenib; cobimetinib; egf": [
+      "test_real"
+    ],
+    "ythdf1 knockdown": [
+      "test_real"
+    ]
+  },
+  "treatment_time": {
+    "0 hours": [
+      "test_real"
+    ],
+    "0h pretreatment": [
+      "test_real"
+    ],
+    "1 day post infection": [
+      "test_real"
+    ],
+    "1 week": [
+      "train"
+    ],
+    "1 year": [
+      "train"
+    ],
+    "1 µm 6 h": [
+      "test_real"
+    ],
+    "12 hours": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "12 months": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "14 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "16 hours": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "18 hours post treatment": [
+      "test_real"
+    ],
+    "2 h": [
+      "test_real"
+    ],
+    "2 months": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "2 weeks": [
+      "val"
+    ],
+    "21 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "24 hours": [
+      "train",
+      "test_real"
+    ],
+    "24 hours on treatment": [
+      "test_real"
+    ],
+    "24 hours on treatment; 6 hours on treatment": [
+      "test_real"
+    ],
+    "24 hours post treatment": [
+      "test_real"
+    ],
+    "24h on treatment": [
+      "test_real"
+    ],
+    "28 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "3 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "3 days on treatment": [
+      "test_real"
+    ],
+    "3 days on treatment; 3 days on treatment; 3 days on treatment": [
+      "test_real"
+    ],
+    "3 hours on treatment": [
+      "test_real"
+    ],
+    "3 months": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "360 minutes on treatment": [
+      "test_real"
+    ],
+    "4 days": [
+      "test_real"
+    ],
+    "4 hours": [
+      "test_real"
+    ],
+    "48 hours": [
+      "train"
+    ],
+    "48 hours on treatment": [
+      "test_real"
+    ],
+    "4h post treatment": [
+      "test_real"
+    ],
+    "6 days": [
+      "test_real"
+    ],
+    "6 days on treatment": [
+      "test_real"
+    ],
+    "6 hours": [
+      "test_real"
+    ],
+    "6 hours on treatment": [
+      "test_real"
+    ],
+    "6 hours post treatment": [
+      "test_real"
+    ],
+    "6 months": [
+      "val"
+    ],
+    "7 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "7 days on treatment": [
+      "test_real"
+    ],
+    "72 hours": [
+      "val",
+      "test_real"
+    ],
+    "72 hours on treatment": [
+      "test_real"
+    ],
+    "72 hr": [
+      "test_real"
+    ],
+    "8 days post treatment; 48 hours on treatment": [
+      "test_real"
+    ],
+    "8 hours": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "9 months": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "96 hours on treatment": [
+      "test_real"
+    ],
+    "baseline": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "cisplatin resistant, gcb subtype": [
+      "test_real"
+    ],
+    "cycle 1 day 1": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "day 12 of culture": [
+      "test_real"
+    ],
+    "day 9": [
+      "test_real"
+    ],
+    "day4": [
+      "test_real"
+    ],
+    "end of treatment": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "follow up 30 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "follow up 90 days": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "normoglycemia (5.5 mm), 2.5 µm 72 h": [
+      "test_real"
+    ],
+    "on treatment": [
+      "train",
+      "test_real"
+    ],
+    "on treatment (0h)": [
+      "test_real"
+    ],
+    "on treatment (24h vem+cobimetinib, then +0.5h post egf)": [
+      "test_real"
+    ],
+    "on treatment (24h)": [
+      "test_real"
+    ],
+    "on treatment (2h)": [
+      "test_real"
+    ],
+    "on treatment (3 days)": [
+      "test_real"
+    ],
+    "on treatment (30–45 minutes)": [
+      "test_real"
+    ],
+    "on treatment (48 hours)": [
+      "test_real"
+    ],
+    "on treatment (48h)": [
+      "test_real"
+    ],
+    "on treatment (6 hours)": [
+      "test_real"
+    ],
+    "on treatment (6h)": [
+      "test_real"
+    ],
+    "on treatment (72h)": [
+      "test_real"
+    ],
+    "on treatment (8h)": [
+      "test_real"
+    ],
+    "on treatment (collagenase d, 1 hr)": [
+      "test_real"
+    ],
+    "on treatment (t0)": [
+      "test_real"
+    ],
+    "on treatment 1 day": [
+      "test_real"
+    ],
+    "on treatment 1 hour": [
+      "test_real"
+    ],
+    "on treatment 10 days": [
+      "test_real"
+    ],
+    "on treatment 14 dpi": [
+      "test_real"
+    ],
+    "on treatment 16 hours": [
+      "test_real"
+    ],
+    "on treatment 24 h": [
+      "test_real"
+    ],
+    "on treatment 24 hours": [
+      "test_real"
+    ],
+    "on treatment 4 hours": [
+      "test_real"
+    ],
+    "on treatment 48 h": [
+      "test_real"
+    ],
+    "on treatment 48 hours": [
+      "test_real"
+    ],
+    "on treatment 4h": [
+      "test_real"
+    ],
+    "on treatment 5 days": [
+      "test_real"
+    ],
+    "on treatment 6 days": [
+      "test_real"
+    ],
+    "on treatment 6 hours": [
+      "test_real"
+    ],
+    "on treatment 7 days": [
+      "test_real"
+    ],
+    "on treatment 72 h": [
+      "test_real"
+    ],
+    "on treatment 72 hours": [
+      "test_real"
+    ],
+    "on treatment 72h": [
+      "test_real"
+    ],
+    "on treatment 8 hours": [
+      "test_real"
+    ],
+    "on treatment 8h": [
+      "test_real"
+    ],
+    "on treatment day 20": [
+      "test_real"
+    ],
+    "on treatment: day 2": [
+      "test_real"
+    ],
+    "post operative day 10": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "post operative day 3": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "post treatment": [
+      "train",
+      "test_real"
+    ],
+    "pre": [
+      "test_real"
+    ],
+    "pre operative": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "pre treatment": [
+      "train",
+      "test_real"
+    ],
+    "pre treatment (0 min)": [
+      "test_real"
+    ],
+    "relapse": [
+      "train"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "response": {
+    "no treatment": [
+      "test_real"
+    ],
+    "progressive": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "stable": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "success": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "age": {
+    "0 y": [
+      "val"
+    ],
+    "00 year": [
+      "train"
+    ],
+    "00 years": [
+      "train"
+    ],
+    "03 y": [
+      "train"
+    ],
+    "06 y": [
+      "val"
+    ],
+    "1 y": [
+      "train"
+    ],
+    "1 year": [
+      "train"
+    ],
+    "1 years": [
+      "test_real"
+    ],
+    "1 yo": [
+      "train"
+    ],
+    "10 weeks 6 days": [
+      "test_real"
+    ],
+    "10 years": [
+      "train",
+      "test_real"
+    ],
+    "11 years": [
+      "test_real"
+    ],
+    "12 years": [
+      "test_real"
+    ],
+    "13 y": [
+      "train"
+    ],
+    "13y": [
+      "val"
+    ],
+    "14 years": [
+      "train",
+      "test_real"
+    ],
+    "14 yo": [
+      "train"
+    ],
+    "15 y": [
+      "train"
+    ],
+    "15y": [
+      "train"
+    ],
+    "16 y": [
+      "val"
+    ],
+    "18 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "19 years": [
+      "train"
+    ],
+    "1year": [
+      "train"
+    ],
+    "2 y": [
+      "train"
+    ],
+    "2 years": [
+      "test_real"
+    ],
+    "2 yo": [
+      "train"
+    ],
+    "20 y": [
+      "train"
+    ],
+    "20y": [
+      "train"
+    ],
+    "21 60 years": [
+      "test_real"
+    ],
+    "21 weeks": [
+      "test_real"
+    ],
+    "21 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "22 weeks": [
+      "test_real"
+    ],
+    "23 y": [
+      "train"
+    ],
+    "23 years": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "23y": [
+      "train"
+    ],
+    "25 days": [
+      "test_real"
+    ],
+    "25 y": [
+      "train"
+    ],
+    "26 y": [
+      "train"
+    ],
+    "26 years": [
+      "val"
+    ],
+    "27 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "28 years": [
+      "train"
+    ],
+    "28 yo": [
+      "train"
+    ],
+    "29 y": [
+      "train"
+    ],
+    "2y": [
+      "val"
+    ],
+    "3 months": [
+      "test_real"
+    ],
+    "3 y": [
+      "train"
+    ],
+    "3 years": [
+      "train"
+    ],
+    "30 years": [
+      "train"
+    ],
+    "31 y": [
+      "train"
+    ],
+    "31 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "32 years": [
+      "test_real"
+    ],
+    "32 yo": [
+      "train"
+    ],
+    "33 y": [
+      "train"
+    ],
+    "33 years": [
+      "test_real"
+    ],
+    "34 years": [
+      "train",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "35 years": [
+      "train"
+    ],
+    "36 y": [
+      "train"
+    ],
+    "36 years": [
+      "train",
+      "val"
+    ],
+    "37 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "37 years, 36 years, 38 years": [
+      "test_real"
+    ],
+    "38 years": [
+      "test_real"
+    ],
+    "39 years": [
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "4 years": [
+      "train"
+    ],
+    "40 years": [
+      "train"
+    ],
+    "41 y": [
+      "val"
+    ],
+    "41 years": [
+      "train"
+    ],
+    "42 y": [
+      "val"
+    ],
+    "42 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "43 y": [
+      "train"
+    ],
+    "44 years": [
+      "train",
+      "test_real"
+    ],
+    "45 y": [
+      "val"
+    ],
+    "45 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "47": [
+      "train"
+    ],
+    "47 years": [
+      "test_real"
+    ],
+    "48 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "49 years": [
+      "test_real"
+    ],
+    "4y": [
+      "train"
+    ],
+    "5 years": [
+      "train",
+      "test_real"
+    ],
+    "50 years": [
+      "train",
+      "test_real"
+    ],
+    "51 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "51y": [
+      "train"
+    ],
+    "53 years": [
+      "test_real"
+    ],
+    "54 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "55 years": [
+      "train",
+      "test_real"
+    ],
+    "57 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "5y": [
+      "train"
+    ],
+    "6 years": [
+      "val",
+      "test_real"
+    ],
+    "60 y": [
+      "val"
+    ],
+    "60 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "61 years": [
+      "test_real"
+    ],
+    "62 y": [
+      "val"
+    ],
+    "62 years": [
+      "train",
+      "test_real"
+    ],
+    "62y": [
+      "train"
+    ],
+    "63 y": [
+      "train"
+    ],
+    "63 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "64 years": [
+      "test_real"
+    ],
+    "65 years": [
+      "test_real"
+    ],
+    "66 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "67 y": [
+      "train"
+    ],
+    "67 years": [
+      "train",
+      "test_real"
+    ],
+    "69 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "6y": [
+      "train"
+    ],
+    "7 y": [
+      "train"
+    ],
+    "7 years": [
+      "train"
+    ],
+    "70 y": [
+      "train"
+    ],
+    "70y": [
+      "val"
+    ],
+    "71 y": [
+      "train"
+    ],
+    "71 years": [
+      "test_real"
+    ],
+    "72 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "73 years": [
+      "test_real"
+    ],
+    "74 y": [
+      "train"
+    ],
+    "74 years": [
+      "test_real"
+    ],
+    "75 days": [
+      "test_real"
+    ],
+    "75 y": [
+      "val"
+    ],
+    "75 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "76yo": [
+      "train"
+    ],
+    "8 years": [
+      "train"
+    ],
+    "80 years": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "83 y": [
+      "val"
+    ],
+    "85 years": [
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "86 yo": [
+      "train"
+    ],
+    "87y": [
+      "train"
+    ],
+    "88 y": [
+      "train"
+    ],
+    "88 yo": [
+      "val"
+    ],
+    "91 y": [
+      "val"
+    ],
+    "91 years": [
+      "test_real"
+    ],
+    "9y": [
+      "train"
+    ],
+    "adult": [
+      "test_real"
+    ],
+    "aged": [
+      "test_real"
+    ],
+    "born in 1982": [
+      "train"
+    ],
+    "embryo": [
+      "test_real"
+    ],
+    "fetal": [
+      "test_real"
+    ],
+    "juvenile": [
+      "test_real"
+    ],
+    "neonate": [
+      "test_real"
+    ],
+    "newborn": [
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "sex": {
+    "female": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "male": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  },
+  "ethnicity": {
+    "aboriginal australian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "african": [
+      "train"
+    ],
+    "amazonian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "american": [
+      "train"
+    ],
+    "american indian": [
+      "val"
+    ],
+    "andean highlander": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "antarctica": [
+      "val"
+    ],
+    "antarctica: lutzow holm bay, hukuro cove": [
+      "train"
+    ],
+    "aotearoa polynesian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "arctic ocean": [
+      "val"
+    ],
+    "arctic ocean: northwind abyssal plain": [
+      "train"
+    ],
+    "armenia": [
+      "train"
+    ],
+    "asian": [
+      "train",
+      "test_real"
+    ],
+    "australia": [
+      "train"
+    ],
+    "austria": [
+      "train"
+    ],
+    "balkan": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "baltic sea": [
+      "val"
+    ],
+    "bangladesh": [
+      "train"
+    ],
+    "belgium": [
+      "train"
+    ],
+    "belize": [
+      "train"
+    ],
+    "black": [
+      "test_real"
+    ],
+    "bolivia": [
+      "train"
+    ],
+    "brazil": [
+      "train"
+    ],
+    "brazil:pantanal conservation area": [
+      "val"
+    ],
+    "canada": [
+      "train"
+    ],
+    "canada:mt robson": [
+      "train"
+    ],
+    "caribbean creole": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "caucasian": [
+      "test_real"
+    ],
+    "caucasus": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "central american": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "central asian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "central european": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "chile": [
+      "train"
+    ],
+    "china": [
+      "val"
+    ],
+    "china: beijing, shunyi": [
+      "train"
+    ],
+    "china: east china sea, xiangshan bay": [
+      "val"
+    ],
+    "china: hebei": [
+      "train"
+    ],
+    "china: liaohe delta wetland": [
+      "val"
+    ],
+    "china: liuzhong block,xinjiang oil field": [
+      "train"
+    ],
+    "china: naner block,daqing oil field": [
+      "train"
+    ],
+    "china: pixian": [
+      "val"
+    ],
+    "china: shanxi": [
+      "val"
+    ],
+    "china: tianjin university": [
+      "train"
+    ],
+    "china: yueer block,qinghai oil field": [
+      "train"
+    ],
+    "china:changshu": [
+      "train"
+    ],
+    "china:chengdu": [
+      "train"
+    ],
+    "china:guangxi, guilin": [
+      "train"
+    ],
+    "china:hainan": [
+      "val"
+    ],
+    "china:hebei, hengshui, hengshuilaobaigan": [
+      "train"
+    ],
+    "china:henan, fengqiu": [
+      "val"
+    ],
+    "china:hunan jingui": [
+      "train"
+    ],
+    "china:jiangsu": [
+      "train"
+    ],
+    "china:jiangsu, suzhou": [
+      "train"
+    ],
+    "china:jiaxing": [
+      "train"
+    ],
+    "china:liaohe delta wetland": [
+      "train"
+    ],
+    "china:ningbo": [
+      "train"
+    ],
+    "china:peking": [
+      "val"
+    ],
+    "china:shanxi": [
+      "train"
+    ],
+    "china:the east china sea": [
+      "train"
+    ],
+    "china:yancheng": [
+      "train"
+    ],
+    "china:zhejiang": [
+      "train"
+    ],
+    "china:zhejiang, ningbo": [
+      "train"
+    ],
+    "china:zhejiang, ningbo, xiangshan": [
+      "train"
+    ],
+    "china:zhejiang, ningbo, zhanqi": [
+      "train"
+    ],
+    "china:zhejiang, ningbo, zhanqi, chunlin farm": [
+      "train"
+    ],
+    "china:zhejiang, xiangshan harbor, large yellow croaker cage": [
+      "train"
+    ],
+    "colombia": [
+      "train"
+    ],
+    "costa rica": [
+      "val"
+    ],
+    "cote d'ivoire:savanes district, tchologo region, ferkess dougou": [
+      "train"
+    ],
+    "croatia": [
+      "train"
+    ],
+    "cuba": [
+      "val"
+    ],
+    "democratic republic of the congo": [
+      "val"
+    ],
+    "denmark": [
+      "train"
+    ],
+    "dogon": [
+      "test_real"
+    ],
+    "east african": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "ecuador": [
+      "train"
+    ],
+    "egypt:siwa oasis": [
+      "train"
+    ],
+    "estonia": [
+      "val"
+    ],
+    "ethiopia": [
+      "train"
+    ],
+    "european": [
+      "train"
+    ],
+    "finland": [
+      "train"
+    ],
+    "finland:hanko": [
+      "train"
+    ],
+    "finland:hanko, tvarminne zoological station": [
+      "train"
+    ],
+    "french guiana": [
+      "train"
+    ],
+    "gambia": [
+      "train"
+    ],
+    "gaz:peru": [
+      "val"
+    ],
+    "gaz:united states of america": [
+      "train"
+    ],
+    "georgia": [
+      "train"
+    ],
+    "germany": [
+      "val"
+    ],
+    "germany:geisenheim": [
+      "train"
+    ],
+    "ghana: kasoa": [
+      "train"
+    ],
+    "greece": [
+      "train"
+    ],
+    "guinea": [
+      "train"
+    ],
+    "hispanic": [
+      "train"
+    ],
+    "horn of africa": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "iberian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "iceland": [
+      "train"
+    ],
+    "india": [
+      "train"
+    ],
+    "india: palampur": [
+      "train"
+    ],
+    "india:agra": [
+      "train"
+    ],
+    "indonesia": [
+      "train"
+    ],
+    "indonesia:manado": [
+      "train"
+    ],
+    "indonesia:muna": [
+      "train"
+    ],
+    "indonesia:sulawesi": [
+      "val"
+    ],
+    "indonesia:west java, bogor, pasir kuda": [
+      "train"
+    ],
+    "iraq: ssw of rowanduz": [
+      "train"
+    ],
+    "iraq:130.4 km nne from al migdadiyah to sulaymaniyah": [
+      "val"
+    ],
+    "ireland": [
+      "val"
+    ],
+    "israel": [
+      "val"
+    ],
+    "italy": [
+      "val"
+    ],
+    "japan sea": [
+      "train"
+    ],
+    "japan tokyo": [
+      "train"
+    ],
+    "japan: akkeshi": [
+      "train"
+    ],
+    "japan: chiba": [
+      "train"
+    ],
+    "japan: hokkaido, kuromatsunai cho": [
+      "train"
+    ],
+    "japan: hokkaido, mombetsu, mombetsu, okhotsk sea": [
+      "train"
+    ],
+    "japan: hyogo, omoide river": [
+      "val"
+    ],
+    "japan: ibaraki, tsukuba": [
+      "train"
+    ],
+    "japan: ishigakizima island": [
+      "train"
+    ],
+    "japan: ishikawa,": [
+      "train"
+    ],
+    "japan: kanagawa, aburatsubo inlet": [
+      "val"
+    ],
+    "japan: kanagawa, yokosuka": [
+      "train"
+    ],
+    "japan: kochi, ashizuri": [
+      "train"
+    ],
+    "japan: kumamoto, hitoyoshi": [
+      "val"
+    ],
+    "japan: kyoto, ashiu": [
+      "train"
+    ],
+    "japan: kyoto, kyoto, kamigamo": [
+      "train"
+    ],
+    "japan: kyoto, sakyo": [
+      "train"
+    ],
+    "japan: lake biwa": [
+      "train"
+    ],
+    "japan: miyazaki": [
+      "val"
+    ],
+    "japan: miyazaki, shiiba": [
+      "train"
+    ],
+    "japan: nankai trough": [
+      "val"
+    ],
+    "japan: niigata, sado island": [
+      "val"
+    ],
+    "japan: okinawa": [
+      "train"
+    ],
+    "japan: okinawa, main island": [
+      "train"
+    ],
+    "japan: shiga, otsu, ibanaiko": [
+      "train"
+    ],
+    "japan: shiga, otsu, nishinoko": [
+      "val"
+    ],
+    "japan: shiga, otsu, nodanuma": [
+      "train"
+    ],
+    "japan: suruga bay": [
+      "val"
+    ],
+    "japan: tokyo": [
+      "train"
+    ],
+    "japan: tokyo, bunkyo ku, yayoi": [
+      "val"
+    ],
+    "japan: tottori, kurayoshi": [
+      "val"
+    ],
+    "japan: toyama": [
+      "train"
+    ],
+    "japan: wakayama, wakayama university": [
+      "val"
+    ],
+    "japan: yatsushiro bay": [
+      "train"
+    ],
+    "japan:ago bay": [
+      "train"
+    ],
+    "japan:aichi": [
+      "train"
+    ],
+    "japan:aichi, inuyama, primate research institute, kyoto university": [
+      "train"
+    ],
+    "japan:aichi, nishio, hazu": [
+      "train"
+    ],
+    "japan:akita prefecture, daisen city, kowakubi hot spring": [
+      "train"
+    ],
+    "japan:akita, akita, shimoshinjo": [
+      "train"
+    ],
+    "japan:akita, kazuno, lake towada": [
+      "train"
+    ],
+    "japan:akita, minamiakita, ogata": [
+      "train"
+    ],
+    "japan:amami oshima": [
+      "train"
+    ],
+    "japan:aomori": [
+      "train"
+    ],
+    "japan:chiba": [
+      "train"
+    ],
+    "japan:chiba, chiba": [
+      "train"
+    ],
+    "japan:chiba, kashiwa": [
+      "train"
+    ],
+    "japan:chiba, kimitsu": [
+      "train"
+    ],
+    "japan:chiba, narashino, mimomi 2, mimomi hongo park": [
+      "train"
+    ],
+    "japan:fukui": [
+      "train"
+    ],
+    "japan:fukui, kita, tohshiki river": [
+      "train"
+    ],
+    "japan:fukui, ooi, takahama, imadera, mt. aoba": [
+      "train"
+    ],
+    "japan:fukui, shono, shono river": [
+      "train"
+    ],
+    "japan:fukuoka": [
+      "train"
+    ],
+    "japan:fukuoka, fukuoka, mt. abura": [
+      "train"
+    ],
+    "japan:fukushima": [
+      "train"
+    ],
+    "japan:fukushima, namie": [
+      "train"
+    ],
+    "japan:gifu": [
+      "train"
+    ],
+    "japan:gifu, gifu city": [
+      "train"
+    ],
+    "japan:gifu, gifu university": [
+      "train"
+    ],
+    "japan:gifu, tsuya river": [
+      "train"
+    ],
+    "japan:gunma, takasaki": [
+      "train"
+    ],
+    "japan:hakusan": [
+      "val"
+    ],
+    "japan:hiroshima": [
+      "val"
+    ],
+    "japan:hiroshima, akitakata": [
+      "val"
+    ],
+    "japan:hiroshima, mukaishima": [
+      "train"
+    ],
+    "japan:hokkaido": [
+      "train"
+    ],
+    "japan:hokkaido island, kushiro": [
+      "train"
+    ],
+    "japan:hokkaido, hidaka": [
+      "train"
+    ],
+    "japan:hokkaido, horonobe, toikanbetsu, pankerushupe river": [
+      "train"
+    ],
+    "japan:hokkaido, kumaishi": [
+      "train"
+    ],
+    "japan:hokkaido, sapporo, hokkaido univ": [
+      "train"
+    ],
+    "japan:hokkaido, shibecha": [
+      "train"
+    ],
+    "japan:hokkaido, shiretoko": [
+      "val"
+    ],
+    "japan:hokkaido, wassamu, nishiwa": [
+      "val"
+    ],
+    "japan:horokanai, butokama": [
+      "train"
+    ],
+    "japan:horokanai, uryu": [
+      "train"
+    ],
+    "japan:hyogo, ibo river": [
+      "train"
+    ],
+    "japan:hyogo, kobe": [
+      "val"
+    ],
+    "japan:hyogo, omoide river": [
+      "train"
+    ],
+    "japan:hyogo, toyooka": [
+      "train"
+    ],
+    "japan:ibaraki": [
+      "train"
+    ],
+    "japan:ibaraki, lake kasumigaura": [
+      "train"
+    ],
+    "japan:ibaraki, npo eco clean jyoso": [
+      "train"
+    ],
+    "japan:ibaraki, oarai": [
+      "train"
+    ],
+    "japan:ibaraki, tsukuba": [
+      "train"
+    ],
+    "japan:iriomotejima island, okinawa": [
+      "train"
+    ],
+    "japan:ishikawa": [
+      "val"
+    ],
+    "japan:ishikawa, kanazawa": [
+      "train"
+    ],
+    "japan:iwate": [
+      "train"
+    ],
+    "japan:iwate, onagawa bay": [
+      "train"
+    ],
+    "japan:kagawa": [
+      "train"
+    ],
+    "japan:kagawa ken, takamatsu shi": [
+      "train"
+    ],
+    "japan:kagawa, kagawa university": [
+      "train"
+    ],
+    "japan:kagoshima": [
+      "train"
+    ],
+    "japan:kagoshima bay": [
+      "train"
+    ],
+    "japan:kagoshima pref, kagoshima country, mishima village, kuroshima": [
+      "val"
+    ],
+    "japan:kagoshima, amami oshima": [
+      "val"
+    ],
+    "japan:kagoshima, nagashima": [
+      "train"
+    ],
+    "japan:kagoshima, nageishidaira mt. miyanoura, yakushima cho": [
+      "val"
+    ],
+    "japan:kagoshima, summit area of mt. nagata, yakushima cho": [
+      "val"
+    ],
+    "japan:kagoshima, yakushima": [
+      "train"
+    ],
+    "japan:kanagawa": [
+      "val"
+    ],
+    "japan:kanagawa, atsugi, tokyo university of agriculture": [
+      "val"
+    ],
+    "japan:kanagawa, fujisawa, agricultural field": [
+      "train"
+    ],
+    "japan:kanagawa, kawasaki, nippon shokubai co., ltd.": [
+      "val"
+    ],
+    "japan:kanagawa, sagami river": [
+      "val"
+    ],
+    "japan:kanagawa, sagamihara city": [
+      "val"
+    ],
+    "japan:kanagawa, yokohama": [
+      "val"
+    ],
+    "japan:kanagawa, yokosuka, seashore at nagai area": [
+      "val"
+    ],
+    "japan:kanazawa": [
+      "val"
+    ],
+    "japan:kashiwa": [
+      "train"
+    ],
+    "japan:kawasaki, nippon shokubai co., ltd": [
+      "train"
+    ],
+    "japan:kitakyushu": [
+      "train"
+    ],
+    "japan:kobe": [
+      "train"
+    ],
+    "japan:kochi, ochi town": [
+      "train"
+    ],
+    "japan:kumamoto": [
+      "val"
+    ],
+    "japan:kumamoto, kuma river estuary": [
+      "train"
+    ],
+    "japan:kumamoto, ushibuka, yatsushiro sea": [
+      "train"
+    ],
+    "japan:kyoto": [
+      "train"
+    ],
+    "japan:kyoto, ashiu forest research station": [
+      "train"
+    ],
+    "japan:kyoto, kyoto prefectural university": [
+      "train"
+    ],
+    "japan:kyoto, kyoto university": [
+      "val"
+    ],
+    "japan:kyoto, kyoto university botanical garden": [
+      "train"
+    ],
+    "japan:kyoto, maizuru": [
+      "train"
+    ],
+    "japan:kyoto, toji temple": [
+      "train"
+    ],
+    "japan:kyoto, uji": [
+      "val"
+    ],
+    "japan:kyoto,sakyo,mt.hiei": [
+      "train"
+    ],
+    "japan:lake biwa": [
+      "train"
+    ],
+    "japan:lake sai": [
+      "train"
+    ],
+    "japan:memuro": [
+      "val"
+    ],
+    "japan:mie, naro institute of vegetable and tea sciences": [
+      "train"
+    ],
+    "japan:mie,taki,miya river": [
+      "train"
+    ],
+    "japan:mitsukurijima (oga) akita": [
+      "train"
+    ],
+    "japan:miyagi": [
+      "train"
+    ],
+    "japan:miyagi, higashi matsushima": [
+      "train"
+    ],
+    "japan:miyagi, matsushima bay": [
+      "train"
+    ],
+    "japan:miyagi, matsushima, wastewater treatment plant": [
+      "train"
+    ],
+    "japan:miyagi, murata": [
+      "train"
+    ],
+    "japan:miyagi, nagatsura ura lagoon": [
+      "train"
+    ],
+    "japan:miyagi, osaki": [
+      "train"
+    ],
+    "japan:miyagi, senda bay": [
+      "train"
+    ],
+    "japan:miyagi, sendai bay": [
+      "train"
+    ],
+    "japan:miyazaki city": [
+      "train"
+    ],
+    "japan:miyazaki, nishi usuki gun, hinokage cho": [
+      "val"
+    ],
+    "japan:mt. ontake": [
+      "val"
+    ],
+    "japan:mt. tateyama": [
+      "train"
+    ],
+    "japan:nagano": [
+      "val"
+    ],
+    "japan:nagasaki": [
+      "train"
+    ],
+    "japan:nagasaki, kikitsu": [
+      "train"
+    ],
+    "japan:nagasaki, nagasaki": [
+      "val"
+    ],
+    "japan:nara": [
+      "train"
+    ],
+    "japan:niigata": [
+      "train"
+    ],
+    "japan:north part of yatsushiro sea": [
+      "train"
+    ],
+    "japan:off tohoku, pacific ocean": [
+      "val"
+    ],
+    "japan:ohsakishimojima": [
+      "train"
+    ],
+    "japan:oita, taketa": [
+      "val"
+    ],
+    "japan:okayama, kurashiki": [
+      "train"
+    ],
+    "japan:okhotsk sea": [
+      "train"
+    ],
+    "japan:okinawa, ishigaki island": [
+      "val"
+    ],
+    "japan:okinawa, kunigami, mt. nishime": [
+      "train"
+    ],
+    "japan:okinawa, minamidaito island": [
+      "train"
+    ],
+    "japan:okinawa, okinawa institute of science and technology": [
+      "train"
+    ],
+    "japan:okinawa, seseko": [
+      "train"
+    ],
+    "japan:okutama": [
+      "train"
+    ],
+    "japan:osaka": [
+      "train"
+    ],
+    "japan:osaka bay": [
+      "train"
+    ],
+    "japan:osaka, ikeda": [
+      "val"
+    ],
+    "japan:osaka, misaki, tanigawa fishing port": [
+      "val"
+    ],
+    "japan:osaka, suita, research institute for microbial diseases, osaka university": [
+      "train"
+    ],
+    "japan:osumi strait": [
+      "train"
+    ],
+    "japan:pig farm": [
+      "val"
+    ],
+    "japan:saga, karatsu, mt. ishidaka": [
+      "val"
+    ],
+    "japan:saga, karatsu, saga soy sauce cooperative association": [
+      "train"
+    ],
+    "japan:saitama, chichibu, the university of tokyo chichibu forest": [
+      "val"
+    ],
+    "japan:saitama, saitama university": [
+      "train"
+    ],
+    "japan:sanjo": [
+      "train"
+    ],
+    "japan:satsuma iwo jima": [
+      "val"
+    ],
+    "japan:shiga": [
+      "val"
+    ],
+    "japan:shiga, biwa, tamura river": [
+      "train"
+    ],
+    "japan:shiga, biwa, yasu river": [
+      "val"
+    ],
+    "japan:shiga, kusatsu, lake biwa": [
+      "train"
+    ],
+    "japan:shiga, kusatsu, ritsumeikan university": [
+      "train"
+    ],
+    "japan:shiga, lake biwa": [
+      "train"
+    ],
+    "japan:shimokita": [
+      "train"
+    ],
+    "japan:shizuoka": [
+      "val"
+    ],
+    "japan:tama river": [
+      "train"
+    ],
+    "japan:teshio experimental forest": [
+      "train"
+    ],
+    "japan:tochigi": [
+      "train"
+    ],
+    "japan:tochigi, jichi medical university": [
+      "train"
+    ],
+    "japan:tohoku, a line": [
+      "train"
+    ],
+    "japan:tohoku, sendai bay": [
+      "train"
+    ],
+    "japan:tokyo": [
+      "train"
+    ],
+    "japan:tokyo bay, north pacific": [
+      "train"
+    ],
+    "japan:tokyo, akiruno city, akikawa valley": [
+      "train"
+    ],
+    "japan:tokyo, bunkyo ku": [
+      "train"
+    ],
+    "japan:tokyo, bunkyo, the university of tokyo": [
+      "train"
+    ],
+    "japan:tokyo, drinking water treatment plant": [
+      "val"
+    ],
+    "japan:tokyo, hachijo jima": [
+      "train"
+    ],
+    "japan:tokyo, hachioji": [
+      "train"
+    ],
+    "japan:tokyo, koto ku, musashino university": [
+      "train"
+    ],
+    "japan:tokyo, nishitama": [
+      "train"
+    ],
+    "japan:tokyo, samayama park": [
+      "train"
+    ],
+    "japan:tokyo, setagaya, nihon university": [
+      "train"
+    ],
+    "japan:tokyo, shinagawa": [
+      "train"
+    ],
+    "japan:tokyo, shinanomachi, keio university school of medicine": [
+      "train"
+    ],
+    "japan:tokyo, tanashi": [
+      "train"
+    ],
+    "japan:tokyo, the university of tokyo tanashi forest": [
+      "train"
+    ],
+    "japan:tosa bay": [
+      "train"
+    ],
+    "japan:toyama, bijodaira": [
+      "train"
+    ],
+    "japan:tsukumi": [
+      "train"
+    ],
+    "japan:wakayama, wakayama": [
+      "train"
+    ],
+    "japan:yamagata": [
+      "train"
+    ],
+    "japan:yamanashi, chuo": [
+      "train"
+    ],
+    "kazakhstan": [
+      "train"
+    ],
+    "korea:daejeon": [
+      "train"
+    ],
+    "levantine": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "maghrebi": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "malawi": [
+      "train"
+    ],
+    "malay archipelago": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "malaysia: endau rompin": [
+      "train"
+    ],
+    "malaysia: sarawak, lambir hills national park": [
+      "val"
+    ],
+    "malaysia:sabah": [
+      "val"
+    ],
+    "mali": [
+      "val"
+    ],
+    "mediterranean sea": [
+      "train"
+    ],
+    "melanesian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "mexican": [
+      "test_real"
+    ],
+    "mexico": [
+      "train"
+    ],
+    "micronesian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "missing": [
+      "train"
+    ],
+    "missing: endangered species": [
+      "train"
+    ],
+    "missing: lab stock": [
+      "val"
+    ],
+    "mongolia:bulgan": [
+      "train"
+    ],
+    "mongolia:mandalgobi": [
+      "train"
+    ],
+    "myanmar": [
+      "train"
+    ],
+    "myanmar:htantabi": [
+      "train"
+    ],
+    "myanmar:shan states, hopong": [
+      "train"
+    ],
+    "nepal: kathmandu": [
+      "train"
+    ],
+    "new zealand:the queenstown lakes district": [
+      "val"
+    ],
+    "nicaragua": [
+      "train"
+    ],
+    "nigeria": [
+      "val"
+    ],
+    "nordic baltic": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "north american": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "norway": [
+      "train"
+    ],
+    "pacific islander": [
+      "val"
+    ],
+    "pacific ocean": [
+      "train"
+    ],
+    "pacific ocean: the sea near kochi, japan": [
+      "train"
+    ],
+    "pacific ocean:izu bonin trench": [
+      "train"
+    ],
+    "pacific ocean:south china sea": [
+      "val"
+    ],
+    "pacific ocean:takuyo daisan seamount": [
+      "train"
+    ],
+    "pacific ocean:western north pacific subtropical gyre": [
+      "val"
+    ],
+    "peru": [
+      "val"
+    ],
+    "poland": [
+      "train"
+    ],
+    "portugal": [
+      "train"
+    ],
+    "russia": [
+      "train"
+    ],
+    "saudi arabia": [
+      "train"
+    ],
+    "siberian": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "sierra leone:northern province, port loko district, rokupr, great scarcies river": [
+      "val"
+    ],
+    "singapore": [
+      "train"
+    ],
+    "slovakia": [
+      "train"
+    ],
+    "south africa": [
+      "train"
+    ],
+    "south africa:stellenbosch wastewater treament works": [
+      "train"
+    ],
+    "south american": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "south korea": [
+      "train"
+    ],
+    "south korea:suwon": [
+      "train"
+    ],
+    "southern ocean": [
+      "val"
+    ],
+    "spain": [
+      "val"
+    ],
+    "spain:zaragoza, cita": [
+      "train"
+    ],
+    "sugadaira": [
+      "train"
+    ],
+    "sweden: bothnian bay, baltic sea": [
+      "train"
+    ],
+    "switzerland": [
+      "train"
+    ],
+    "taiwan": [
+      "train"
+    ],
+    "taiwan:north taiwan, yilan city": [
+      "train"
+    ],
+    "tanzania:iringa region, ruaha national park": [
+      "train"
+    ],
+    "thailand: mae hong son province, mae sariang district": [
+      "train"
+    ],
+    "thailand: maela": [
+      "train"
+    ],
+    "thailand:bangkok": [
+      "train"
+    ],
+    "thailand:bangkok, mahidol university": [
+      "train"
+    ],
+    "thailand:khet dusit, bangkok": [
+      "train"
+    ],
+    "thailand:sakaerat": [
+      "val"
+    ],
+    "thailand:sakaerat environmental research station": [
+      "val"
+    ],
+    "thailand:sakon nakhon": [
+      "train"
+    ],
+    "thailand:samut sakhon": [
+      "val"
+    ],
+    "turkey": [
+      "train"
+    ],
+    "uganda:bundibugyo district, bwamba county, about 1 mile south west of ntandi forest": [
+      "train"
+    ],
+    "united kingdom": [
+      "train"
+    ],
+    "united kingdom: england": [
+      "val"
+    ],
+    "united kingdom: wales": [
+      "train"
+    ],
+    "united kingdom:plymouth": [
+      "train"
+    ],
+    "unknown": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "usa": [
+      "train"
+    ],
+    "usa: arizona": [
+      "train"
+    ],
+    "usa: hi, oahu": [
+      "val"
+    ],
+    "usa: in, spencer": [
+      "val"
+    ],
+    "usa: jasper ridge biological preserve": [
+      "train"
+    ],
+    "usa: mississippi river alluvial valley": [
+      "train"
+    ],
+    "usa: nc, wilkes": [
+      "train"
+    ],
+    "usa: ny, tomkins county": [
+      "train"
+    ],
+    "usa: tennesse": [
+      "train"
+    ],
+    "usa: texas": [
+      "val"
+    ],
+    "usa:ca, grass valley": [
+      "train"
+    ],
+    "usa:ca, oakland": [
+      "train"
+    ],
+    "usa:ca: san diego": [
+      "val"
+    ],
+    "usa:hawaii, the volcano agriculture station, university of hawaii": [
+      "train"
+    ],
+    "usa:hawaiian islands": [
+      "train"
+    ],
+    "usa:nebraska, broken bow": [
+      "train"
+    ],
+    "usa:ny:new york": [
+      "val"
+    ],
+    "usa:texas": [
+      "train"
+    ],
+    "venezuela": [
+      "train"
+    ],
+    "viet nam: hue": [
+      "val"
+    ],
+    "viet nam:ben tre": [
+      "train"
+    ],
+    "viet nam:hanoi": [
+      "train"
+    ],
+    "viet nam:ho chi minh": [
+      "train"
+    ],
+    "west african": [
+      "test_id",
+      "test_mid",
+      "test_ood"
+    ],
+    "yona": [
+      "train"
+    ],
+    "yoshidayama": [
+      "train"
+    ],
+    "zambia": [
+      "val"
+    ]
+  },
+  "is_cancer": {
+    "false": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ],
+    "true": [
+      "train",
+      "val",
+      "test_id",
+      "test_mid",
+      "test_ood",
+      "test_real"
+    ]
+  }
+}

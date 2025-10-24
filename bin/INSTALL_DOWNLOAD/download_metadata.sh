@@ -20,6 +20,9 @@ ENV_REQUIREMENT=${3:-${ENV_REQUIREMENT:-}}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-${NODE_WORK_PATH:-}}
 RUNS_INPUTS=${6:-${RUNS_INPUTS:-}}
+N_CPUS=${7:-${N_CPUS:-}}
+NCBI_API_KEYS=${8:-${NCBI_API_KEYS:-}}
+NCBI_EMAIL=${9:-${NCBI_EMAIL:-}}
 
 if [[ -z "${RES:-}" ]]; then
   echo "RES (results dir) is required" >&2
@@ -77,4 +80,4 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then
   PY_VERBOSE="--verbose"
 fi
 
-python3 -u get_metadata_ncbi_ena.py --base_path "$SCRATCH_DIR" $PY_VERBOSE
+python3 -u get_metadata_ncbi_ena.py --base_path "$SCRATCH_DIR" --cpu_number "$N_CPUS" $PY_VERBOSE

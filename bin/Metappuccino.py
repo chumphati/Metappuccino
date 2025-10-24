@@ -133,6 +133,8 @@ def main():
     parser.add_argument("--gpus", type=int, default=1, help="Number of GPUs to request for LLM inference.")
     parser.add_argument("--cpus", type=int, default=30, help="Number of CPUs to request.")
     parser.add_argument("--mem", type=str, default="50gb", help="Memory to request.")
+    parser.add_argument("--ncbi_email", type=str, default=None, help="Contact email for NCBI E-utilities")
+    parser.add_argument("--ncbi_api_key", type=str, default=None, help="NCBI E-utilities API key")
     parser.add_argument("--per_gpu_jobs", action="store_true",
                         help="Submit one scheduler job per GPU (if several GPUs are available and user wants to divide the LLM inference across all of them).")
     args = parser.parse_args()
@@ -154,6 +156,8 @@ def main():
     sched_gpus = args.gpus
     cpus_req = args.cpus
     mem_req = args.mem
+    ncbi_email = args.ncbi_email
+    ncbi_api_key = args.ncbi_api_key
     partition_req = args.partition.strip()
     queue_req = args.partition.strip()
     tmp_dir = os.path.join(res_dir, "tmp")
@@ -241,7 +245,7 @@ def main():
             if not os.path.isfile(step1_flag):
                 if args.local:
                     subprocess.run(["bash", download_metadata,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir, sample_input],
+                                    metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, sample_input, cpus_req, ncbi_api_key, ncbi_email],
                                    check=True, env=env)
                     ensure_flag_after_local(step1_flag)
                 else:
@@ -255,7 +259,7 @@ def main():
                         if mem_req:
                             pbs_l += f":mem={mem_req}"
                         cmd += ["-l", pbs_l,
-                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input}", download_metadata]
+                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input},N_CPUS={cpus_req},NCBI_API_KEYS={ncbi_api_key},NCBI_EMAIL={ncbi_email}", download_metadata]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "pbs", env)
                         wait_for_flag_or_job_end(step1_flag, [handle])
@@ -268,7 +272,7 @@ def main():
                         if mem_req:
                             sbatch_opts += [f"--mem={mem_req}"]
                         cmd = ["sbatch", *sbatch_opts,
-                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input}", download_metadata]
+                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},RUNS_INPUTS={sample_input},N_CPUS={cpus_req},NCBI_API_KEYS={ncbi_api_key},NCBI_EMAIL={ncbi_email}", download_metadata]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "slurm", env)
                         wait_for_flag_or_job_end(step1_flag, [handle])
