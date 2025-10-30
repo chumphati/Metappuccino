@@ -1,0 +1,101 @@
+run_accession_number	study_accession	library_selection	sequencing_source	biopsy_site	biopsy_type	cell_line	cell_type	organ	disease	is_cancer	treatment	treatment_time	response	age	sex	ethnicity
+DRR279041	PRJDB11300	polyA	bulk	xenograft	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	PDX#5 PBS treatment in vivo	not applicable	not applicable	unknown	unknown	unknown
+ERR2026719	PRJEB21636	polyA	bulk	unknown	unknown	MO1	melanocytes	skin	skin melanoma	TRUE	siCtrl	pre treatment	unknown	unknown	unknown	unknown
+ERR9903106	PRJEB53723	unknown	bulk	unknown	primary	not applicable	primary tissue	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+ERR9903084	PRJEB53723	unknown	bulk	unknown	unknown	12T	melanocytes	skin	skin melanoma	TRUE	IFN	unknown	unknown	unknown	unknown	unknown
+ERR11894560	PRJEB59603	inverse rRNA	bulk	unknown	unknown	SK-MEL-30	melanocytes	skin	skin melanoma	TRUE	Palbociclib (combination of CDK4/6 and MEK inhibitors)	pre treatment	unknown	67	male	european
+ERR11894553	PRJEB59603	inverse rRNA	bulk	skin	primary	Mel JuSo	melanocytes	skin	skin melanoma	TRUE	Palbociclib (combination of CDK4/6 and MEK inhibitors)	pre treatment	unknown	58	female	european
+SRR25471654	PRJNA1000459	polyA	bulk	unknown	metastasis	WM1341D	melanocytes	skin	skin melanoma	TRUE	shNT keratinocyte conditioned media	post treatment	unknown	unknown	male	unknown
+SRR25734405	PRJNA1008176	polyA	bulk	eye	primary	92-1	melanocytes	eye	uveal melanoma	TRUE	dual SMARCA4/SMARCA2 inhibition	post treatment	unknown	76	female	unknown
+SRR26337500	PRJNA1026533	inverse rRNA	bulk	unknown	primary	not applicable	primary tissue	skin	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR26539517	PRJNA1032634	polyA	bulk	skin	primary	SK-MEL-28	melanocytes	skin	skin melanoma	TRUE	DMSO control	on treatment	unknown	51	male	european
+SRR26539511	PRJNA1032634	polyA	bulk	unknown	unknown	SK-MEL-28	melanocytes	skin	skin melanoma	TRUE	berberine chloride	on treatment	unknown	51	male	european
+SRR27153980	PRJNA1050298	polyA	bulk	lymph node	metastasis	Ma-Mel-51	melanocytes	unknown	melanoma	TRUE	control scramble (scr) shRNA	not applicable	not applicable	48	male	unknown
+SRR27494959	PRJNA1063704	polyA	bulk	skin	primary	SK-MEL-28	melanocytes	skin	skin melanoma	TRUE	SNCA-KO	post treatment	resistant	51	male	european
+SRR27744625	PRJNA1069748	polyA	bulk	skin	primary	A-375	melanocytes	skin	melanoma	TRUE	DMSO control	on treatment	not applicable	54	female	european
+SRR27937474	PRJNA1075321	polyA	bulk	skin	primary	A-375	melanocytes	skin	melanoma	TRUE	DMSO	on treatment	not applicable	54	female	european
+SRR27937459	PRJNA1075321	polyA	bulk	skin	primary	A-375	melanocytes	skin	melanoma	TRUE	100nM dabrafenib	on treatment	unknown	54	female	european
+SRR28013779	PRJNA1078245	inverse rRNA	bulk	lung	primary	DMS 53	neuroendocrine cells	lung	lung small cell carcinoma	TRUE	Lurbinectedin 10xIC50	on treatment	unknown	54	male	european
+SRR28335293	PRJNA1087369	polyA	bulk	lymph node	metastasis	MeWo	melanocytes	skin	skin melanoma	TRUE	NST-628/MAPKi	on treatment	unknown	78	male	european
+SRR28335294	PRJNA1087369	polyA	bulk	lymph node	metastasis	MeWo	melanocytes	skin	skin melanoma	TRUE	NST-628/MAPKi	on treatment	unknown	78	male	european
+SRR28878212	PRJNA1107274	unknown	bulk	lymph node	metastasis	not applicable	primary tissue	skin	skin melanoma	TRUE	nivolumab, vidutolimod	pre treatment	non_MPR	66	male	european
+SRR28878223	PRJNA1107274	unknown	bulk	lymph node	metastasis	not applicable	primary tissue	skin	skin melanoma	TRUE	nivolumab, vidutolimod	pre treatment	MPR	75	male	european
+SRR29631068	PRJNA1129142	inverse rRNA	bulk	xenograft	primary	not applicable	primary tissue	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR29631074	PRJNA1129142	inverse rRNA	bulk	xenograft	primary	not applicable	primary tissue	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR29845404	PRJNA1135711	unknown	single-cell	xenograft	metastasis	not applicable	melanocytes, human TILs	eye	uveal melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR29879277	PRJNA1137336	polyA	bulk	skin	primary	not applicable	keratinocytes, melanocytes	skin	vitiligo	FALSE	DMSO	on treatment	not applicable	unknown	unknown	african
+SRR30075195	PRJNA1142920	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	Rocaglamide A	on treatment	unknown	54	female	european
+SRR30334141	PRJNA1150602	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	constricted migration	post treatment	unknown	54	female	european
+SRR30334139	PRJNA1150602	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	constricted migration	post treatment	unknown	54	female	european
+SRR1616924	PRJNA264334	unknown	bulk	unknown	unknown	M416	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR1744432	PRJNA271773	unknown	bulk	hypodermis	metastatis	COLO 800	melanocytes	skin	skin melanoma	TRUE	vemurafenib	on treatment	not applicable	14	male	european
+SRR1768927	PRJNA273359	polyA	bulk	unknown	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	mapki treatment BRAFi+MEKi	post treatment	resistant	unknown	unknown	unknown
+SRR1981295	PRJNA281631	inverse rRNA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	doxycycline	post treatment	unknown	54	female	european
+SRR1981262	PRJNA281632	inverse rRNA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	A771726	post treatment	unknown	54	female	european
+SRR3136214	PRJNA308983	polyA	bulk	lymph node	metastasis	Ma-Mel-86f	melanocytes	unknown	cutaneous nodular melanoma	TRUE	no treatment	not applicable	not applicable	40	female	unknown
+SRR3666817	PRJNA325657	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	54	female	european
+SRR4019633	PRJNA338650	polyA	bulk	lymph nodes	metastasis	MeWo	melanocytes	skin	skin melanoma	TRUE	uninfected control	not applicable	not applicable	78	male	european
+SRR4019613	PRJNA338650	polyA	bulk	lymph nodes	metastasis	MeWo	melanocytes	skin	skin melanoma	TRUE	uninfected control	not applicable	not applicable	78	male	european
+SRR4033038	PRJNA339006	polyA	bulk	xenograft	primary	WM902B	melanocytes	skin	skin melanoma	TRUE	 shTINCR	on treatment	unknown	unknown	male	unknown
+SRR4033054	PRJNA339006	polyA	bulk	skin	primary	not applicable	primary tissue	skin	benign nevus	FALSE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR5088921	PRJNA356761	unknown	bulk	unknown	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	immune checkpoint blockade therapy anti-CTLA4/PD1 ICB	on treatment	stable disease	unknown	unknown	unknown
+SRR5088845	PRJNA356761	unknown	bulk	unknown	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	immune checkpoint blockade therapy anti-CTLA4/PD1 ICB	on treatment	stable disease	unknown	unknown	unknown
+SRR5088858	PRJNA356761	unknown	bulk	unknown	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	immune checkpoint blockade therapy anti-CTLA4/PD1 ICB	on treatment	stable disease	unknown	unknown	unknown
+SRR5088928	PRJNA356761	unknown	bulk	unknown	unknown	not applicable	primary tissue	skin	skin melanoma	TRUE	immune checkpoint blockade therapy anti-CTLA4/PD1 ICB	on treatment	partial response/complete response	unknown	unknown	unknown
+SRR5228520	PRJNA369853	inverse rRNA	bulk	unknown	metastasis	SK-MEL-147	melanocytes	skin	skin melanoma	TRUE	JQ1	post treatment	sensitive	unknown	unknown	unknown
+SRR5228536	PRJNA369853	inverse rRNA	bulk	unknown	metastasis	SK-MEL-147	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR5237356	PRJNA371742	inverse rRNA	bulk	skin	primary	not applicable	melanocytes	skin	normal	FALSE	no treatment	not applicable	not applicable	juvenile	unknown	unknown
+SRR7664751	PRJNA373896	polyA	bulk	skin	metastasis	SK-MEL-2	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	60	male	european
+SRR5444802	PRJNA382674	polyA	bulk	unknown	unknown	WM989	melanocytes	skin	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	female	unknown
+SRR5494257	PRJNA385075	inverse rRNA	bulk	skin	primary	not applicable	Primary tissue	skin	benign nevus	FALSE	no treatment	not applicable	not applicable	unknown	female	unknown
+SRR5494184	PRJNA385075	inverse rRNA	bulk	skin	primary	not applicable	Primary tissue	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	female	unknown
+SRR5659838	PRJNA389719	inverse rRNA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	54	female	european
+SRR5664273	PRJNA389808	inverse rRNA	bulk	skin	unknown	unknown	melanocytes	skin	melanoma	TRUE	MEK inhibitor Trametinib	pre treatment	sensitive	unknown	unknown	unknown
+SRR5674308	PRJNA390137	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	54	female	european
+SRR5826442	PRJNA392866	polyA	bulk	hypodermis	metastasis	MDA-MB-435	melanocytes	skin	amelanotic melanoma	TRUE	pass through narrow pore	post treatment	not applicable	33	male	caucasian
+SRR6151453	PRJNA413744	unknown	bulk	blood	blood	not applicable	CD4+ T cell	blood	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR6151508	PRJNA413744	unknown	bulk	blood	blood	not applicable	CD14+ monocytes	blood	normal	FALSE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR6151519	PRJNA413744	unknown	bulk	blood	blood	not applicable	CD14+ monocytes	blood	normal	FALSE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR6151502	PRJNA413744	unknown	bulk	blood	blood	not applicable	CD14+ monocytes	blood	normal	FALSE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR6163782	PRJNA414069	polyA	bulk	unknown	metastasis	501-mel	melanocytes	unknown	melanoma	TRUE	Vemurafenib	post treatment	not applicable	unknown	female	unknown
+SRR6339030	PRJNA420861	polyA	bulk	unknown	unknown	CM142	melanocytes	unknown	melanoma	TRUE	IFN gamma	post treatment	not applicable	unknown	unknown	unknown
+SRR7538068	PRJNA421623	polyA	bulk	skin	primary	not applicable	melanocytes	skin	normal	FALSE	no treatment	not applicable	not applicable	0	male	unknown
+SRR6408482	PRJNA427110	unknown	single-cell	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	54	female	european
+SRR6408283	PRJNA427110	unknown	single-cell	skin	metastasis	451Lu	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	22	male	european
+SRR6728172	PRJNA434047	polyA	bulk	unknown	unknown	D10_IFNGR1_KO	melanocytes	unknown	melanoma	TRUE	T cell co-culture	no treatment	no treatment	unknown	unknown	unknown
+SRR6724642	PRJNA434047	polyA	bulk	oral cavity	metastasis	888-mel	melanocytes	unknown	melanoma	TRUE	T cell co-culture	no treatment	no treatment	26	female	european
+SRR7082638	PRJNA454219	inverse rRNA	bulk	head and neck region	primary	not applicable	endothelial cells	head and neck region	Head and Neck Squamous Cell Carcinoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR7082653	PRJNA454219	inverse rRNA	bulk	head and neck region	primary	not applicable	lymphocytes	head and neck region	Head and Neck Squamous Cell Carcinoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR7082615	PRJNA454219	inverse rRNA	bulk	skin	primary	not applicable	lymphocytes	skin	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR7357210	PRJNA476556	polyA	bulk	skin	primary	UACC-62	melanocytes	skin	skin melanoma	TRUE	Vemurafenib	post-treatment	not applicable	unknown	unknown	european
+SRR7526019	PRJNA481334	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	1uM ulixertinib	post-treatment	not applicable	54	female	european
+SRR7692053	PRJNA485951	polyA	bulk	unknown	unknown	WM3734	melanocytes	unknown	melanoma	TRUE	no treatment	not applicable	not applicable	24	female	unknown
+SRR7692044	PRJNA485951	polyA	bulk	unknown	unknown	CSM152	melanocytes	unknown	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR8350265	PRJNA510635	polyA	bulk	hypodermis	metastatis	OMM-1	melanocytes	eye	uveal melanoma	TRUE	no treatment	not applicable	not applicable	74	male	unknown
+SRR8615339	PRJNA523380	polyA	bulk	skin	primary	UACC-62	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	european
+SRR8615889	PRJNA523380	polyA	bulk	unknown	unknown	Hs 944.T	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	51	male	european
+SRR8695757	PRJNA525999	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	Vemurafenib	on treatment	not applicable	54	female	european
+SRR8695793	PRJNA525999	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	Vemurafenib+Cobimetinib	on treatment	not applicable	54	female	european
+SRR8830764	PRJNA530201	unknown	bulk	xenograft	metastasis	not applicable	primary tissue	skin	skin melanoma	TRUE	anti-PD-1 or anti-CTLA-4	unknown	unknown	unknown	unknown	unknown
+SRR8830704	PRJNA530201	unknown	bulk	xenograft	metastasis	not applicable	primary tissue	skin	skin melanoma	TRUE	anti-PD-1 or anti-CTLA-4	unknown	unknown	unknown	unknown	unknown
+SRR8980035	PRJNA539979	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	54	female	european
+SRR9188289	PRJNA545860	polyA	bulk	skin	primary	SK-MEL-28	melanocytes	skin	skin melanoma	TRUE	unknown	unknown	not applicable	51	male	european
+SRR9689914	PRJNA554700	polyA	bulk	unknown	metastasis	SK-MEL-147	melanocytes	skin	skin melanoma	TRUE	CCG-222740	on treatment	not applicable	unknown	unknown	unknown
+SRR9689886	PRJNA554700	polyA	bulk	skin	metastasis	SK-MEL-2	melanocytes	skin	skin melanoma	TRUE	CCG-222740	on treatment	not applicable	60	male	european
+SRR10295261	PRJNA555412	polyA	bulk	unknown	unknown	M229	melanocytes	skin	melanoma	TRUE	BRAFi	on treatment	not applicable	unknown	unknown	unknown
+SRR9833127	PRJNA556643	unknown	bulk	unknown	metastasis	501-mel	melanocytes	skin	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	female	unknown
+SRR10099584	PRJNA564999	polyA	bulk	skin	metastasis	WM852	melanocytes	skin	skin melanoma	TRUE	truncated BID protein	post treatment	no apoptosis	unknown	unknown	unknown
+SRR10102875	PRJNA565142	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	Vemurafenib	post-treatment	not applicable	54	female	european
+SRR10102870	PRJNA565142	polyA	bulk	skin	primary	A-375	melanocytes	skin	skin melanoma	TRUE	Vemurafenib	post-treatment	not applicable	54	female	european
+SRR10139785	PRJNA566191	polyA	bulk	hypodermis	metastasis	OCM-1A	melanocytes	unknown	melanoma	TRUE	unknown	unknown	not applicable	unknown	unknown	unknown
+SRR10139787	PRJNA566191	polyA	bulk	unknown	unknown	OM341	melanocytes	eye	ocular melanoma	TRUE	unknown	unknown	not applicable	unknown	unknown	unknown
+SRR10142792	PRJNA566243	polyA	bulk	brain	metastasis	WM4265.2	melanocytes	unknown	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR10191385	PRJNA574414	polyA	bulk	unknown	unknown	CSM152	melanocytes	unknown	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR10262351	PRJNA576920	inverse rRNA	bulk	lymph node	metastasis	SK-MEL-5	melanocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	24	female	european
+SRR10324754	PRJNA578901	polyA	single-cell	unknown	metastasis	not applicable	NK-cell	skin	melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR10495378	PRJNA590492	unknown	bulk	unknown	metastasis	C006	melanocytes	unknown	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR10533488	PRJNA591791	unknown	bulk	skin	metastasis	WM164	melanocytes	skin	skin melanoma	TRUE	Vemurafenib	post-treatment	not applicable	22	male	unknown
+SRR10897402	PRJNA601330	polyA	bulk	unknown	unknown	not applicable	lymphocytes	skin	skin melanoma	TRUE	lysophosphatidic acid (LPA)	on treatment	not applicable	unknown	unknown	unknown
+SRR10897401	PRJNA390137	polyA	bulk	unknown	unknown	not applicable	lymphocytes	skin	skin melanoma	TRUE	no treatment	not applicable	not applicable	unknown	unknown	unknown
+SRR11183270	PRJNA608794	hybrid selection	bulk	unknown	primary	not applicable	primary tissue	unknown	spitz tumor	TRUE	no treatment	not applicable	nan	unknown	unknown	unknown
+SRR11186763	PRJNA608923	polyA	bulk	unknown	unknown	M229-R	melanocytes	skin	skin melanoma	TRUE	Vemurafenib+Acalabrutinib	post-treatment	not applicable	unknown	unknown	unknown

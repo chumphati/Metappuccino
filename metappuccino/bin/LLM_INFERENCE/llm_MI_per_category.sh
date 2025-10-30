@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -N llm_inference
-#PBS -l walltime=500:00:00
+#PBS -l walltime=9999:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=llm_inference
-#SBATCH --time=500:00:00
+#SBATCH --time=9999:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1

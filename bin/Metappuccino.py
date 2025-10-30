@@ -319,7 +319,7 @@ def main():
             if not os.path.isfile(step2_flag):
                 if args.local:
                     subprocess.run(["bash", extract_preprocess,
-                                    metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir],
+                                    metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir, cpus_req],
                                    check=True, env=env)
                     ensure_flag_after_local(step2_flag)
                 else:
@@ -333,7 +333,7 @@ def main():
                         if mem_req:
                             pbs_l += f":mem={mem_req}"
                         cmd += ["-l", pbs_l,
-                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},LOGAN_PATH={logan_path},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", extract_preprocess]
+                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},LOGAN_PATH={logan_path},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},N_CPUS={cpus_req}", extract_preprocess]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "pbs", env)
                         wait_for_flag_or_job_end(step2_flag, [handle])
@@ -346,7 +346,7 @@ def main():
                         if mem_req:
                             sbatch_opts += [f"--mem={mem_req}"]
                         cmd = ["sbatch", *sbatch_opts,
-                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},LOGAN_PATH={logan_path},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", extract_preprocess]
+                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},LOGAN_PATH={logan_path},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},N_CPUS={cpus_req}", extract_preprocess]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "slurm", env)
                         wait_for_flag_or_job_end(step2_flag, [handle])
@@ -356,7 +356,7 @@ def main():
             if not os.path.isfile(step3_flag):
                 if args.local:
                     subprocess.run(["bash", summary_context,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir],
+                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir,cpus_req],
                                    check=True, env=env)
                     ensure_flag_after_local(step3_flag)
                 else:
@@ -370,7 +370,7 @@ def main():
                         if mem_req:
                             pbs_l += f":mem={mem_req}"
                         cmd += ["-l", pbs_l,
-                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", summary_context]
+                                "-v", f"METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},N_CPUS={cpus_req}", summary_context]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "pbs", env)
                         wait_for_flag_or_job_end(step3_flag, [handle])
@@ -383,7 +383,7 @@ def main():
                         if mem_req:
                             sbatch_opts += [f"--mem={mem_req}"]
                         cmd = ["sbatch", *sbatch_opts,
-                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir}", summary_context]
+                               f"--export=METAPPUCCINO={metappuccino_dir},RES={res_dir},ENV_REQUIREMENT={env_dir},VERBOSE={verbose_env},NODE_WORK_PATH={working_dir},N_CPUS={cpus_req}", summary_context]
                         vprint("Submitting:", " ".join(cmd))
                         handle = submit_job(cmd, "slurm", env)
                         wait_for_flag_or_job_end(step3_flag, [handle])

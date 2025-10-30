@@ -22,6 +22,8 @@ UBERON_FILE = os.path.join(base_path, "UBERON_TABLE_CLEAN.csv")
 CSV_OUTPUT = os.path.join(base_path, "completed_metadata.csv")
 SUMMARIES_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP4_1.flag")
+NLL_OUTPUT = os.path.join(base_path, "nll_inference.csv")
+PPL_OUTPUT = os.path.join(base_path, "ppl_inference.csv")
 
 INVALID_ENTRIES = {"unknown", "missing", "n/a", "na", "none", ""}
 STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "an", "by"}
@@ -135,23 +137,55 @@ def _compute_codes_with_partial_tokens(raw_value, normalized_parts, names_set, s
     return "; ".join(codes)
 
 
+def _norm_cell_key(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _words_with_uc_and_digit(text: str):
+    if not isinstance(text, str):
+        return []
+    spans = re.findall(r"[A-Za-z0-9][A-Za-z0-9\-\._/']*[A-Za-z0-9]", text)
+    out = []
+    for sp in spans:
+        core = sp.strip("()[]'\".,;: ")
+        if not core:
+            continue
+        if any(c.isupper() for c in core) and any(c.isdigit() for c in core):
+            out.append(core)
+    return out
+
+
+def _is_official_name(name_str: str, cell_df) -> bool:
+    return str(name_str) in set(cell_df["name"].astype(str))
+
+
 ##########################################################################################
 #MAIN
 df = pd.read_csv(CSV_INPUT, sep='\t', dtype=str, on_bad_lines='skip').fillna('')
 df.columns = df.columns.str.strip()
-assert "run_accession" in df.columns, "Colonne 'run_accession' manquante"
+assert "run_accession" in df.columns, "'run_accession' missing"
 
 disease_names, disease_syn, disease_code = load_syn(DOT_FILE, "synonym", "name", "code_dot")
 organ_names, organ_syn, organ_code = load_syn(UBERON_FILE, "synonym", "name", "code_uberon")
 cell_df = pd.read_csv(CELLOSAURUS, dtype=str, on_bad_lines='skip').fillna('')
-cell_syn = {}
+
+cell_lookup = {}
 for _, r in cell_df.iterrows():
     name = r["name"].strip()
     if not name:
         continue
+    lo = name.lower()
+    nk = _norm_cell_key(name)
+    cell_lookup[lo] = name
+    cell_lookup[nk] = name
     syns = [s.strip() for s in r["synonym"].split(";")] if r["synonym"] else []
     for s in syns + [name]:
-        cell_syn[s.lower()] = name
+        if not s:
+            continue
+        lo2 = s.lower()
+        nk2 = _norm_cell_key(s)
+        cell_lookup[lo2] = name
+        cell_lookup[nk2] = name
 
 disease_canon_case = {k.lower(): k for k in disease_code.keys()}
 organ_canon_case = {k.lower(): k for k in organ_code.keys()}
@@ -162,32 +196,31 @@ fields = ["run_accession", "study_accession", "instrument_platform", "library_se
           "response", "age", "sex", "ethnicity"]
 
 no_entropy_fields = {"do_code", "organ_uberon_code", "bs_uberon_code"}
-output_cols = []
-for f in fields:
-    output_cols.append(f)
-    if f not in no_entropy_fields and f != "run_accession" and f != "study_accession" and f != "instrument_platform" and f != "base_count" and f != "library_strategy":
-        output_cols.append(f"nll_{f}")
-        output_cols.append(f"ppl_{f}")
+output_cols = list(fields)
 
 augmented_data = []
+nll_rows = []
+ppl_rows = []
+sources_per_run = {}
+
 for _, row in df.iterrows():
     run = row["run_accession"]
 
     entry = {}
     locked_fields = set()
+    source = {}
+    llm_nll = {}
+    llm_ppl = {}
+
     for f in fields:
         value = row.get(f, "").strip()
         if value and value.lower() not in INVALID_ENTRIES:
             entry[f] = value
+            source[f] = "db"
             if f != "run_accession" and f not in no_entropy_fields:
-                entry[f"nll_{f}"] = "not applicable"
-                entry[f"ppl_{f}"] = "not applicable"
                 locked_fields.add(f)
         else:
             entry[f] = ""
-            if f != "run_accession" and f not in no_entropy_fields:
-                entry[f"nll_{f}"] = "not applicable"
-                entry[f"ppl_{f}"] = "not applicable"
 
     json_file = os.path.join(INFERENCE_DIR, f"{run}.json")
     if os.path.exists(json_file):
@@ -201,52 +234,104 @@ for _, row in df.iterrows():
                             val = "; ".join(map(str, val))
                         val = val.strip() if isinstance(val, str) else str(val)
                         entry[k] = val if val else "unknown"
-                        # lire les nouvelles métriques nll/ppl
-                        nll_val = js.get("nll", {}).get(k, "unknown")
-                        ppl_val = js.get("ppl", {}).get(k, "unknown")
-                        if k not in no_entropy_fields and k != "run_accession":
-                            entry[f"nll_{k}"] = str(nll_val)
-                            entry[f"ppl_{k}"] = str(ppl_val)
+                        source[k] = "llm"
+                for k, v in js.get("nll", {}).items():
+                    if k in fields:
+                        llm_nll[k] = str(v)
+                for k, v in js.get("ppl", {}).items():
+                    if k in fields:
+                        llm_ppl[k] = str(v)
 
-    if "cell_line" not in locked_fields and entry["cell_line"].lower() not in INVALID_ENTRIES:
-        cleaned = clean_cell_line_name(entry["cell_line"])
-        canonical = cell_syn.get(cleaned, None)
+    if entry.get("cell_line", "").strip().lower() not in INVALID_ENTRIES:
+        original = entry["cell_line"]
+        cleaned = clean_cell_line_name(original)
+        canonical = None
+        k_lower = cleaned.lower()
+        k_norm = _norm_cell_key(original)
+        if k_lower in cell_lookup:
+            canonical = cell_lookup[k_lower]
+        elif k_norm in cell_lookup:
+            canonical = cell_lookup[k_norm]
         if canonical:
             entry["cell_line"] = canonical
-            if canonical in cell_df["name"].values:
-                inferred = infer_from_cell_line(canonical, cell_df)
-                for k, v in inferred.items():
-                    if k not in locked_fields:
-                        if k == "uberon_code":
+            source["cell_line"] = source.get("cell_line", "llm")
+            inferred = infer_from_cell_line(canonical, cell_df)
+            for k, v in inferred.items():
+                if v and v.strip().lower() not in INVALID_ENTRIES:
+                    if k == "uberon_code":
+                        if not entry.get("bs_uberon_code") or entry["bs_uberon_code"].lower() in INVALID_ENTRIES:
                             entry["bs_uberon_code"] = v
-                            entry["nll_bs_uberon_code"] = "not applicable"
-                            entry["ppl_bs_uberon_code"] = "not applicable"
-                        else:
+                            source["bs_uberon_code"] = "cello"
+                    else:
+                        if not entry.get(k) or entry[k].lower() in INVALID_ENTRIES:
                             entry[k] = v
-                            ent_k_nll = f"nll_{k}"
-                            ent_k_ppl = f"ppl_{k}"
-                            if ent_k_nll in entry:
-                                entry[ent_k_nll] = "not applicable"
-                            if ent_k_ppl in entry:
-                                entry[ent_k_ppl] = "not applicable"
-        else:
-            entry["cell_line"] = cleaned
+                            source[k] = "cello"
 
-    if "disease" not in locked_fields:
+    cl_val = entry.get("cell_line", "")
+    if cl_val and not _is_official_name(cl_val, cell_df):
+        found_canonical = None
+        for cand in _words_with_uc_and_digit(cl_val):
+            k1 = cand.lower()
+            k2 = _norm_cell_key(cand)
+            k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
+            if k1 in cell_lookup:
+                found_canonical = cell_lookup[k1]
+                break
+            if k2 in cell_lookup:
+                found_canonical = cell_lookup[k2]
+                break
+            if k3 in cell_lookup:
+                found_canonical = cell_lookup[k3]
+                break
+        if not found_canonical:
+            raw_candidates = []
+            raw_candidates.append(cl_val)
+            for extra in [row.get("cell_line", ""), entry.get("cell_line", "")]:
+                if isinstance(extra, str) and extra:
+                    raw_candidates.append(extra)
+            for raw in raw_candidates:
+                for cand in _words_with_uc_and_digit(raw):
+                    k1 = cand.lower()
+                    k2 = _norm_cell_key(cand)
+                    k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
+                    if k1 in cell_lookup:
+                        found_canonical = cell_lookup[k1]; break
+                    if k2 in cell_lookup:
+                        found_canonical = cell_lookup[k2]; break
+                    if k3 in cell_lookup:
+                        found_canonical = cell_lookup[k3]; break
+                if found_canonical:
+                    break
+        if found_canonical:
+            entry["cell_line"] = found_canonical
+            source["cell_line"] = source.get("cell_line", "cello")
+            inferred = infer_from_cell_line(found_canonical, cell_df)
+            for k, v in inferred.items():
+                if v and v.strip().lower() not in INVALID_ENTRIES:
+                    if k == "uberon_code":
+                        if not entry.get("bs_uberon_code") or entry["bs_uberon_code"].lower() in INVALID_ENTRIES:
+                            entry["bs_uberon_code"] = v
+                            source["bs_uberon_code"] = "cello"
+                    else:
+                        if not entry.get(k) or entry[k].lower() in INVALID_ENTRIES:
+                            entry[k] = v
+                            source[k] = "cello"
+
+    if "disease" not in set():
         raw_val = entry["disease"]
         norm = normalize_term(raw_val, disease_names, disease_syn)
         entry["disease"] = "; ".join(norm)
         entry["do_code"] = _compute_codes_with_partial_tokens(raw_val, norm, disease_names, disease_syn, disease_code,
-                                                              disease_canon_case)
+                                                              {k.lower(): k for k in disease_code.keys()})
 
-    if "organ" not in locked_fields:
+    if "organ" not in set():
         raw_val = entry["organ"]
         norm = normalize_term(raw_val, organ_names, organ_syn)
         entry["organ"] = "; ".join(norm)
         entry["organ_uberon_code"] = _compute_codes_with_partial_tokens(raw_val, norm, organ_names, organ_syn,
                                                                         organ_code, organ_canon_case)
 
-    if "biopsy_site" not in locked_fields:
+    if "biopsy_site" not in set():
         raw_val = entry["biopsy_site"]
         norm = normalize_term(raw_val, organ_names, organ_syn)
         entry["biopsy_site"] = "; ".join(norm)
@@ -259,23 +344,36 @@ for _, row in df.iterrows():
     for k in fields:
         if not entry.get(k) or entry[k].strip().lower() in INVALID_ENTRIES:
             entry[k] = "unknown"
-            if k != "run_accession" and k not in no_entropy_fields:
-                entry[f"nll_{k}"] = "not applicable"
-                entry[f"ppl_{k}"] = "not applicable"
 
     if entry.get("treatment", "").strip().lower() == "unknown":
         entry["treatment_time"] = "not applicable"
         entry["response"] = "not applicable"
-        entry["nll_treatment_time"] = "not applicable"
-        entry["ppl_treatment_time"] = "not applicable"
-        entry["nll_response"] = "not applicable"
-        entry["ppl_response"] = "not applicable"
+
+    for k in ("age", "sex", "ethnicity"):
+        base_val = row.get(k, "").strip()
+        if base_val and base_val.lower() not in INVALID_ENTRIES:
+            entry[k] = base_val
+            source[k] = "db"
 
     augmented_data.append(entry)
+    sources_per_run[run] = source
+
+    metric_fields = [f for f in fields if f not in no_entropy_fields and f not in {"run_accession", "study_accession", "instrument_platform", "base_count", "library_strategy"}]
+    nll_row = {"run_accession": run}
+    ppl_row = {"run_accession": run}
+    for f in metric_fields:
+        if sources_per_run[run].get(f) == "llm":
+            nll_row[f] = llm_nll.get(f, "not applicable")
+            ppl_row[f] = llm_ppl.get(f, "not applicable")
+        else:
+            nll_row[f] = "not applicable"
+            ppl_row[f] = "not applicable"
+    nll_rows.append(nll_row)
+    ppl_rows.append(ppl_row)
 
 out_df = pd.DataFrame(augmented_data, columns=output_cols)
 
-exclude_cols = {"cell_line", "treatment_time", "response"}
+exclude_cols = {"cell_line", "treatment_time", "response", "age"}
 for col in out_df.columns:
     out_df[col] = out_df[col].replace("None", "unknown")
     if col in exclude_cols:
@@ -314,6 +412,7 @@ if "sex" in out_df.columns:
 ##########################################################################################
 #VERIF AGE
 
+summories_map_alias = {}
 summaries_map = {}
 if os.path.exists(SUMMARIES_FILE):
     try:
@@ -379,7 +478,7 @@ def _nums_equal(a: str, b: str) -> bool:
     except Exception:
         return a == b
 
-def _age_is_confirmed_in_summary(age_value: str, summary: str) -> bool:
+def _age_is_confirmed_in_summary(age_value: str, summary: str):
     parsed = _parse_age_value(age_value)
     if not parsed:
         return True
@@ -397,14 +496,13 @@ if "age" in out_df.columns and "run_accession" in out_df.columns:
     for _i, _r in out_df.iterrows():
         _run = str(_r["run_accession"])
         _age = str(_r["age"])
+        if sources_per_run.get(_run, {}).get("age") != "llm":
+            _validated_ages.append(_age)
+            continue
         _summary = summaries_map.get(_run, "")
         if _age.strip().lower() not in INVALID_ENTRIES and not _age.strip().lower() == "unknown":
             if not _age_is_confirmed_in_summary(_age, _summary):
                 _age = "unknown"
-                if "nll_age" in out_df.columns:
-                    out_df.at[_i, "nll_age"] = "not applicable"
-                if "ppl_age" in out_df.columns:
-                    out_df.at[_i, "ppl_age"] = "not applicable"
         _validated_ages.append(_age)
     out_df["age"] = _validated_ages
 
@@ -427,5 +525,8 @@ out_df.to_csv(tsv_output, sep='\t', index=False)
 #.feather
 feather_output = CSV_OUTPUT.replace('.csv', '.feather')
 out_df.reset_index(drop=True).to_feather(feather_output)
+
+pd.DataFrame(nll_rows).to_csv(NLL_OUTPUT, index=False)
+pd.DataFrame(ppl_rows).to_csv(PPL_OUTPUT, index=False)
 
 open(FLAG_FILE, 'w').close()

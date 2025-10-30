@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #PBS -N extract_preprocess
-#PBS -l walltime=12:00:00
+#PBS -l walltime=5000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=extract_preprocess
-#SBATCH --time=12:00:00
+#SBATCH --time=5000:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
@@ -19,6 +19,7 @@ ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 LOGAN_PATH=${4:-${LOGAN_PATH:-}}
 VERBOSE=${5:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${6:-${NODE_WORK_PATH:-}}
+N_CPUS=${7:-${N_CPUS:-}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -67,7 +68,7 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then
   PY_VERBOSE+=(--verbose)
 fi
 
-python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}"
+python3 -u fetch_existing_cat.py --base_path "$SCRATCH_DIR" --cpu_number "$N_CPUS" "${PY_VERBOSE[@]}"
 
 if [[ -n "$LOGAN_PATH" ]]; then
     python3 -u logan_add_search.py --base_path "$SCRATCH_DIR" --input_logan_path "$LOGAN_PATH" "${PY_VERBOSE[@]}"

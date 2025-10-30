@@ -8,11 +8,13 @@ import argparse
 import spacy
 from spacy.matcher import PhraseMatcher
 from spacy.cli import download
+from concurrent.futures import ProcessPoolExecutor
 
 ########################################################################################################################
 #PATHS
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--cpu_number", type=int, default=os.cpu_count(), help="Number of CPU used to parallelize the metadata fetching")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -25,6 +27,7 @@ input_file = os.path.join(base_path, "metadata_sra.txt")
 output_file_df = os.path.join(base_path, "database_metadata_curated.csv")
 FLAG_FILE = os.path.join(base_path, "STEP2_1.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
+cpu_number = args.cpu_number
 
 invalid_entries = {"unknown", "not applicable", "missing", "n/a", "na", "none", ""}
 
@@ -174,9 +177,6 @@ matcher.add("CELL_LINE_DICT", [nlp_match.make_doc(t) for t in sorted(codes_selec
 
 regex_pattern = re.compile(r"\b[A-Za-z0-9]{4,}\b")
 
-ambiguous_rows = []
-out = []
-
 def _bs_norm(s):
     return re.sub(r"[^a-z0-9]+", "_", (s or "").strip().lower()).strip("_")
 
@@ -219,7 +219,9 @@ def _bs_get(run, tag, extra_aliases=None):
                 return d[k]
     return ""
 
-for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
+def process_path(path):
+    ambiguous_rows_local = []
+    out_local = None
     run = os.path.basename(path).split("_metadata.xml")[0]
     vprint(run)
     ctx = open(path, "r", encoding="utf-8", errors="ignore").read()
@@ -227,7 +229,6 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
     is_ambiguous = False
     o["run_accession"] = run
     found = False
-
     raw_cl = extract_tag(ctx, "cell_line")
     if raw_cl and raw_cl.lower() not in invalid_entries:
         vprint("tag")
@@ -256,7 +257,7 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             if hits:
                 hits = uniq_preserve_order(hits)
                 if len(hits) >= 2:
-                    ambiguous_rows.append({"run_accession": run, "candidates": ";".join(hits)})
+                    ambiguous_rows_local.append({"run_accession": run, "candidates": ";".join(hits)})
                     is_ambiguous = True
                     vprint(f"{origin}>=2")
                     found = True
@@ -269,7 +270,6 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
                     enrich_from_cell_df(o, o["cell_line"])
                     found = True
                     break
-
     if not found:
         ensure_maxlen(nlp_match, ctx)
         doc_m = nlp_match(ctx)
@@ -284,21 +284,19 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
                     cand_texts.append(t)
             cand_texts = uniq_preserve_order(cand_texts)
             if cand_texts:
-                ambiguous_rows.append({"run_accession": run, "candidates": ";".join(cand_texts)})
+                ambiguous_rows_local.append({"run_accession": run, "candidates": ";".join(cand_texts)})
                 is_ambiguous = True
                 vprint("PhraseMatcher")
                 found = True
-
     if not found:
         all_tokens = regex_pattern.findall(ctx)
         regex_cands = [t for t in all_tokens if valid_regex_candidate(t) and t.lower() in cell_syn]
         regex_cands = uniq_preserve_order(regex_cands)
         if regex_cands:
-            ambiguous_rows.append({"run_accession": run, "candidates": ";".join(regex_cands)})
+            ambiguous_rows_local.append({"run_accession": run, "candidates": ";".join(regex_cands)})
             is_ambiguous = True
             vprint("regex")
             found = True
-
     for tag in ["sex", "treatment", "treatment_time", "response", "age", "ethnicity", "biopsy_site", "biopsy_type", "organ", "disease"]:
         if tag in ["treatment", "treatment_time"]:
             continue
@@ -320,12 +318,10 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
                 vprint(f"biosample::{tag}")
         if val and val.lower() not in invalid_entries:
             o[tag] = val
-
     if not o["library_selection"]:
         o["library_selection"] = extract_libsel(ctx)
     if not o["sequencing_source"]:
         o["sequencing_source"] = extract_src(ctx)
-
     if o["treatment"]:
         times = re.findall(r"\b\d+\s*(?:h|hr|hrs|hours?|d|day|days?)\b", o["treatment"], re.IGNORECASE)
         if times:
@@ -337,18 +333,15 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
             o["treatment"] = re.sub(r"\b\d+\s*(?:h|hr|hrs|hours?|d|day|days?)\b", "", o["treatment"], flags=re.IGNORECASE).strip(" ,;")
         o["treatment"] = re.sub(stopwords, "", o["treatment"], flags=re.IGNORECASE).strip()
         o["treatment"] = re.sub(r"\s{2,}", " ", o["treatment"])
-
     allowed_libsel = {"polyA", "inverse rRNA", "hybrid selection", "small RNA", "other"}
     allowed_src = {"spatial", "bulk", "single cell"}
     allowed_biopsy_type = {"metastasis", "blood", "primary"}
-
     if o.get("library_selection") and o["library_selection"] not in allowed_libsel:
         o["library_selection"] = ""
     if o.get("sequencing_source") and o["sequencing_source"] not in allowed_src:
         o["sequencing_source"] = ""
     if o.get("biopsy_type") and o["biopsy_type"] not in allowed_biopsy_type and o.get("biopsy_type_source") != "cellosaurus":
         o["biopsy_type"] = ""
-
     o["disease"] = normalize(o["disease"], disease_syn)
     o["do_code"] = disease_code.get(o["disease"], "")
     if o.get("organ_source") != "cellosaurus":
@@ -359,90 +352,100 @@ for path in glob.glob(os.path.join(xml_dir, "*_metadata.xml")):
         o["biopsy_site"] = normalize(o["biopsy_site"], organ_syn)
     if (not o.get("bs_uberon_code")) or (o.get("bs_uberon_code_source") != "cellosaurus"):
         o["bs_uberon_code"] = organ_code.get(o["biopsy_site"], o.get("bs_uberon_code", ""))
-
     is_official = bool(o.get("cell_line")) and (o["cell_line"].strip().lower() in official_names_lower)
-
     if is_ambiguous:
         vprint("ambiguous")
-        out.append(o)
+        out_local = o
     elif not is_official:
-        ambiguous_rows.append({"run_accession": run, "candidates": o.get("cell_line", "")})
+        ambiguous_rows_local.append({"run_accession": run, "candidates": o.get("cell_line", "")})
         vprint("unresolved_or_not_official")
-        out.append(o)
+        out_local = o
     else:
-        out.append(o)
+        out_local = o
+    return out_local, ambiguous_rows_local
 
-df_conf = pd.DataFrame(out, columns=cols)
+if __name__ == "__main__":
+    paths = glob.glob(os.path.join(xml_dir, "*_metadata.xml"))
+    results = []
+    with ProcessPoolExecutor(max_workers=cpu_number) as ex:
+        for r in ex.map(process_path, paths, chunksize=100):
+            results.append(r)
+    out = [r[0] for r in results]
+    ambiguous_rows = []
+    for r in results:
+        ambiguous_rows.extend(r[1])
 
-def fmt_codes(x):
-    if not isinstance(x, str) or not x:
-        return x
-    return x.replace('_', ':').replace('+', ';')
+    df_conf = pd.DataFrame(out, columns=cols)
 
-if not df_conf.empty:
-    df_conf["bs_uberon_code"] = df_conf["bs_uberon_code"].apply(fmt_codes)
-    df_conf["organ_uberon_code"] = df_conf["organ_uberon_code"].apply(fmt_codes)
+    def fmt_codes(x):
+        if not isinstance(x, str) or not x:
+            return x
+        return x.replace('_', ':').replace('+', ';')
 
-sra_df = pd.read_csv(input_file, sep='\t', dtype=str, on_bad_lines='warn').fillna('')
+    if not df_conf.empty:
+        df_conf["bs_uberon_code"] = df_conf["bs_uberon_code"].apply(fmt_codes)
+        df_conf["organ_uberon_code"] = df_conf["organ_uberon_code"].apply(fmt_codes)
 
-runs_xml = {os.path.basename(p).split("_metadata.xml")[0] for p in glob.glob(os.path.join(xml_dir, "*_metadata.xml"))}
-runs_sra = set(sra_df['run_accession'].astype(str).str.strip())
+    sra_df = pd.read_csv(input_file, sep='\t', dtype=str, on_bad_lines='warn').fillna('')
 
-vprint(f"[DEBUG] XML files: {len(runs_xml)} | SRA runs: {len(runs_sra)}")
+    runs_xml = {os.path.basename(p).split("_metadata.xml")[0] for p in glob.glob(os.path.join(xml_dir, "*_metadata.xml"))}
+    runs_sra = set(sra_df['run_accession'].astype(str).str.strip())
 
-missing_in_sra = sorted(runs_xml - runs_sra)
-missing_in_xml = sorted(runs_sra - runs_xml)
+    vprint(f"[DEBUG] XML files: {len(runs_xml)} | SRA runs: {len(runs_sra)}")
 
-if missing_in_sra:
-    vprint("[DEBUG] Not in metadata_sra.txt: " + ", ".join(missing_in_sra[:10]) + (" ..." if len(missing_in_sra) > 10 else ""))
+    missing_in_sra = sorted(runs_xml - runs_sra)
+    missing_in_xml = sorted(runs_sra - runs_xml)
 
-if missing_in_xml:
-    vprint("[DEBUG] In SRA but no corresponding XML: " + ", ".join(missing_in_xml[:10]) + (" ..." if len(missing_in_xml) > 10 else ""))
+    if missing_in_sra:
+        vprint("[DEBUG] Not in metadata_sra.txt: " + ", ".join(missing_in_sra[:10]) + (" ..." if len(missing_in_sra) > 10 else ""))
 
-dupes = sra_df['run_accession'][sra_df['run_accession'].duplicated(keep=False)]
-if not dupes.empty:
-    vprint("[DEBUG] Duplicates SRA (run_accession): " + ", ".join(sorted(dupes.unique())))
+    if missing_in_xml:
+        vprint("[DEBUG] In SRA but no corresponding XML: " + ", ".join(missing_in_xml[:10]) + (" ..." if len(missing_in_xml) > 10 else ""))
 
-if 'run_accession' not in sra_df.columns:
-    for alt in ['Run', 'run', 'RUN']:
-        if alt in sra_df.columns:
-            sra_df = sra_df.rename(columns={alt: 'run_accession'})
-            break
+    dupes = sra_df['run_accession'][sra_df['run_accession'].duplicated(keep=False)]
+    if not dupes.empty:
+        vprint("[DEBUG] Duplicates SRA (run_accession): " + ", ".join(sorted(dupes.unique())))
 
-sra_df['run_accession'] = sra_df['run_accession'].astype(str).str.strip()
+    if 'run_accession' not in sra_df.columns:
+        for alt in ['Run', 'run', 'RUN']:
+            if alt in sra_df.columns:
+                sra_df = sra_df.rename(columns={alt: 'run_accession'})
+                break
 
-cols_to_extract = ['run_accession', 'base_count', 'library_strategy', 'instrument_platform', 'study_accession']
-cols_exist = [c for c in cols_to_extract if c in sra_df.columns]
-sra_base = sra_df[cols_exist].copy()
+    sra_df['run_accession'] = sra_df['run_accession'].astype(str).str.strip()
 
-df_conf['run_accession'] = df_conf['run_accession'].astype(str).str.strip()
+    cols_to_extract = ['run_accession', 'base_count', 'library_strategy', 'instrument_platform', 'study_accession']
+    cols_exist = [c for c in cols_to_extract if c in sra_df.columns]
+    sra_base = sra_df[cols_exist].copy()
 
-df = sra_base.merge(df_conf, on='run_accession', how='left')
+    df_conf['run_accession'] = df_conf['run_accession'].astype(str).str.strip()
 
-for c in ['base_count', 'library_strategy', 'instrument_platform', 'study_accession']:
-    if c in df.columns:
-        df[c] = df[c].fillna('')
+    df = sra_base.merge(df_conf, on='run_accession', how='left')
 
-conf_runs = set(df_conf['run_accession'].tolist())
+    for c in ['base_count', 'library_strategy', 'instrument_platform', 'study_accession']:
+        if c in df.columns:
+            df[c] = df[c].fillna('')
 
-for i, row in df.iterrows():
-    if row['run_accession'] not in conf_runs:
-        continue
-    if not row['biopsy_type']:
-        ctx_path = os.path.join(xml_dir, f"{row['run_accession']}_metadata.xml")
-        if not os.path.exists(ctx_path):
+    conf_runs = set(df_conf['run_accession'].tolist())
+
+    for i, row in df.iterrows():
+        if row['run_accession'] not in conf_runs:
             continue
-        ctx = open(ctx_path, "r", encoding="utf-8", errors="ignore").read()
-        if re.search(r"\bmetasta(?:sis|ses|tic)\b", ctx, re.IGNORECASE):
-            df.at[i, 'biopsy_type'] = 'metastasis'
-        elif re.search(r"\bblood|plasma|venous|whole[-\s]?blood\b", ctx, re.IGNORECASE):
-            df.at[i, 'biopsy_type'] = 'blood'
+        if not row['biopsy_type']:
+            ctx_path = os.path.join(xml_dir, f"{row['run_accession']}_metadata.xml")
+            if not os.path.exists(ctx_path):
+                continue
+            ctx = open(ctx_path, "r", encoding="utf-8", errors="ignore").read()
+            if re.search(r"\bmetasta(?:sis|ses|tic)\b", ctx, re.IGNORECASE):
+                df.at[i, 'biopsy_type'] = 'metastasis'
+            elif re.search(r"\bblood|plasma|venous|whole[-\s]?blood\b", ctx, re.IGNORECASE):
+                df.at[i, 'biopsy_type'] = 'blood'
 
-df = df.fillna('')
+    df = df.fillna('')
 
-df.to_csv(output_file_df, sep="\t", index=False)
+    df.to_csv(output_file_df, sep="\t", index=False)
 
-if ambiguous_rows:
-    pd.DataFrame(ambiguous_rows, columns=["run_accession", "candidates"]).to_csv(AMBIG_FILE, index=False)
+    if ambiguous_rows:
+        pd.DataFrame(ambiguous_rows, columns=["run_accession", "candidates"]).to_csv(AMBIG_FILE, index=False)
 
-open(FLAG_FILE, 'w').close()
+    open(FLAG_FILE, 'w').close()

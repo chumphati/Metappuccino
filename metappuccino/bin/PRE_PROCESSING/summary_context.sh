@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #PBS -N summary_context
-#PBS -l walltime=12:00:00
+#PBS -l walltime=5000:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=summary_context
-#SBATCH --time=12:00:00
+#SBATCH --time=5000:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
@@ -19,6 +19,7 @@ RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-${NODE_WORK_PATH:-}}
+N_CPUS=${6:-${N_CPUS:-}}
 
 LOG_DIR=$RES/logs
 TMP_DIR=$RES/tmp
@@ -58,4 +59,4 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then
   PY_VERBOSE+=(--verbose)
 fi
 
-python3 -u summarize_inputs.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}"
+python3 -u summarize_inputs.py --base_path "$SCRATCH_DIR" --cpu_number "$N_CPUS" "${PY_VERBOSE[@]}"

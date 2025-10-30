@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #PBS -N normalize_final
-#PBS -l walltime=12:00:00
+#PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=normalize_final
-#SBATCH --time=12:00:00
+#SBATCH --time=100:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
@@ -46,6 +46,8 @@ cleanup() {
     cp "$SCRATCH_DIR/completed_metadata.json" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "json file not found, skipping."
     cp "$SCRATCH_DIR/completed_metadata.tsv" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "tsv file not found, skipping."
     cp "$SCRATCH_DIR/completed_metadata.feather" "$RES/COMPLETED_INFERENCE/" 2>/dev/null || echo "feather file not found, skipping."
+    cp "$SCRATCH_DIR/nll_inference.csv" "$RES/COMPLETED_INFERENCE/MODEL_CONFIDENCE" 2>/dev/null || echo "nll file not found, skipping."
+    cp "$SCRATCH_DIR/ppl_inference.csv" "$RES/COMPLETED_INFERENCE/MODEL_CONFIDENCE" 2>/dev/null || echo "ppl file not found, skipping."
     cp "$SCRATCH_DIR/STEP4_1.flag" "$TMP_DIR/" 2>/dev/null || echo "Flag not found, skipping."
     echo "End date: $(date)"
     rm -rf "$SCRATCH_DIR"

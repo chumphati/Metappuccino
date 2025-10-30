@@ -14,6 +14,7 @@ from spacy.cli import download
 from transformers import AutoTokenizer
 from collections import Counter
 from nltk.corpus import stopwords
+from concurrent.futures import ProcessPoolExecutor
 
 ##########################################################################################
 #PATHS
@@ -23,7 +24,6 @@ nltk.download("stopwords", quiet=True)
 download('en_core_web_md')
 nlp = spacy.load('en_core_web_md')
 
-#initialize stop-words
 try:
     STOPWORDS = set(w.lower() for w in stopwords.words("english"))
 except LookupError:
@@ -32,6 +32,7 @@ except LookupError:
 
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
+parser.add_argument("--cpu_number", type=int, default=os.cpu_count(), help="Number of CPU used to parallelize the summarizing")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 args = parser.parse_args()
 
@@ -40,6 +41,7 @@ INPUT_FILE = os.path.join(base_path, "cleaned_metadata_sra.txt")
 OUTPUT_FILE = os.path.join(base_path, "metadata_sra_summarized.txt")
 FLAG_FILE = os.path.join(base_path, "STEP2_2.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
+cpu_number = args.cpu_number
 
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
@@ -160,9 +162,9 @@ def _write_ambiguous_rows(path, rows):
             dw.writerow(r)
 
 _SRA_ID_PATTERNS = [
-    re.compile(r"^(SRR|DRR|ERR)\d+", re.IGNORECASE),   # runs
-    re.compile(r"^(SRP|DRP|ERP)\d+", re.IGNORECASE),   # studies/projects SRA
-    re.compile(r"^PRJ[A-Z]{2}\d+", re.IGNORECASE),     # BioProject: PRJNA/PRJEB/PRJDB
+    re.compile(r"^(SRR|DRR|ERR)\d+", re.IGNORECASE),
+    re.compile(r"^(SRP|DRP|ERP)\d+", re.IGNORECASE),
+    re.compile(r"^PRJ[A-Z]{2}\d+", re.IGNORECASE),
 ]
 
 def _remove_sra_ids(text: str) -> str:
@@ -182,15 +184,11 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
     if cur_tokens <= max_tokens:
         vprint(f"trim_context_to_tokens: within limit ({cur_tokens} tokens)", flush=True)
         return text
-
-    #1: remove SRA IDs
     text = _remove_sra_ids(text)
     cur_tokens = mistral_tokens(text)
     if cur_tokens <= max_tokens:
         vprint(f"trim_context_to_tokens: reduced by removing SRA IDs ({cur_tokens} tokens)", flush=True)
         return text
-
-    #2: remove frequent/stopwords first
     words = text.split()
     if len(words) > 50:
         freq = Counter(w.lower().strip(",.;:!?") for w in words)
@@ -212,8 +210,6 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
             return reduced
         text = reduced
         vprint(f"trim_context_to_tokens: stopwords/frequent removal not enough ({cur_tokens} tokens)", flush=True)
-
-    #3: cut by sentences
     sents = sent_tokenize(text)
     while sents and mistral_tokens(" ".join(sents)) > max_tokens:
         sents.pop()
@@ -221,8 +217,6 @@ def trim_context_to_tokens(text: str, max_tokens: int = MAX_TOKENS) -> str:
         cur_tokens = mistral_tokens(" ".join(sents))
         vprint(f"trim_context_to_tokens: reduced by sentence trimming ({cur_tokens} tokens)", flush=True)
         return " ".join(sents)
-
-    #4: fallback proportional cut
     words = text.split()
     ratio = max_tokens / (cur_tokens + 1e-9)
     new_len = max(1, int(len(words) * ratio))
@@ -253,6 +247,36 @@ def neg_score(text):
 amb_rows, ambiguous_map = _load_ambiguous_rows(AMBIG_FILE)
 updates = {}
 
+def _process_row(row):
+    run_acc = row[0]
+    raw = ' '.join(f for f in row[1:] if not any(x in f.lower() for x in ['run accession', 'study accession', 'experiment accession', 'sample accession']))
+    ctx = re.sub(r'\S+?\.fastq\.gz', '', raw).strip()
+    orig_tokens = mistral_tokens(ctx)
+    vprint(f"{run_acc} original_tokens={orig_tokens}", flush=True)
+    if orig_tokens > MAX_TOKENS:
+        summ = trim_context_to_tokens(ctx, max_tokens=MAX_TOKENS)
+        vprint(f"{run_acc} trimmed_tokens={mistral_tokens(summ)}", flush=True)
+    else:
+        summ = ctx
+        vprint(f"{run_acc} kept_tokens={mistral_tokens(summ)}", flush=True)
+    upd = None
+    if run_acc in ambiguous_map and ambiguous_map[run_acc]:
+        cands = ambiguous_map[run_acc]
+        chosen, method = _best_candidate_from_context(ctx if ctx else summ, cands)
+        method_tag = "by match" if method == "match" else ("by similarity" if method == "similarity" else "by fallback")
+        note = f" Cell line disambiguation: {chosen} (candidates: {' | '.join(cands)}) — {method_tag}."
+        tentative = (summ + " " + note).strip()
+        if mistral_tokens(tentative) > MAX_TOKENS:
+            sents = sent_tokenize(summ)
+            while sents and mistral_tokens(' '.join(sents) + " " + note) > MAX_TOKENS:
+                sents.pop()
+            summ = (' '.join(sents)).strip()
+        summ = (summ + " " + note).strip()
+        upd = {"run": run_acc, "chosen": chosen, "note": note.strip()}
+        vprint(f"{run_acc} ambiguous_resolved={chosen} method={method}", flush=True)
+    vprint(f"{run_acc} final_tokens={mistral_tokens(summ)}", flush=True)
+    return run_acc, summ, upd
+
 ##########################################################################################
 #MAIN
 with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', encoding='utf-8', newline="") as fout:
@@ -260,37 +284,15 @@ with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', enco
     wtr = csv.writer(fout, delimiter='\t')
     hdr = next(rdr)
     wtr.writerow([hdr[0], 'summary'])
-    for row in tqdm(rdr, desc='Processing rows'):
-        run_acc = row[0]
-        raw = ' '.join(f for f in row[1:] if not any(x in f.lower() for x in ['run accession', 'study accession', 'experiment accession', 'sample accession']))
-        ctx = re.sub(r'\S+?\.fastq\.gz', '', raw).strip()
-        orig_tokens = mistral_tokens(ctx)
-        vprint(f"{run_acc} original_tokens={orig_tokens}", flush=True)
-
-        if orig_tokens > MAX_TOKENS:
-            summ = trim_context_to_tokens(ctx, max_tokens=MAX_TOKENS)
-            vprint(f"{run_acc} trimmed_tokens={mistral_tokens(summ)}", flush=True)
-        else:
-            summ = ctx
-            vprint(f"{run_acc} kept_tokens={mistral_tokens(summ)}", flush=True)
-
-        if run_acc in ambiguous_map and ambiguous_map[run_acc]:
-            cands = ambiguous_map[run_acc]
-            chosen, method = _best_candidate_from_context(ctx if ctx else summ, cands)
-            method_tag = "by match" if method == "match" else ("by similarity" if method == "similarity" else "by fallback")
-            note = f" Cell line disambiguation: {chosen} (candidates: {' | '.join(cands)}) — {method_tag}."
-            tentative = (summ + " " + note).strip()
-            if mistral_tokens(tentative) > MAX_TOKENS:
-                sents = sent_tokenize(summ)
-                while sents and mistral_tokens(' '.join(sents) + " " + note) > MAX_TOKENS:
-                    sents.pop()
-                summ = (' '.join(sents)).strip()
-            summ = (summ + " " + note).strip()
-            updates[run_acc] = {"chosen": chosen, "note": note.strip()}
-            vprint(f"{run_acc} ambiguous_resolved={chosen} method={method}", flush=True)
-
+    rows_in = list(rdr)
+    results = []
+    with ProcessPoolExecutor(max_workers=cpu_number) as ex:
+        for res in tqdm(ex.map(_process_row, rows_in, chunksize=CHUNK_SIZE), total=len(rows_in), desc='Processing rows'):
+            results.append(res)
+    for run_acc, summ, upd in results:
         wtr.writerow([run_acc, summ])
-        vprint(f"{run_acc} final_tokens={mistral_tokens(summ)}", flush=True)
+        if upd:
+            updates[run_acc] = {"chosen": upd["chosen"], "note": upd["note"]}
 
 if amb_rows:
     rows_by_run = {r.get("run_accession", "").strip(): r for r in amb_rows}

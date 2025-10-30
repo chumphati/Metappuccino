@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #PBS -N visualisation
-#PBS -l walltime=12:00:00
+#PBS -l walltime=100:00:00
 #PBS -o /dev/null
 #PBS -e /dev/null
 #PBS -l select=1
 
 #SBATCH --job-name=visualisation
-#SBATCH --time=12:00:00
+#SBATCH --time=100:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --nodes=1
