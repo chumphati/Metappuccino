@@ -279,29 +279,36 @@ def _process_row(row):
 
 ##########################################################################################
 #MAIN
-with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', encoding='utf-8', newline="") as fout:
-    rdr = csv.reader(fin, delimiter='\t')
-    wtr = csv.writer(fout, delimiter='\t')
-    hdr = next(rdr)
-    wtr.writerow([hdr[0], 'summary'])
-    rows_in = list(rdr)
-    results = []
-    with ProcessPoolExecutor(max_workers=cpu_number) as ex:
-        for res in tqdm(ex.map(_process_row, rows_in, chunksize=CHUNK_SIZE), total=len(rows_in), desc='Processing rows'):
-            results.append(res)
-    for run_acc, summ, upd in results:
-        wtr.writerow([run_acc, summ])
-        if upd:
-            updates[run_acc] = {"chosen": upd["chosen"], "note": upd["note"]}
+if __name__ == "__main__":
+    import multiprocessing as mp
+    try:
+        mp.set_start_method("fork", force=True)
+    except RuntimeError:
+        pass
 
-if amb_rows:
-    rows_by_run = {r.get("run_accession", "").strip(): r for r in amb_rows}
-    for run, up in updates.items():
-        if run in rows_by_run:
-            rows_by_run[run]["chosen"] = up["chosen"]
-            rows_by_run[run]["note"] = up["note"]
-        else:
-            rows_by_run[run] = {"run_accession": run, "candidates": "", "chosen": up["chosen"], "note": up["note"]}
-    _write_ambiguous_rows(AMBIG_FILE, list(rows_by_run.values()))
+    with open(INPUT_FILE, 'r', encoding='utf-8') as fin, open(OUTPUT_FILE, 'w', encoding='utf-8', newline="") as fout:
+        rdr = csv.reader(fin, delimiter='\t')
+        wtr = csv.writer(fout, delimiter='\t')
+        hdr = next(rdr)
+        wtr.writerow([hdr[0], 'summary'])
+        rows_in = list(rdr)
+        results = []
+        with ProcessPoolExecutor(max_workers=cpu_number) as ex:
+            for res in tqdm(ex.map(_process_row, rows_in, chunksize=CHUNK_SIZE), total=len(rows_in), desc='Processing rows'):
+                results.append(res)
+        for run_acc, summ, upd in results:
+            wtr.writerow([run_acc, summ])
+            if upd:
+                updates[run_acc] = {"chosen": upd["chosen"], "note": upd["note"]}
 
-open(FLAG_FILE, 'w').close()
+    if amb_rows:
+        rows_by_run = {r.get("run_accession", "").strip(): r for r in amb_rows}
+        for run, up in updates.items():
+            if run in rows_by_run:
+                rows_by_run[run]["chosen"] = up["chosen"]
+                rows_by_run[run]["note"] = up["note"]
+            else:
+                rows_by_run[run] = {"run_accession": run, "candidates": "", "chosen": up["chosen"], "note": up["note"]}
+        _write_ambiguous_rows(AMBIG_FILE, list(rows_by_run.values()))
+
+    open(FLAG_FILE, 'w').close()
