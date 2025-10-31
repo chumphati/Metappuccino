@@ -92,6 +92,10 @@ def ensure_flag_after_local(flag_path: str, grace_seconds: int = 30):
         time.sleep(1)
     raise RuntimeError(f"Local step finished but flag not found: {flag_path}")
 
+# petit wrapper pour sécuriser tous les appels locaux (tous args castés en str)
+def run_local(cmd_list, **kw):
+    return subprocess.run([str(x) for x in cmd_list], **kw)
+
 ########################################################################################################################
 #MAIN FUNCTION
 def main():
@@ -206,9 +210,9 @@ def main():
         ##STEP 1: GET AND CLEAN METADATA
         if not os.path.isfile(step1_0_flag):
             if args.local:
-                subprocess.run(["bash", init,
-                                metappuccino_dir, res_dir, working_dir, env_dir],
-                               check=True, env=env)
+                run_local(["bash", init,
+                           metappuccino_dir, res_dir, working_dir, env_dir],
+                          check=True, env=env)
                 ensure_flag_after_local(step1_0_flag)
             else:
                 if shutil.which("qsub"):
@@ -244,9 +248,9 @@ def main():
         if args.getmetadata:
             if not os.path.isfile(step1_flag):
                 if args.local:
-                    subprocess.run(["bash", download_metadata,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, sample_input, str(cpus_req), str(ncbi_api_key or ""), str(ncbi_email or "")],
-                                   check=True, env=env)
+                    run_local(["bash", download_metadata,
+                               metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, sample_input, str(cpus_req), str(ncbi_api_key or ""), str(ncbi_email or "")],
+                              check=True, env=env)
                     ensure_flag_after_local(step1_flag)
                 else:
                     if shutil.which("qsub"):
@@ -281,9 +285,9 @@ def main():
 
             if not os.path.isfile(step2_0_flag):
                 if args.local:
-                    subprocess.run(["bash", clean_metadata,
-                                    metappuccino_dir, res_dir, working_dir, env_dir],
-                                   check=True, env=env)
+                    run_local(["bash", clean_metadata,
+                               metappuccino_dir, res_dir, working_dir, env_dir],
+                              check=True, env=env)
                     ensure_flag_after_local(step2_0_flag)
                 else:
                     if shutil.which("qsub"):
@@ -318,9 +322,9 @@ def main():
 
             if not os.path.isfile(step2_flag):
                 if args.local:
-                    subprocess.run(["bash", extract_preprocess,
-                                    metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir, str(cpus_req)],
-                                   check=True, env=env)
+                    run_local(["bash", extract_preprocess,
+                               metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir, str(cpus_req)],
+                              check=True, env=env)
                     ensure_flag_after_local(step2_flag)
                 else:
                     if shutil.which("qsub"):
@@ -355,9 +359,9 @@ def main():
 
             if not os.path.isfile(step3_flag):
                 if args.local:
-                    subprocess.run(["bash", summary_context,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir,str(cpus_req)],
-                                   check=True, env=env)
+                    run_local(["bash", summary_context,
+                               metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, str(cpus_req)],
+                              check=True, env=env)
                     ensure_flag_after_local(step3_flag)
                 else:
                     if shutil.which("qsub"):
@@ -394,9 +398,9 @@ def main():
         if args.fillmetadata:
             if not os.path.isfile(step4_flag):
                 if args.local:
-                    subprocess.run(["bash", llm_metadata_inference,
-                                    metappuccino_dir, res_dir, env_dir, model_path, verbose_env, str(sched_gpus), working_dir],
-                                   check=True, env=env)
+                    run_local(["bash", llm_metadata_inference,
+                               metappuccino_dir, res_dir, env_dir, model_path, verbose_env, str(sched_gpus), working_dir],
+                              check=True, env=env)
                     ensure_flag_after_local(step4_flag)
                 else:
                     if args.per_gpu_jobs and (sched_gpus and sched_gpus > 1):
@@ -484,9 +488,9 @@ def main():
 
             if not os.path.isfile(step5_flag):
                 if args.local:
-                    subprocess.run(["bash", reload_model,
-                                    metappuccino_dir, res_dir, env_dir, model_path, str(iteration_limit), verbose_env, str(sched_gpus),working_dir],
-                                   check=True, env=env)
+                    run_local(["bash", reload_model,
+                               metappuccino_dir, res_dir, env_dir, model_path, str(iteration_limit), verbose_env, str(sched_gpus), working_dir],
+                              check=True, env=env)
                     ensure_flag_after_local(step5_flag)
                 else:
                     if args.per_gpu_jobs and (sched_gpus and sched_gpus > 1):
@@ -576,9 +580,9 @@ def main():
         if args.associateinformation:
             if not os.path.isfile(step6_flag):
                 if args.local:
-                    subprocess.run(["bash", normalize_final,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir],
-                                   check=True, env=env)
+                    run_local(["bash", normalize_final,
+                               metappuccino_dir, res_dir, env_dir, verbose_env, working_dir],
+                              check=True, env=env)
                     ensure_flag_after_local(step6_flag)
                 else:
                     if shutil.which("qsub"):
@@ -617,9 +621,9 @@ def main():
         if args.visualisation:
             if not os.path.isfile(step7_flag):
                 if args.local:
-                    subprocess.run(["bash", visualisation,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir],
-                                   check=True, env=env)
+                    run_local(["bash", visualisation,
+                               metappuccino_dir, res_dir, env_dir, verbose_env, working_dir],
+                              check=True, env=env)
                     ensure_flag_after_local(step7_flag)
                 else:
                     if shutil.which("qsub"):
