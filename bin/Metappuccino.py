@@ -245,7 +245,7 @@ def main():
             if not os.path.isfile(step1_flag):
                 if args.local:
                     subprocess.run(["bash", download_metadata,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, sample_input, cpus_req, ncbi_api_key, ncbi_email],
+                                    metappuccino_dir, res_dir, env_dir, verbose_env, working_dir, sample_input, str(cpus_req), str(ncbi_api_key or ""), str(ncbi_email or "")],
                                    check=True, env=env)
                     ensure_flag_after_local(step1_flag)
                 else:
@@ -319,7 +319,7 @@ def main():
             if not os.path.isfile(step2_flag):
                 if args.local:
                     subprocess.run(["bash", extract_preprocess,
-                                    metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir, cpus_req],
+                                    metappuccino_dir, res_dir, env_dir, logan_path, verbose_env, working_dir, str(cpus_req)],
                                    check=True, env=env)
                     ensure_flag_after_local(step2_flag)
                 else:
@@ -356,7 +356,7 @@ def main():
             if not os.path.isfile(step3_flag):
                 if args.local:
                     subprocess.run(["bash", summary_context,
-                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir,cpus_req],
+                                    metappuccino_dir, res_dir, env_dir, verbose_env,working_dir,str(cpus_req)],
                                    check=True, env=env)
                     ensure_flag_after_local(step3_flag)
                 else:

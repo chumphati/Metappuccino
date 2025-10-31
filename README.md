@@ -21,6 +21,7 @@ Metappuccino is a tool that **completes and normalizes SRA metadata** thanks to 
 * [Inputs & outputs](#inputs--outputs)
 * [Typical pipeline steps](#typical-pipeline-steps)
 * [Tips & troubleshooting](#tips--troubleshooting)
+* [References and Resources](#references-and-resources)
 
 ---
 
@@ -113,6 +114,14 @@ wget https://github.com/chumphati/Metappuccino/releases/download/<VERSION>/metap
 python3 -m venv .venv && source .venv/bin/activate #create a python virtual environment
 pip install metappuccino-<VERSION>-py3-none-any.whl
 metappuccino --help
+```
+
+If an error occurs with spacy, please switch to Python 3.11+ and consider before installing the wheel:
+
+```bash
+module load python/3.11 #most recent
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -U pip setuptools wheel
 ```
 
 >Warning: if the model used is different from MetappuccinoLLModel, an additional installation in the same python environment will be required (see section [Additional setup](#additional-setup)).
@@ -342,6 +351,25 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 * **Scratch**: use fast local disks for `--working_dir` (e.g., `/scratchlocal/$USER` or `/tmp/$USER`).
 * **Absolute paths**: always pass absolute paths for cluster jobs.
 * **Logs**: check `--res_dir/logs` and per-step logs (LLM: `llm_inference.out/err`, `llm_log_SB*.txt`).
+
+---
+
+## References and Resources
+
+Access to the preprint: [Metappuccino : Large Language Model-driven Reconstruction of
+Sequence Read Archive Metadata for Cancer Research]()
+
+Citations:
+
+```bibtex
+@article{hak2025metappuccino,
+  title = {Metappuccino : Large Language Model-driven Reconstruction of Sequence Read Archive Metadata for Cancer Research},
+  author = {Fiona Hak, Camille Marchet, Daniel Gautheret, Mélina Gallopin},
+  journal = {},
+  year = {2025},
+  doi = {}
+}
+```
 
 ---
 
