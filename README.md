@@ -357,17 +357,17 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 ## References and Resources
 
 Access to the preprint: [Metappuccino : Large Language Model-driven Reconstruction of
-Sequence Read Archive Metadata for Cancer Research]()
+Sequence Read Archive Metadata for Cancer Research](https://doi.org/10.1101/2025.10.31.685769)
 
 Citations:
 
 ```bibtex
 @article{hak2025metappuccino,
-  title = {Metappuccino : Large Language Model-driven Reconstruction of Sequence Read Archive Metadata for Cancer Research},
+  title = {Metappuccino: Large Language Model-driven Reconstruction of Sequence Read Archive Metadata for Cancer Research},
   author = {Fiona Hak, Camille Marchet, Daniel Gautheret, Mélina Gallopin},
-  journal = {},
+  journal = {biorxiv},
   year = {2025},
-  doi = {}
+  doi = {https://doi.org/10.1101/2025.10.31.685769}
 }
 ```
 
