@@ -345,6 +345,7 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
 ## Tips & troubleshooting
 
 * **No scheduler available?** Add `--local`. Be sure to have CPU and GPU requirements available.
+* **Scheduler not compatible?** *(Advanced debug)* If your scheduler/GPU setup is incompatible with Metappuccino’s default LLM pipeline, run preprocessing/postprocessing with `--getmetadata` then `--associateinformation/--visualisation`, and perform isolated LLM inference via adapted `scripts/standard_gpu_llm` scripts, writing outputs to Metappuccino’s expected folders.
 * **Jobs stick in queue?** Remove `--node`, confirm `--partition`/queue, and reduce `--gpus`.
 * **GPU not used?** Verify host NVIDIA driver; ensure CUDA-matching Torch wheels and CUDA-compiled backends (e.g., `llama-cpp-python` with `-DGGML_CUDA=on`).
 * **Shared FS**: `--res_dir` and `--env_requirement` should be visible from compute nodes.
