@@ -236,7 +236,7 @@ metappuccino \
   --env_requirement "/abs/path/Metappuccino/.venv" \
   --working_dir "/scratchlocal/$USER" \
   [ --metappuccino_dir "/abs/path/Metappuccino" \ ]
-  --model "/abs/path/model.gguf" \
+  --model "/abs/path/model" \
   --partition "<queue>" \
   --gpus 1 --cpus 20 --mem "50gb" --per_gpu_jobs \
   --iteration_limit 3 \
@@ -261,7 +261,7 @@ sbatch -J metappuccino -p <partition> --time=100:00:00 \
       --env_requirement "/abs/path/Metappuccino/.venv" \
       --working_dir "/scratchlocal/$USER" \
       [ --metappuccino_dir "/abs/path/Metappuccino" \ ]
-      --model "/abs/path/model.gguf" \
+      --model "/abs/path/model" \
       --partition "<queue>" \
       --gpus 1 --cpus 20 --mem "50gb" --per_gpu_jobs \
       --iteration_limit 3 \
