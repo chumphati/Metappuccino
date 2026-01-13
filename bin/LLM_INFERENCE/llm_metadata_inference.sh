@@ -231,7 +231,7 @@ if [[ "${SHARD_TOTAL}" -ge 2 ]]; then
     head -n 1 "$f" >> "$SCRATCH_DIR/reload_model_bio_info.txt"
     tail -n +2 "$f" >> "$SCRATCH_DIR/reload_model_bio_info.txt"
   fi
-  touch "$SCRATCH_DIR/STEP3_1.flag"
+  touch "$TMP_DIR/STEP3_1.flag"
   exit 0
 fi
 

@@ -11,6 +11,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus")
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
+parser.add_argument("--without_cellosaurus", action="store_true", help="Disable Cellosaurus-based propagation (cell line completion + enrichment).")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -27,6 +28,8 @@ PPL_OUTPUT = os.path.join(base_path, "ppl_inference.csv")
 
 INVALID_ENTRIES = {"unknown", "missing", "n/a", "na", "none", ""}
 STOPWORDS = {"for", "to", "and", "in", "with", "via", "on", "of", "the", "a", "an", "by"}
+
+WITHOUT_CELLOSAURUS = args.without_cellosaurus
 
 VERBOSE = args.verbose
 vprint = print if VERBOSE else (lambda *a, **k: None)
@@ -73,9 +76,9 @@ def normalize_term(raw_value, names_set, syn_dict):
         if cleaned in names_set:
             results.append(cleaned)
         elif cleaned in syn_dict:
-            results.append(syn_dict[cleaned])
+            results.append(str(syn_dict[cleaned]).strip().lower())
         else:
-            results.append(original)
+            results.append(original.strip().lower())
     return results
 
 
@@ -86,7 +89,12 @@ def fmt_codes(x):
 
 
 def infer_from_cell_line(cell_line, cell_df):
-    row = cell_df[cell_df["name"] == cell_line].iloc[0]
+    if cell_df is None or cell_df.empty:
+        return {}
+    sub = cell_df[cell_df["name"] == cell_line]
+    if sub.empty:
+        return {}
+    row = sub.iloc[0]
     output = {}
     for f in ["disease", "age", "sex", "ethnicity", "biopsy_type", "biopsy_site", "uberon_code",
               "cell_type"]:
@@ -156,7 +164,105 @@ def _words_with_uc_and_digit(text: str):
 
 
 def _is_official_name(name_str: str, cell_df) -> bool:
+    if cell_df is None or cell_df.empty:
+        return False
     return str(name_str) in set(cell_df["name"].astype(str))
+
+
+def _normalize_cell_type_value(x: str) -> str:
+    if not isinstance(x, str) or not x.strip():
+        return "unknown"
+    parts = re.split(r'[;,/|]', x)
+    mapped = []
+    for p in parts:
+        s = p.strip().lower()
+        if not s or s in INVALID_ENTRIES or s == "unknown":
+            mapped.append("unknown")
+            continue
+        s_norm = re.sub(r"[^a-z0-9]+", " ", s)
+        s_norm = re.sub(r"\s+", " ", s_norm).strip()
+        if re.fullmatch(r"(t)\s*(cell|cells|lymphocyte|lymphocytes)", s_norm) or s_norm in {"t cell", "t cells", "t lymphocyte", "t lymphocytes", "tcell", "tcells"}:
+            mapped.append("t-cell")
+        elif re.fullmatch(r"(b)\s*(cell|cells|lymphocyte|lymphocytes)", s_norm) or s_norm in {"b cell", "b cells", "b lymphocyte", "b lymphocytes", "bcell", "bcells"}:
+            mapped.append("b-cell")
+        else:
+            mapped.append(s_norm)
+    dedup = []
+    for val in mapped:
+        if val not in dedup:
+            dedup.append(val)
+    if all(v == "unknown" for v in dedup):
+        return "unknown"
+    return "; ".join(dedup)
+
+
+def _normalize_age_value(x: str) -> str:
+    if not isinstance(x, str):
+        return "unknown"
+    s = x.strip()
+    if not s or s.lower() in INVALID_ENTRIES or s.lower() == "unknown":
+        return "unknown"
+    s0 = s.strip().lower()
+    s0 = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2015\-]+", " ", s0)
+    s0 = re.sub(r"\s+", " ", s0).strip()
+
+    m = re.search(r"^(\d{1,3}(?:\.\d+)?)\s*(y|yr|yrs|year|years)\b", s0)
+    if not m:
+        m = re.search(r"^(\d{1,3}(?:\.\d+)?)\s*(mo|mos|month|months)\b", s0)
+        if m:
+            return f"{m.group(1)}MO"
+        m = re.search(r"^(\d{1,3}(?:\.\d+)?)\s*(wk|wks|week|weeks)\b", s0)
+        if m:
+            return f"{m.group(1)}WK"
+        m = re.search(r"^(\d{1,3}(?:\.\d+)?)\s*(d|day|days)\b", s0)
+        if m:
+            return f"{m.group(1)}D"
+        m = re.search(r"\b(\d{1,3}(?:\.\d+)?)\s*(y|yr|yrs|year|years)\s*old\b", s0)
+        if not m:
+            m = re.search(r"\b(\d{1,3}(?:\.\d+)?)\s*yo\b", s0)
+            if m:
+                return f"{m.group(1)}Y"
+            m = re.search(r"\b(\d{1,3}(?:\.\d+)?)\s*y\s*/\s*o\b", s0)
+            if m:
+                return f"{m.group(1)}Y"
+        if m:
+            return f"{m.group(1)}Y"
+    else:
+        return f"{m.group(1)}Y"
+
+    m = re.search(r"^(\d{1,3}(?:\.\d+)?)$", s0)
+    if m:
+        return f"{m.group(1)}Y"
+    return "unknown"
+
+
+def _is_assay_like_treatment(x: str) -> bool:
+    if not isinstance(x, str) or not x.strip():
+        return False
+    s = x.strip().lower()
+    if s in INVALID_ENTRIES or s == "unknown":
+        return False
+    s_norm = re.sub(r"[^a-z0-9]+", " ", s)
+    s_norm = re.sub(r"\s+", " ", s_norm).strip()
+    s_compact = re.sub(r"[^a-z0-9]+", "", s)
+    bad_phrases = [
+        "single cell", "singlecell", "rna seq", "rnaseq", "rna sequencing", "sequencing",
+        "scrna", "sc rna", "sc rnaseq", "transcriptome", "transcriptomics"
+    ]
+    for bp in bad_phrases:
+        bp_norm = re.sub(r"[^a-z0-9]+", " ", bp).strip()
+        bp_compact = re.sub(r"[^a-z0-9]+", "", bp)
+        if bp_norm and bp_norm in s_norm:
+            return True
+        if bp_compact and bp_compact in s_compact:
+            return True
+    return False
+
+
+def _lower_text_value(x: str) -> str:
+    if not isinstance(x, str):
+        return x
+    return x.lower()
 
 
 ##########################################################################################
@@ -167,25 +273,30 @@ assert "run_accession" in df.columns, "'run_accession' missing"
 
 disease_names, disease_syn, disease_code = load_syn(DOT_FILE, "synonym", "name", "code_dot")
 organ_names, organ_syn, organ_code = load_syn(UBERON_FILE, "synonym", "name", "code_uberon")
-cell_df = pd.read_csv(CELLOSAURUS, dtype=str, on_bad_lines='skip').fillna('')
+
+if not WITHOUT_CELLOSAURUS and os.path.exists(CELLOSAURUS):
+    cell_df = pd.read_csv(CELLOSAURUS, dtype=str, on_bad_lines='skip').fillna('')
+else:
+    cell_df = pd.DataFrame(columns=["name", "synonym", "disease", "age", "sex", "ethnicity", "biopsy_type", "biopsy_site", "uberon_code", "cell_type"])
 
 cell_lookup = {}
-for _, r in cell_df.iterrows():
-    name = r["name"].strip()
-    if not name:
-        continue
-    lo = name.lower()
-    nk = _norm_cell_key(name)
-    cell_lookup[lo] = name
-    cell_lookup[nk] = name
-    syns = [s.strip() for s in r["synonym"].split(";")] if r["synonym"] else []
-    for s in syns + [name]:
-        if not s:
+if not WITHOUT_CELLOSAURUS and cell_df is not None and not cell_df.empty:
+    for _, r in cell_df.iterrows():
+        name = r["name"].strip()
+        if not name:
             continue
-        lo2 = s.lower()
-        nk2 = _norm_cell_key(s)
-        cell_lookup[lo2] = name
-        cell_lookup[nk2] = name
+        lo = name.lower()
+        nk = _norm_cell_key(name)
+        cell_lookup[lo] = name
+        cell_lookup[nk] = name
+        syns = [s.strip() for s in r["synonym"].split(";")] if r["synonym"] else []
+        for s in syns + [name]:
+            if not s:
+                continue
+            lo2 = s.lower()
+            nk2 = _norm_cell_key(s)
+            cell_lookup[lo2] = name
+            cell_lookup[nk2] = name
 
 disease_canon_case = {k.lower(): k for k in disease_code.keys()}
 organ_canon_case = {k.lower(): k for k in organ_code.keys()}
@@ -223,26 +334,37 @@ for _, row in df.iterrows():
             entry[f] = ""
 
     json_file = os.path.join(INFERENCE_DIR, f"{run}.json")
+    js = None
     if os.path.exists(json_file):
-        with open(json_file) as jf:
-            js = json.load(jf)
-            if run in js:
-                for k in js[run]:
-                    if k in fields and k not in locked_fields:
-                        val = js[run][k]
-                        if isinstance(val, list):
-                            val = "; ".join(map(str, val))
-                        val = val.strip() if isinstance(val, str) else str(val)
-                        entry[k] = val if val else "unknown"
-                        source[k] = "llm"
-                for k, v in js.get("nll", {}).items():
-                    if k in fields:
-                        llm_nll[k] = str(v)
-                for k, v in js.get("ppl", {}).items():
-                    if k in fields:
-                        llm_ppl[k] = str(v)
+        try:
+            if os.path.getsize(json_file) == 0:
+                raise ValueError("empty json file")
+            with open(json_file, "r", encoding="utf-8") as jf:
+                raw = jf.read().strip()
+                if not raw:
+                    raise ValueError("empty json content")
+                js = json.loads(raw)
+        except Exception as e:
+            vprint(f"[WARN] Bad JSON for run {run}: {json_file} ({e})")
+            js = None
 
-    if entry.get("cell_line", "").strip().lower() not in INVALID_ENTRIES:
+    if isinstance(js, dict) and run in js:
+        for k in js[run]:
+            if k in fields and k not in locked_fields:
+                val = js[run][k]
+                if isinstance(val, list):
+                    val = "; ".join(map(str, val))
+                val = val.strip() if isinstance(val, str) else str(val)
+                entry[k] = val if val else "unknown"
+                source[k] = "llm"
+        for k, v in js.get("nll", {}).items():
+            if k in fields:
+                llm_nll[k] = str(v)
+        for k, v in js.get("ppl", {}).items():
+            if k in fields:
+                llm_ppl[k] = str(v)
+
+    if not WITHOUT_CELLOSAURUS and entry.get("cell_line", "").strip().lower() not in INVALID_ENTRIES:
         original = entry["cell_line"]
         cleaned = clean_cell_line_name(original)
         canonical = None
@@ -267,55 +389,56 @@ for _, row in df.iterrows():
                             entry[k] = v
                             source[k] = "cello"
 
-    cl_val = entry.get("cell_line", "")
-    if cl_val and not _is_official_name(cl_val, cell_df):
-        found_canonical = None
-        for cand in _words_with_uc_and_digit(cl_val):
-            k1 = cand.lower()
-            k2 = _norm_cell_key(cand)
-            k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
-            if k1 in cell_lookup:
-                found_canonical = cell_lookup[k1]
-                break
-            if k2 in cell_lookup:
-                found_canonical = cell_lookup[k2]
-                break
-            if k3 in cell_lookup:
-                found_canonical = cell_lookup[k3]
-                break
-        if not found_canonical:
-            raw_candidates = []
-            raw_candidates.append(cl_val)
-            for extra in [row.get("cell_line", ""), entry.get("cell_line", "")]:
-                if isinstance(extra, str) and extra:
-                    raw_candidates.append(extra)
-            for raw in raw_candidates:
-                for cand in _words_with_uc_and_digit(raw):
-                    k1 = cand.lower()
-                    k2 = _norm_cell_key(cand)
-                    k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
-                    if k1 in cell_lookup:
-                        found_canonical = cell_lookup[k1]; break
-                    if k2 in cell_lookup:
-                        found_canonical = cell_lookup[k2]; break
-                    if k3 in cell_lookup:
-                        found_canonical = cell_lookup[k3]; break
-                if found_canonical:
+    if not WITHOUT_CELLOSAURUS:
+        cl_val = entry.get("cell_line", "")
+        if cl_val and not _is_official_name(cl_val, cell_df):
+            found_canonical = None
+            for cand in _words_with_uc_and_digit(cl_val):
+                k1 = cand.lower()
+                k2 = _norm_cell_key(cand)
+                k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
+                if k1 in cell_lookup:
+                    found_canonical = cell_lookup[k1]
                     break
-        if found_canonical:
-            entry["cell_line"] = found_canonical
-            source["cell_line"] = source.get("cell_line", "cello")
-            inferred = infer_from_cell_line(found_canonical, cell_df)
-            for k, v in inferred.items():
-                if v and v.strip().lower() not in INVALID_ENTRIES:
-                    if k == "uberon_code":
-                        if not entry.get("bs_uberon_code") or entry["bs_uberon_code"].lower() in INVALID_ENTRIES:
-                            entry["bs_uberon_code"] = v
-                            source["bs_uberon_code"] = "cello"
-                    else:
-                        if not entry.get(k) or entry[k].lower() in INVALID_ENTRIES:
-                            entry[k] = v
-                            source[k] = "cello"
+                if k2 in cell_lookup:
+                    found_canonical = cell_lookup[k2]
+                    break
+                if k3 in cell_lookup:
+                    found_canonical = cell_lookup[k3]
+                    break
+            if not found_canonical:
+                raw_candidates = []
+                raw_candidates.append(cl_val)
+                for extra in [row.get("cell_line", ""), entry.get("cell_line", "")]:
+                    if isinstance(extra, str) and extra:
+                        raw_candidates.append(extra)
+                for raw in raw_candidates:
+                    for cand in _words_with_uc_and_digit(raw):
+                        k1 = cand.lower()
+                        k2 = _norm_cell_key(cand)
+                        k3 = _norm_cell_key(cand.replace("-", "").replace("_", ""))
+                        if k1 in cell_lookup:
+                            found_canonical = cell_lookup[k1]; break
+                        if k2 in cell_lookup:
+                            found_canonical = cell_lookup[k2]; break
+                        if k3 in cell_lookup:
+                            found_canonical = cell_lookup[k3]; break
+                    if found_canonical:
+                        break
+            if found_canonical:
+                entry["cell_line"] = found_canonical
+                source["cell_line"] = source.get("cell_line", "cello")
+                inferred = infer_from_cell_line(found_canonical, cell_df)
+                for k, v in inferred.items():
+                    if v and v.strip().lower() not in INVALID_ENTRIES:
+                        if k == "uberon_code":
+                            if not entry.get("bs_uberon_code") or entry["bs_uberon_code"].lower() in INVALID_ENTRIES:
+                                entry["bs_uberon_code"] = v
+                                source["bs_uberon_code"] = "cello"
+                        else:
+                            if not entry.get(k) or entry[k].lower() in INVALID_ENTRIES:
+                                entry[k] = v
+                                source[k] = "cello"
 
     if "disease" not in set():
         raw_val = entry["disease"]
@@ -338,6 +461,20 @@ for _, row in df.iterrows():
         entry["bs_uberon_code"] = _compute_codes_with_partial_tokens(raw_val, norm, organ_names, organ_syn, organ_code,
                                                                      organ_canon_case)
 
+    entry["cell_type"] = _normalize_cell_type_value(entry.get("cell_type", ""))
+
+    entry["age"] = _normalize_age_value(entry.get("age", ""))
+
+    if entry.get("treatment", "").strip() and entry.get("treatment", "").strip().lower() not in INVALID_ENTRIES:
+        if _is_assay_like_treatment(entry.get("treatment", "")):
+            entry["treatment"] = "unknown"
+
+    lower_fields = {"library_selection", "library_strategy", "sequencing_source", "biopsy_site", "biopsy_type", "cell_type",
+                    "organ", "disease", "treatment", "treatment_time", "response", "sex", "ethnicity", "is_cancer"}
+    for lf in lower_fields:
+        if lf in entry and isinstance(entry[lf], str):
+            entry[lf] = _lower_text_value(entry[lf]).strip()
+
     entry["bs_uberon_code"] = fmt_codes(entry["bs_uberon_code"])
     entry["organ_uberon_code"] = fmt_codes(entry["organ_uberon_code"])
 
@@ -352,7 +489,10 @@ for _, row in df.iterrows():
     for k in ("age", "sex", "ethnicity"):
         base_val = row.get(k, "").strip()
         if base_val and base_val.lower() not in INVALID_ENTRIES:
-            entry[k] = base_val
+            if k == "age":
+                entry[k] = _normalize_age_value(base_val)
+            else:
+                entry[k] = base_val
             source[k] = "db"
 
     augmented_data.append(entry)
@@ -512,10 +652,18 @@ if "age" in out_df.columns and "run_accession" in out_df.columns:
 out_df.to_csv(CSV_OUTPUT, index=False)
 #.xlsx
 excel_output = CSV_OUTPUT.replace('.csv', '.xlsx')
-out_df.to_excel(excel_output, index=False)
+try:
+    out_df.to_excel(excel_output, index=False)
+except Exception as e:
+    vprint(f"[WARN] Excel export failed: {excel_output} ({e})")
 #.parquet
 parquet_output = CSV_OUTPUT.replace('.csv', '.parquet')
-out_df.to_parquet(parquet_output, index=False)
+try:
+    out_df.to_parquet(parquet_output, index=False)
+except ImportError as e:
+    vprint(f"[WARN] Parquet export skipped (missing engine): {parquet_output} ({e})")
+except Exception as e:
+    vprint(f"[WARN] Parquet export failed: {parquet_output} ({e})")
 #.json
 json_output = CSV_OUTPUT.replace('.csv', '.json')
 out_df.to_json(json_output, orient='records', lines=True, force_ascii=False)
@@ -524,7 +672,12 @@ tsv_output = CSV_OUTPUT.replace('.csv', '.tsv')
 out_df.to_csv(tsv_output, sep='\t', index=False)
 #.feather
 feather_output = CSV_OUTPUT.replace('.csv', '.feather')
-out_df.reset_index(drop=True).to_feather(feather_output)
+try:
+    out_df.reset_index(drop=True).to_feather(feather_output)
+except ImportError as e:
+    vprint(f"[WARN] Feather export skipped (missing engine): {feather_output} ({e})")
+except Exception as e:
+    vprint(f"[WARN] Feather export failed: {feather_output} ({e})")
 
 pd.DataFrame(nll_rows).to_csv(NLL_OUTPUT, index=False)
 pd.DataFrame(ppl_rows).to_csv(PPL_OUTPUT, index=False)

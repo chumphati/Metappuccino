@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description="Fetch information with Cellosaurus
 parser.add_argument("--base_path", type=str, required=True, help="Base path to Metappuccino")
 parser.add_argument("--cpu_number", type=int, default=os.cpu_count(), help="Number of CPU used to parallelize the metadata fetching")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
+parser.add_argument("--without_cellosaurus", action="store_true", help="Disable Cellosaurus-based completion (cell line matching + enrichment).")
 args = parser.parse_args()
 
 base_path = args.base_path
@@ -28,6 +29,7 @@ output_file_df = os.path.join(base_path, "database_metadata_curated.csv")
 FLAG_FILE = os.path.join(base_path, "STEP2_1.flag")
 AMBIG_FILE = os.path.join(base_path, "ambiguous_cell_lines.csv")
 cpu_number = args.cpu_number
+WITHOUT_CELLOSAURUS = args.without_cellosaurus
 
 invalid_entries = {"unknown", "not applicable", "missing", "n/a", "na", "none", ""}
 
@@ -93,6 +95,9 @@ def extract_src(ctx):
     return ""
 
 def enrich_from_cell_df(record: dict, mapped: str):
+    # print("this is without", WITHOUT_CELLOSAURUS)
+    if WITHOUT_CELLOSAURUS:
+        return
     if mapped in cell_df["name"].values:
         row = cell_df[cell_df["name"] == mapped].iloc[0]
         for f in ["disease", "age", "sex", "ethnicity", "biopsy_type", "biopsy_site", "uberon_code", "cell_type"]:

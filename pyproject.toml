@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 authors = [{name="Fiona Hak"}]
-dependencies = ["numpy", "psutil", "rich", "requests", "pandas", "spacy", "scikit-learn", "nltk", "transformers", "torch", "openpyxl", "pyarrow", "fastparquet", "matplotlib", "peft"]
+dependencies = ["numpy", "psutil", "rich", "requests", "pandas", "spacy", "scikit-learn",
+  "nltk", "transformers", "torch", "openpyxl", "pyarrow", "fastparquet", "matplotlib", "peft",
+  "sentence_transformers" , "datasets" , "tensorboard" , "sentencepiece"]
 
 [tool.setuptools.packages.find]
 where = ["."]

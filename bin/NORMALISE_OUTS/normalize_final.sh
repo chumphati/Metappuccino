@@ -19,6 +19,7 @@ RES=${2:-$RES}
 ENV_REQUIREMENT=${3:-$ENV_REQUIREMENT}
 VERBOSE=${4:-${VERBOSE:-FALSE}}
 NODE_WORK_PATH=${5:-${NODE_WORK_PATH:-}}
+WITHOUT_CELLOSAURUS=${6:-${WITHOUT_CELLOSAURUS:-}}
 
 LOG_DIR="$RES/logs"
 TMP_DIR="$RES/tmp"
@@ -70,4 +71,10 @@ if [[ "$VERBOSE_UP" = "TRUE" ]]; then
   PY_VERBOSE+=(--verbose)
 fi
 
-python3 -u norm_complete.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}"
+PY_WITHOUT_CELLOSAURUS=()
+WITHOUT_CELLOSAURUS_UP=$(printf '%s' "${WITHOUT_CELLOSAURUS:-}" | tr '[:lower:]' '[:upper:]')
+if [[ "$WITHOUT_CELLOSAURUS_UP" = "TRUE" ]]; then
+  PY_WITHOUT_CELLOSAURUS+=(--without_cellosaurus)
+fi
+
+python3 -u norm_complete.py --base_path "$SCRATCH_DIR" "${PY_VERBOSE[@]}" "${PY_WITHOUT_CELLOSAURUS[@]}"
