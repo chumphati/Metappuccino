@@ -1,7 +1,0 @@
-Error in subprocess: ['qsub', '-q', 'alphafold', '-l', 'select=1:host=node49:ncpus=20:mem=80gb:ngpus=1', '-v', 'METAPPUCCINO=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino,RES=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_test,ENV_REQUIREMENT=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/.venv_last,MODEL=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetappuccinoLLModel,VERBOSE=TRUE,N_GPUS=1,NODE_WORK_PATH=/scratchlocal/fiona.hak', '/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/bin/LLM_INFERENCE/llm_MI_per_category.sh'] returned non-zero exit status 162
-✔ Setup initialisation done!
-✔ Metadata download completed!
-✔ Metadata cleaned!
-✔ Preprocessing completed successfully!
-✔ Summary completed successfully!
-Submitting: qsub -q alphafold -l select=1:host=node49:ncpus=20:mem=80gb:ngpus=1 -v METAPPUCCINO=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino,RES=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/results_test,ENV_REQUIREMENT=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/.venv_last,MODEL=/store/EQUIPES/SSFA/MEMBERS/fiona.hak/MetappuccinoLLModel,VERBOSE=TRUE,N_GPUS=1,NODE_WORK_PATH=/scratchlocal/fiona.hak /store/EQUIPES/SSFA/MEMBERS/fiona.hak/Metappuccino/bin/LLM_INFERENCE/llm_MI_per_category.sh
