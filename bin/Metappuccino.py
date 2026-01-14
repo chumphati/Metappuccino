@@ -70,7 +70,7 @@ def _pbs_job_active(job_id: str) -> bool:
     except Exception:
         return True
 
-def wait_for_flag_or_job_end(flag_path: str, job_handles=(), poll_seconds: int = 10, grace_seconds: int = 50):
+def wait_for_flag_or_job_end(flag_path: str, job_handles=(), poll_seconds: int = 10, grace_seconds: int = 30):
     while True:
         if os.path.isfile(flag_path):
             return

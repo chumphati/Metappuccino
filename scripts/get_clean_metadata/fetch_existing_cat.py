@@ -49,17 +49,48 @@ def ensure_maxlen(nlp, text):
 nlp_match.max_length = max(nlp_match.max_length, 5_000_000)
 
 def load_syn(csv, sc, nc, cc):
+    GENERIC_SYNS = {
+        "node", "lymph", "lymph node", "lymph nodes", "tissue", "organ", "gland", "blood", "plasma",
+        "cell", "cells", "cell line", "sample", "specimen", "biopsy", "organism", "organ part",
+        "anatomical location", "body", "human", "mouse", "rat",
+        "disease", "cancer", "tumor", "carcinoma", "infection", "normal", "control"
+    }
+    def _norm_simple(s: str) -> str:
+        s = str(s).replace("\u00a0", " ").strip().lower()
+        s = re.sub(r"[^a-z0-9]+", " ", s)
+        s = re.sub(r"\s+", " ", s).strip()
+        return s
+    def _valid_syn(s: str) -> bool:
+        if not s:
+            return False
+        s = str(s).replace("\u00a0", " ").strip()
+        if not s or s.lower() in {"nan", "none", "null"}:
+            return False
+        has_digit = any(ch.isdigit() for ch in s)
+        letters = sum(ch.isalpha() for ch in s)
+        if not has_digit and letters < 3:
+            return False
+        if sum(ch.isalnum() for ch in s) < 2:
+            return False
+        if _norm_simple(s) in GENERIC_SYNS:
+            return False
+        return True
     df = pd.read_csv(csv, dtype=str, on_bad_lines='skip').fillna('')
     sd, cd = {}, {}
     for _, r in df.iterrows():
-        name = r[nc].strip()
-        if not name:
+        name = str(r.get(nc, "") or "").replace("\u00a0", " ").strip()
+        if not name or name.lower() == "nan":
             continue
-        syns = [s.strip() for s in r[sc].split(';')] if r[sc] else []
-        for s in syns + [name]:
+        raw_syn = str(r.get(sc, "") or "").replace("\u00a0", " ").strip()
+        if raw_syn.lower() in {"nan", "none", "null"}:
+            raw_syn = ""
+        syns = [s.strip() for s in raw_syn.split(';')] if raw_syn else []
+        syns = [s for s in syns if _valid_syn(s)]
+        for s in syns:
             sd[s.lower()] = name
-        if cc and r[cc].strip():
-            cd[name] = r[cc].strip()
+        sd[name.lower()] = name
+        if cc and str(r.get(cc, "") or "").strip() and str(r.get(cc, "") or "").strip().lower() != "nan":
+            cd[name] = str(r.get(cc, "")).strip()
     return sd, cd
 
 def extract_tag(ctx: str, tag: str) -> str:
@@ -72,7 +103,12 @@ def extract_sample_title(ctx: str) -> str:
     return m.group(1).strip() if m else ""
 
 def normalize(v, d):
-    return d.get(v.strip().lower(), v.strip()) if isinstance(v, str) and v.strip() else ""
+    if not isinstance(v, str) or not v.strip():
+        return ""
+    key = v.replace("\u00a0", " ").strip().lower()
+    if key in d:
+        return d[key]
+    return v.strip()
 
 def extract_libsel(ctx):
     if re.search(r"poly[.\s-]?a|oligo[.\s-]?d[.\s-]?t|truseq[.\s-]?mrna|smarter[.\s-]?mrna|polyadenylated|polyadenylation|nebnext poly[.\s-]?a|magnetic poly[.\s-]?a", ctx, re.IGNORECASE):
@@ -132,18 +168,42 @@ cell_df = pd.read_csv(cell_df_file, dtype=str, on_bad_lines='skip').fillna('')
 
 official_names_lower = set(cell_df["name"].str.lower())
 
+def _valid_cell_syn(s: str) -> bool:
+    if not s:
+        return False
+    s = str(s).replace("\u00a0", " ").strip()
+    if not s or s.lower() in {"nan", "none", "null"}:
+        return False
+    if s.lower() in {"cell", "cells", "cell line", "line", "sample", "specimen", "tissue", "organ"}:
+        return False
+    has_digit = any(ch.isdigit() for ch in s)
+    letters = sum(ch.isalpha() for ch in s)
+    if not has_digit and letters < 3:
+        return False
+    if sum(ch.isalnum() for ch in s) < 2:
+        return False
+    return True
+
 def resolve_cell_line(term: str) -> str:
-    if term.lower() in official_names_lower:
+    if not isinstance(term, str) or not term.strip():
         return term
-    return cell_syn.get(term.lower(), term)
+    t = term.replace("\u00a0", " ").strip()
+    tl = t.lower()
+    if tl in official_names_lower:
+        return cell_syn.get(tl, t)
+    if not _valid_cell_syn(t):
+        return t
+    return cell_syn.get(tl, t)
 
 cell_syn = {}
 for _, r in cell_df.iterrows():
-    name = r['name'].strip()
+    name = str(r.get('name', '') or '').strip()
     if not name:
         continue
-    syns = [s.strip() for s in r['synonym'].split(';')] if r['synonym'] else []
+    syns = [s.strip() for s in str(r.get('synonym', '') or '').split(';')] if str(r.get('synonym', '') or '').strip() else []
     for s in syns + [name]:
+        if not _valid_cell_syn(s) and s.lower() not in official_names_lower:
+            continue
         cell_syn[s.lower()] = name
 
 cols = [
@@ -158,9 +218,12 @@ stopwords = r"\b(?:for|to|and|in|with|via|on|of|the)\b"
 
 cell_options = set()
 for _, row in cell_df.iterrows():
-    cell_options.add(row["name"].strip())
-    if row["synonym"]:
-        cell_options.update(s.strip() for s in row["synonym"].split(";") if s.strip())
+    nm = str(row.get("name", "") or "").strip()
+    if nm:
+        cell_options.add(nm)
+    synf = str(row.get("synonym", "") or "").strip()
+    if synf:
+        cell_options.update(s.strip() for s in synf.split(";") if _valid_cell_syn(s.strip()))
 
 GENERIC_WORDS = {
     "cell", "cells", "line", "cancer", "tumor", "normal", "human",
@@ -250,31 +313,31 @@ def process_path(path):
             o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
             enrich_from_cell_df(o, o["cell_line"])
             found = True
-    if not found:
-        src_name = extract_tag(ctx, "source_name")
-        sample_title = extract_sample_title(ctx)
-        for origin, src in (("source_name", src_name), ("sample_title", sample_title)):
-            if not src:
-                continue
-            tokens = re.findall(r"[A-Za-z0-9][A-Za-z0-9._/\-]*", src)
-            tokens = [t for t in tokens if len(t) >= 4]
-            hits = [t for t in tokens if t.lower() in cell_syn]
-            if hits:
-                hits = uniq_preserve_order(hits)
-                if len(hits) >= 2:
-                    ambiguous_rows_local.append({"run_accession": run, "candidates": ";".join(hits)})
-                    is_ambiguous = True
-                    vprint(f"{origin}>=2")
-                    found = True
-                    break
-                else:
-                    mapped = resolve_cell_line(hits[0].strip())
-                    vprint(origin)
-                    o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
-                    vprint(o["cell_line"])
-                    enrich_from_cell_df(o, o["cell_line"])
-                    found = True
-                    break
+    # if not found:
+    #     src_name = extract_tag(ctx, "source_name")
+    #     sample_title = extract_sample_title(ctx)
+    #     for origin, src in (("source_name", src_name), ("sample_title", sample_title)):
+    #         if not src:
+    #             continue
+    #         tokens = re.findall(r"[A-Za-z0-9][A-Za-z0-9._/\-]*", src)
+    #         tokens = [t for t in tokens if len(t) >= 4]
+    #         hits = [t for t in tokens if t.lower() in cell_syn]
+    #         if hits:
+    #             hits = uniq_preserve_order(hits)
+    #             if len(hits) >= 2:
+    #                 ambiguous_rows_local.append({"run_accession": run, "candidates": ";".join(hits)})
+    #                 is_ambiguous = True
+    #                 vprint(f"{origin}>=2")
+    #                 found = True
+    #                 break
+    #             else:
+    #                 mapped = resolve_cell_line(hits[0].strip())
+    #                 vprint(origin)
+    #                 o["cell_line"] = re.sub(r"\bcell(s)?\b", "", mapped, flags=re.IGNORECASE).strip()
+    #                 vprint(o["cell_line"])
+    #                 enrich_from_cell_df(o, o["cell_line"])
+    #                 found = True
+    #                 break
     if not found:
         ensure_maxlen(nlp_match, ctx)
         doc_m = nlp_match(ctx)
@@ -347,7 +410,8 @@ def process_path(path):
         o["sequencing_source"] = ""
     if o.get("biopsy_type") and o["biopsy_type"] not in allowed_biopsy_type and o.get("biopsy_type_source") != "cellosaurus":
         o["biopsy_type"] = ""
-    o["disease"] = normalize(o["disease"], disease_syn)
+    if o.get("disease_source") != "cellosaurus":
+        o["disease"] = normalize(o["disease"], disease_syn)
     o["do_code"] = disease_code.get(o["disease"], "")
     if o.get("organ_source") != "cellosaurus":
         o["organ"] = normalize(o["organ"], organ_syn)
@@ -357,6 +421,12 @@ def process_path(path):
         o["biopsy_site"] = normalize(o["biopsy_site"], organ_syn)
     if (not o.get("bs_uberon_code")) or (o.get("bs_uberon_code_source") != "cellosaurus"):
         o["bs_uberon_code"] = organ_code.get(o["biopsy_site"], o.get("bs_uberon_code", ""))
+    for k in ["organ", "biopsy_site", "disease"]:
+        if not o.get(k) or str(o.get(k)).strip().lower() in invalid_entries:
+            o[k] = "unknown"
+    for k in ["organ_uberon_code", "bs_uberon_code", "do_code"]:
+        if o.get(k) and str(o.get(k)).strip().lower() == "unknown":
+            o[k] = ""
     is_official = bool(o.get("cell_line")) and (o["cell_line"].strip().lower() in official_names_lower)
     if is_ambiguous:
         vprint("ambiguous")
@@ -385,7 +455,9 @@ if __name__ == "__main__":
     def fmt_codes(x):
         if not isinstance(x, str) or not x:
             return x
-        return x.replace('_', ':').replace('+', ';')
+        x = x.replace('_', ':').replace('+', ';')
+        x = re.sub(r"\bUBERON:unknown\b", "unknown", x)
+        return x
 
     if not df_conf.empty:
         df_conf["bs_uberon_code"] = df_conf["bs_uberon_code"].apply(fmt_codes)
