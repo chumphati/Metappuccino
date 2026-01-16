@@ -361,7 +361,7 @@ UBERON:0000951,rotator muscle of the vertebral column,rotator muscle
 UBERON:0000952,obsolete adductor muscle,
 UBERON:0000953,obsolete visceral muscle,adult visceral muscle;smooth muscle
 UBERON:0000954,obsolete intestine muscle,intestinal muscle
-UBERON:0000955,brain,suprasegmental levels of nervous system;suprasegmental structures;the brain
+UBERON:0000955,brain,suprasegmental levels of nervous system;brain;suprasegmental structures;the brain
 UBERON:0000956,cerebral cortex,brain cortex;cortex cerebralis;cortex cerebri;cortex of cerebral hemisphere;cortical plate (areas);cortical plate (CTXpl);pallium of the brain
 UBERON:0000957,lamina,laminar tissue
 UBERON:0000958,medulla of organ,
@@ -654,7 +654,7 @@ UBERON:0001251,marginal zone of spleen,junctional zone of spleen;marginal zone;s
 UBERON:0001252,adventitia of ureter,external adventitia of ureter;tunica adventitia (ureter);tunica adventitia ureteris;ureter adventitia;ureteral adventitia
 UBERON:0001253,lamina propria of ureter,lamina propria mucosa of ureter;lamina propria mucosae of ureter;ureter lamina propria;ureter lamina propria mucosa;ureter lamina propria mucosae
 UBERON:0001254,urothelium of ureter,transitional epithelium of ureter;ureter luminal urothelium;ureter transitional epithelium;ureter urothelium
-UBERON:0001255,urinary bladder,vesica urinaria
+UBERON:0001255,urinary bladder,vesica urinaria;bladder
 UBERON:0001256,wall of urinary bladder,anatomical wall of bladder;anatomical wall of urinary bladder;bladder anatomical wall;bladder wall;urinary bladder anatomical wall;urinary bladder wall;wall of bladder
 UBERON:0001257,trigone of urinary bladder,bladder trigone;deep trigone;dorsal bladder neck;Lieutaud's trigone;musculus trigoni vesicae profundus;trigone of bladder;trigonum vesicae;trigonum vesicae urinariae;urinary bladder trigone;vesical trigone
 UBERON:0001258,neck of urinary bladder,bladder neck;cervix vesicae;cervix vesicae urinariae;collum vesicae;neck of bladder;urinary bladder neck;vesical neck
@@ -872,7 +872,7 @@ UBERON:0001470,glenohumeral joint,articulatio humeri;humeral joint;humeroscapula
 UBERON:0001471,skin of prepuce of penis,foreskin of penis;penis foreskin;preputial skin
 UBERON:0001472,vaginal venous plexus,plexus venosus vaginalis;venous vaginal plexus
 UBERON:0001473,lymphatic vessel,lymph vessel;vas lymphaticum
-UBERON:0001474,bone element,bone organ
+UBERON:0001474,bone element,bone organ;Bone;bone
 UBERON:0001475,obsolete ligament,
 UBERON:0001476,deltoid,common shoulder muscle;deltoid muscle;deltoideus muscle;m. deltoideus;musculus deltoideus;musculus deltoideus
 UBERON:0001477,infraspinatus muscle,musculus infraspinatus
@@ -1444,7 +1444,7 @@ UBERON:0002044,ventral nucleus of posterior commissure,Darkshevich nucleus;Darks
 UBERON:0002045,cuneate nucleus,Burdach's nucleus;burdachs nucleus;cuneate nucleus (Burdach);cuneate nucleus of the medulla;nucleus cuneatus;nucleus cuneatus medialis;nucleus restiformis
 UBERON:0002046,thyroid gland,glandula thyroidea
 UBERON:0002047,pontine raphe nucleus,nucleus raphe pontis;nucleus raphes pontis;raphe (mediana pontina);raphe of pons;raphe pontis;raphe pontis nucleus
-UBERON:0002048,lung,
+UBERON:0002048,lung,lung
 UBERON:0002049,vasculature,vascular network
 UBERON:0002050,embryonic structure,developing embryonic structure;developing structure;embryonale Struktur;embryonic anatomical structure;embryonic structures
 UBERON:0002051,epithelium of bronchiole,bronchiolar epithelium;bronchiole epithelial tissue;bronchiole epithelium;epithelial tissue of bronchiole
@@ -1492,7 +1492,7 @@ UBERON:0002092,brain dura mater,cranial dura mater;dura mater cranialis;dura mat
 UBERON:0002093,spinal dura mater,dura mater of neuraxis of spinal cord;dura mater of spinal cord;spinal cord dura mater;spinal cord dura mater of neuraxis
 UBERON:0002094,interventricular septum,heart interventricular septum;heart ventricular septum;interventricular septum of heart;interventriculare cordis;intraventricular septum;s. interventriculare cordis;septum inferius;septum membranaceum;ventricle septum;ventricular septum
 UBERON:0002095,mesentery,generic mesentery;mesentery (generic)
-UBERON:0002097,skin of body,entire integument;entire skin;integumental organ;skin organ
+UBERON:0002097,skin of body,entire integument;skin;entire skin;integumental organ;skin organ
 UBERON:0002098,apex of heart,apex cordis;cardiac apex;heart apex
 UBERON:0002099,cardiac septum,cardiac septa;heart septa;heart septum;septum of heart;spiral septa
 UBERON:0002100,trunk,thoracolumbar region;trunk region
@@ -3917,7 +3917,7 @@ UBERON:0004797,blood vessel layer,
 UBERON:0004798,respiratory system basal lamina,apparatus respiratorius basal lamina;apparatus respiratorius basal lamina of connective tissue;basal lamina of apparatus respiratorius;basal lamina of connective tissue of apparatus respiratorius;basal lamina of connective tissue of respiratory system;basal lamina of respiratory system;respiratory system basal lamina of connective tissue
 UBERON:0004799,trachea basal lamina,basal lamina of connective tissue of respiratory airway
 UBERON:0004800,bronchus basal lamina,basal lamina of bronchi;basal lamina of bronchial trunk;basal lamina of bronchus;basal lamina of connective tissue of bronchi;basal lamina of connective tissue of bronchial trunk;basal lamina of connective tissue of bronchus;bronchi basal lamina;bronchi basal lamina of connective tissue;bronchial trunk basal lamina;bronchial trunk basal lamina of connective tissue;bronchus basal lamina of connective tissue
-UBERON:0004801,cervix epithelium,cervical canal epithelial tissue;cervical canal epithelium;cervical epithelium;cervix epithelial tissue;epithelium of cervix
+UBERON:0004801,cervix epithelium,cervical canal epithelial tissue;cervix;cervical canal epithelium;cervical epithelium;cervix epithelial tissue;epithelium of cervix
 UBERON:0004802,respiratory tract epithelium,airway epithelium;epithelial tissue of respiratory tract;epithelium of respiratory tract;respiratory epithelium;respiratory tract epithelial tissue
 UBERON:0004803,penis epithelium,epithelial tissue of penis;epithelium of penis;penis epithelial tissue
 UBERON:0004804,oviduct epithelium,columnar epithelium of the fallopian tube;columnar epithelium of the oviduct;epithelial tissue of oviduct;epithelium of fallopian tube;epithelium of oviduct;epithelium of uterine tube;fallopian tube epithelium;oviduct epithelial tissue

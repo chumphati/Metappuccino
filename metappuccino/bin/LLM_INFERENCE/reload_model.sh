@@ -67,6 +67,13 @@ if [ ! -f "$TMP_DIR/reload_model_bio_info.txt" ] ; then
     exit 0
 fi
 
+non_empty_lines=$(grep -cve '^[[:space:]]*$' "$TMP_DIR/reload_model_bio_info.txt" || true)
+if [ "$non_empty_lines" -le 1 ]; then
+    echo "✔ reload_model_bio_info.txt only has header → nothing to reload."
+    touch "$SCRATCH_DIR/STEP3_2.flag"
+    exit 0
+fi
+
 MODEL_BASENAME="$(basename "$MODEL")"
 ln -sf "$MODEL" "$SCRATCH_DIR/$MODEL_BASENAME" || cp -n "$MODEL" "$SCRATCH_DIR/"
 if [[ -f "$TMP_DIR/ambiguous_cell_lines.csv" ]]; then
