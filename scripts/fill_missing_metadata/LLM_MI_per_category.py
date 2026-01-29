@@ -377,8 +377,8 @@ for run, summary in runs:
             scores_eff = gen.scores[:-1] if trim_last else gen.scores
 
             if len(gen_tokens) == 0:
-                nll_val = float("inf")
-                ppl_val = float("inf")
+                nll_val = "not applicable"
+                ppl_val = "not applicable"
             else:
                 nll_steps = []
                 for t, logits in enumerate(scores_eff[:len(gen_tokens)]):

@@ -5,6 +5,7 @@ import re
 import json
 import pandas as pd
 import argparse
+import math
 
 ##########################################################################################
 # PATHS
@@ -150,6 +151,12 @@ def infer_from_cell_line(cell_line, cell_df):
             output[f] = str(val).strip()
     return output
 
+def _metric_or_na(v):
+    try:
+        x = float(v)
+        return str(x) if math.isfinite(x) else "not applicable"
+    except Exception:
+        return "not applicable"
 
 def clean_cell_line_name(raw):
     if not isinstance(raw, str):
@@ -417,10 +424,10 @@ for _, row in df.iterrows():
                 source[k] = "llm"
         for k, v in js.get("nll", {}).items():
             if k in fields:
-                llm_nll[k] = str(v)
+                llm_nll[k] = _metric_or_na(v)
         for k, v in js.get("ppl", {}).items():
             if k in fields:
-                llm_ppl[k] = str(v)
+                llm_ppl[k] = _metric_or_na(v)
 
     if not WITHOUT_CELLOSAURUS and entry.get("cell_line", "").strip().lower() not in INVALID_ENTRIES:
         original = entry["cell_line"]

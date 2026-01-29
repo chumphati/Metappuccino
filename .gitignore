@@ -186,3 +186,4 @@ dist_sdist/
 metappuccino.egg-info/
 
 metappuccino*
+slurm-*

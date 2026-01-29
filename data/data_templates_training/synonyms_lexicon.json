@@ -1,0 +1,1504 @@
+{
+  "library_selection": {
+    "polyA": [
+      "polyA selection",
+      "oligo-dT selection",
+      "mRNA enrichment",
+      "poly(A) capture"
+    ],
+    "inverse rRNA": [
+      "rRNA depletion",
+      "ribo-depletion",
+      "RiboMinus",
+      "rRNA removal"
+    ],
+    "hybrid selection": [
+      "hybrid capture",
+      "target capture",
+      "capture enrichment",
+      "probe capture"
+    ],
+    "small RNA": [
+      "small RNA-seq",
+      "miRNA library",
+      "small RNA library",
+      "short RNA library"
+    ],
+    "other": [
+      "custom selection",
+      "other selection protocol",
+      "non-standard selection"
+    ],
+    "unknown": []
+  },
+  "sequencing_source": {
+    "single-cell": [
+      "scRNA-seq",
+      "10x single cell",
+      "droplet scRNAseq",
+      "cell-barcoded RNA-seq"
+    ],
+    "bulk": [
+      "bulk RNA-seq",
+      "pooled RNA-seq",
+      "whole-tissue RNA-seq",
+      "population RNA-seq"
+    ],
+    "spatial": [
+      "spatial transcriptomics",
+      "10x Visium",
+      "Slide-seq",
+      "in situ transcriptomics"
+    ],
+    "unknown": []
+  },
+  "biopsy_site": {
+    "liver": [
+      "portal parenchyma specimen",
+      "metabolic parenchyma material",
+      "hepatic parenchyma context",
+      "upper abdominal parenchyma"
+    ],
+    "lung": [
+      "alveolar-rich thoracic tissue",
+      "respiratory parenchyma specimen",
+      "thoracic airway-parenchyma",
+      "thoracic respiratory tissue"
+    ],
+    "kidney": [
+      "filtration parenchyma material",
+      "renal parenchyma specimen",
+      "urinary filtration tissue",
+      "nephron-rich parenchyma"
+    ],
+    "brain": [
+      "central nervous tissue",
+      "CNS-derived specimen",
+      "grey-white matter mix",
+      "intracranial neural parenchyma"
+    ],
+    "spleen": [
+      "lymphoid pulp-rich material",
+      "splenic parenchyma specimen",
+      "secondary lymphoid organ",
+      "immune organ parenchyma"
+    ],
+    "pancreas": [
+      "upper abdominal glandular tissue",
+      "glandular digestive tissue",
+      "endocrine-adjacent gland material",
+      "digestive gland parenchyma"
+    ],
+    "colon": [
+      "large-bowel lining material",
+      "lower GI lining specimen",
+      "distal intestinal wall",
+      "large bowel mucosa"
+    ],
+    "intestine": [
+      "intestinal lining specimen",
+      "bowel mucosa material",
+      "bowel wall mucosal specimen",
+      "GI tract wall tissue"
+    ],
+    "bone marrow": [
+      "precursor-cell niche specimen",
+      "marrow aspirate-like material",
+      "hematopoietic niche material",
+      "blood-forming compartment"
+    ],
+    "blood": [
+      "peripheral draw context",
+      "circulatory compartment material",
+      "hematologic specimen",
+      "liquid hematologic material"
+    ],
+    "prostate": [
+      "urogenital gland material",
+      "male reproductive gland material",
+      "male urogenital gland specimen",
+      "urogenital glandular tissue"
+    ],
+    "breast": [
+      "mammary glandular material",
+      "mammary gland specimen",
+      "mammary tissue context",
+      "glandular adipose-rich tissue"
+    ],
+    "cervix": [
+      "lower tract epithelial region",
+      "cervical epithelial region",
+      "lower reproductive tract tissue",
+      "cervical region tissue"
+    ],
+    "cartilage": [
+      "joint connective tissue",
+      "articular connective tissue",
+      "cartilaginous connective tissue",
+      "avascular joint connective tissue"
+    ],
+    "thyroid": [
+      "endocrine neck tissue",
+      "endocrine neck gland material",
+      "neck glandular endocrine specimen",
+      "neck endocrine gland specimen"
+    ],
+    "adrenal gland": [
+      "stress-axis gland tissue",
+      "suprarenal endocrine tissue",
+      "adrenal cortex-rich material",
+      "suprarenal cortex specimen"
+    ],
+    "placenta": [
+      "fetomaternal interface tissue",
+      "villous interface tissue",
+      "gestational interface specimen",
+      "maternal-fetal interface material"
+    ],
+    "pituitary": [
+      "hypophyseal region material",
+      "central endocrine gland tissue",
+      "central endocrine region specimen",
+      "endocrine control-axis tissue"
+    ],
+    "parathyroid": [
+      "calcium-regulating endocrine tissue",
+      "small endocrine gland tissue",
+      "PTH-axis gland material",
+      "calcium-axis endocrine specimen"
+    ],
+    "thymus": [
+      "mediastinal immune organ",
+      "central lymphoid organ tissue",
+      "T-cell maturation organ",
+      "mediastinal immune organ specimen"
+    ],
+    "esophagus": [
+      "foregut tube specimen",
+      "upper digestive tract tube",
+      "foregut epithelial tube material",
+      "upper GI tubular tissue"
+    ],
+    "eye": [
+      "ocular tissue context",
+      "visual organ-associated material",
+      "visual organ tissue context",
+      "retina-associated material"
+    ],
+    "ear": [
+      "auditory tissue context",
+      "auditory organ-associated material"
+    ],
+    "ovaries": [
+      "female gonadal tissue",
+      "female reproductive gland material",
+      "gonadal follicular material",
+      "follicle-associated tissue"
+    ],
+    "testes": [
+      "germ-cell niche tissue",
+      "spermatogenic niche material",
+      "male gonadal specimen",
+      "male gonadal tissue"
+    ],
+    "uterus": [
+      "uterine wall material",
+      "female reproductive wall material",
+      "reproductive organ wall specimen",
+      "uterine tissue context"
+    ],
+    "lymph node": [
+      "nodal tissue context",
+      "immune-node material",
+      "lymphoid node specimen",
+      "nodal lymphoid tissue"
+    ],
+    "endometrium": [
+      "endometrial layer specimen",
+      "uterine lining material",
+      "uterine mucosal layer",
+      "lining layer specimen"
+    ],
+    "ileum": [
+      "distal small-bowel mucosa",
+      "terminal bowel segment tissue",
+      "distal intestinal mucosa",
+      "terminal segment mucosa"
+    ],
+    "duodenum": [
+      "upper small intestine segment",
+      "proximal small-bowel mucosa",
+      "proximal segment mucosal specimen",
+      "proximal intestinal mucosa"
+    ],
+    "heart": [
+      "cardiac muscle tissue",
+      "myocardial tissue context",
+      "cardiac contractile tissue",
+      "contractile cardiac tissue"
+    ],
+    "unknown": []
+  },
+  "biopsy_type": {
+    "primary": [
+      "origin focus sampling frame",
+      "index-site lesion context",
+      "in-situ lesion sampling frame",
+      "site-of-origin lesion setting",
+      "local index focus specimen"
+    ],
+    "metastasis": [
+      "non-origin lesion sampling",
+      "distant lesion focus",
+      "secondary-site focus specimen",
+      "disseminated lesion frame",
+      "remote-site lesion setting"
+    ],
+    "blood": [
+      "peripheral draw material",
+      "liquid hematologic specimen",
+      "venous draw specimen",
+      "circulatory compartment specimen",
+      "venipuncture-derived specimen"
+    ],
+    "unknown": []
+  },
+  "cell_line": {
+    "HEK293": [
+      "HEK-293",
+      "293 cells",
+      "293T"
+    ],
+    "HeLa": [
+      "HeLa cells",
+      "HeLa"
+    ],
+    "HepG2": [
+      "HepG2",
+      "Hep G2"
+    ],
+    "Hep3B": [
+      "Hep3B",
+      "Hep 3B"
+    ],
+    "MCF7": [
+      "MCF-7"
+    ],
+    "A549": [
+      "A-549"
+    ],
+    "K562": [
+      "K-562"
+    ],
+    "U2OS": [
+      "U-2 OS",
+      "U2-OS"
+    ],
+    "PC3": [
+      "PC-3"
+    ],
+    "LNCaP": [
+      "LNCaP"
+    ],
+    "DU145": [
+      "DU-145"
+    ],
+    "Jurkat": [
+      "Jurkat",
+      "Jurkat T cells"
+    ],
+    "HCT116": [
+      "HCT-116"
+    ],
+    "SHSY5Y": [
+      "SH-SY5Y",
+      "SHSY-5Y"
+    ],
+    "SK-N-SH": [
+      "SKN-SH",
+      "SK N SH",
+      "SKNSH"
+    ],
+    "C2C12": [
+      "C2C12",
+      "C2 C12"
+    ],
+    "THP1": [
+      "THP-1"
+    ],
+    "Raji": [
+      "Raji",
+      "Raji cells"
+    ],
+    "Daudi": [
+      "Daudi",
+      "Daudi cells"
+    ],
+    "Ramos": [
+      "Ramos",
+      "Ramos cells"
+    ],
+    "SU-DHL-4": [
+      "SUDHL4",
+      "SU DHL 4",
+      "SU-DHL4"
+    ],
+    "U937": [
+      "U-937"
+    ],
+    "PANC-1": [
+      "PANC1",
+      "PANC 1"
+    ],
+    "AsPC-1": [
+      "AsPC1",
+      "AsPC 1"
+    ],
+    "KYSE-30": [
+      "KYSE30",
+      "KYSE 30"
+    ],
+    "TE-1": [
+      "TE1",
+      "TE 1"
+    ],
+    "ARPE-19": [
+      "ARPE19",
+      "ARPE 19"
+    ],
+    "HEI-OC1": [
+      "HEIOC1",
+      "HEI OC1"
+    ],
+    "KGN": [
+      "KGN",
+      "KGN cells"
+    ],
+    "NT2/D1": [
+      "NT2D1",
+      "NT2 D1",
+      "NT2/D1"
+    ],
+    "Ishikawa": [
+      "Ishikawa",
+      "Ishikawa cells"
+    ],
+    "ECC-1": [
+      "ECC1",
+      "ECC 1"
+    ],
+    "SW1353": [
+      "SW-1353"
+    ],
+    "ATDC5": [
+      "ATDC5",
+      "ATDC-5"
+    ],
+    "Nthy-ori 3-1": [
+      "Nthy ori 3-1",
+      "Nthy-ori3-1"
+    ],
+    "TPC-1": [
+      "TPC1",
+      "TPC 1"
+    ],
+    "NCI-H295R": [
+      "H295R",
+      "NCI H295R"
+    ],
+    "SW-13": [
+      "SW13",
+      "SW 13"
+    ],
+    "JEG-3": [
+      "JEG3",
+      "JEG 3"
+    ],
+    "BeWo": [
+      "BeWo",
+      "BeWo cells"
+    ],
+    "HTR-8/SVneo": [
+      "HTR8 SVneo",
+      "HTR-8 SVneo",
+      "HTR-8/SVneo"
+    ],
+    "GH3": [
+      "GH3",
+      "GH-3"
+    ],
+    "HP75": [
+      "HP75",
+      "HP-75"
+    ],
+    "sHPT-1": [
+      "sHPT1",
+      "sHPT 1"
+    ],
+    "TT": [
+      "TT",
+      "TT cells"
+    ],
+    "not applicable": [
+      "NA",
+      "not applicable",
+      "n/a"
+    ],
+    "unknown": []
+  },
+  "cell_type": {
+    "muscle cells": [
+      "myocyte-enriched",
+      "contractile cell compartment",
+      "myofiber-lineage fraction"
+    ],
+    "liver cells": [
+      "hepatocyte-enriched",
+      "hepatocyte-like compartment",
+      "hepatic parenchymal cell fraction"
+    ],
+    "blood cells": [
+      "hematopoietic cell",
+      "nucleated blood-cell fraction",
+      "hematologic cellular fraction"
+    ],
+    "kidney cells": [
+      "renal tubular-like fraction",
+      "nephron-lineage cell fraction",
+      "renal parenchymal cell fraction"
+    ],
+    "nerve cells": [
+      "neuron-enriched fraction",
+      "neuronal lineage fraction",
+      "neural cell compartment"
+    ],
+    "connective cells": [
+      "connective lineage fraction",
+      "ECM-associated cell fraction",
+      "mesenchymal support compartment"
+    ],
+    "fat cells": [
+      "lipid-storing cell fraction",
+      "adipocyte-enriched fraction",
+      "adipose lineage compartment"
+    ],
+    "bone cells": [
+      "skeletal lineage cell fraction",
+      "osteogenic lineage fraction",
+      "bone-associated cellular fraction"
+    ],
+    "cartilage cells": [
+      "joint connective lineage fraction",
+      "chondral cell fraction",
+      "cartilaginous lineage fraction"
+    ],
+    "chondrocytes": [
+      "mature cartilage-forming cells",
+      "chondral matrix-producing cells",
+      "cartilage matrix cell fraction"
+    ],
+    "fibroblasts": [
+      "mesenchymal fibroblast-like fraction",
+      "ECM-producing stromal fraction",
+      "fibroblast lineage fraction"
+    ],
+    "migratory cells": [
+      "migration-competent cells",
+      "movement-oriented cell state",
+      "cells enriched for adhesion and motility programs"
+    ],
+    "stomach cells": [
+      "gastric compartment cells",
+      "stomach mucosa-derived cells",
+      "gastric epithelial cell population"
+    ],
+    "lung cells": [
+      "alveolar-lineage cell",
+      "pulmonary epithelial-like",
+      "airway-parenchyma cell"
+    ],
+    "primary tissue": [
+      "native tissue fragment",
+      "intact tissue material",
+      "ex vivo tissue piece",
+      "uncultured tissue specimen"
+    ],
+    "lymphocytes": [
+      "lymphoid cell compartment",
+      "lymphoid cellular",
+      "lymphocyte-enriched"
+    ],
+    "immune cells": [
+      "mixed leukocyte",
+      "leukocyte compartment",
+      "immune compartment fraction"
+    ],
+    "myeloid cells": [
+      "innate leukocyte compartment",
+      "myeloid compartment fraction",
+      "myeloid-lineage leukocytes"
+    ],
+    "T cells": [
+      "T-lymphocyte subset",
+      "T-lineage lymphocyte compartment",
+      "CD3-positive lymphocyte fraction"
+    ],
+    "B cells": [
+      "B-lymphocyte subset",
+      "B-lineage lymphocyte compartment",
+      "CD19-positive lymphocyte fraction"
+    ],
+    "esophageal epithelial cells": [
+      "foregut epithelial cell fraction",
+      "upper GI epithelial compartment",
+      "foregut squamous epithelium fraction"
+    ],
+    "retinal ganglion cells": [
+      "optic projection neuron fraction",
+      "retinal projection neuron fraction",
+      "ganglion neuron compartment"
+    ],
+    "photoreceptor cells": [
+      "phototransduction neuron compartment",
+      "rod-cone neuron fraction",
+      "light-sensing retinal neurons"
+    ],
+    "retinal pigment epithelial cells": [
+      "RPE-like epithelial fraction",
+      "pigmented retinal epithelium compartment",
+      "retinal pigment epithelium fraction"
+    ],
+    "cochlear hair cells": [
+      "mechanosensory auditory cells",
+      "sensory hair cell compartment",
+      "inner-ear sensory cell fraction"
+    ],
+    "granulosa cells": [
+      "follicular support cell fraction",
+      "granulosa lineage compartment",
+      "follicle somatic support cells"
+    ],
+    "theca cells": [
+      "thecal steroidogenic compartment",
+      "androgen-producing follicle cells",
+      "follicular thecal lineage fraction"
+    ],
+    "oocytes": [
+      "gonadal germ cell fraction",
+      "female germ cell compartment",
+      "oocyte germline fraction"
+    ],
+    "Leydig cells": [
+      "Leydig-lineage steroidogenic fraction",
+      "interstitial androgen-producing cells",
+      "testicular steroidogenic cells"
+    ],
+    "Sertoli cells": [
+      "germ-cell niche support cells",
+      "Sertoli-lineage support fraction",
+      "seminiferous support cells"
+    ],
+    "spermatogonia": [
+      "early male germline progenitors",
+      "pre-meiotic germline fraction",
+      "basal germ-cell progenitor pool"
+    ],
+    "spermatocytes": [
+      "germline meiotic fraction",
+      "meiotic germ-cell compartment",
+      "meiotic male germline cells"
+    ],
+    "endometrial epithelial cells": [
+      "endometrial glandular epithelium",
+      "uterine lining epithelium fraction",
+      "uterine gland epithelium fraction"
+    ],
+    "decidual cells": [
+      "uterine decidual compartment",
+      "pregnancy-adapted stromal fraction",
+      "decidualized stromal fraction"
+    ],
+    "thyrocytes": [
+      "follicular thyroid epithelial fraction",
+      "thyroid hormone-producing cells",
+      "thyroid follicular epithelium"
+    ],
+    "adrenocortical cells": [
+      "suprarenal cortex steroidogenic fraction",
+      "adrenal cortex steroidogenic cells",
+      "cortical steroidogenic compartment"
+    ],
+    "trophoblasts": [
+      "placental trophoblast compartment",
+      "trophoblast lineage fraction",
+      "villous trophoblast fraction"
+    ],
+    "syncytiotrophoblasts": [
+      "multinucleated trophoblast compartment",
+      "villous syncytial layer fraction",
+      "syncytial trophoblast layer"
+    ],
+    "pituitary endocrine cells": [
+      "pituitary hormone-secreting cells",
+      "anterior pituitary endocrine fraction",
+      "hypophyseal endocrine compartment"
+    ],
+    "somatotrophs": [
+      "somatotroph endocrine compartment",
+      "growth hormone-secreting pituitary cells",
+      "GH-producing pituitary fraction"
+    ],
+    "lactotrophs": [
+      "lactotroph endocrine compartment",
+      "prolactin-secreting pituitary cells",
+      "PRL-producing pituitary fraction"
+    ],
+    "parathyroid chief cells": [
+      "PTH-secreting glandular cells",
+      "parathyroid secretory chief fraction",
+      "calcium-axis secretory cells"
+    ],
+    "thymic epithelial cells": [
+      "thymus epithelial scaffold cells",
+      "thymic epithelial compartment",
+      "T-cell education niche epithelium"
+    ],
+    "epithelial-like cells": [
+      "epithelial phenotype-enriched fraction",
+      "epithelium-derived phenotype fraction",
+      "epithelial-like compartment"
+    ],
+    "stromal cells": [
+      "supportive stromal fraction",
+      "stromal compartment fraction",
+      "non-epithelial support compartment"
+    ],
+    "unknown": []
+  },
+  "organ": {
+    "liver": [
+      "hepatic tissue",
+      "hepatic organ tissue",
+      "liver parenchymal tissue"
+    ],
+    "lung": [
+      "pulmonary tissue",
+      "pulmonary organ tissue",
+      "lung parenchymal tissue"
+    ],
+    "kidney": [
+      "renal tissue",
+      "renal organ tissue",
+      "kidney cortical tissue"
+    ],
+    "brain": [
+      "central nervous system tissue",
+      "brain tissue",
+      "neural tissue sample"
+    ],
+    "spleen": [
+      "splenic tissue",
+      "spleen tissue sample",
+      "splenic organ tissue"
+    ],
+    "pancreas": [
+      "pancreatic tissue",
+      "pancreas tissue sample",
+      "pancreatic gland tissue"
+    ],
+    "colon": [
+      "colonic tissue",
+      "large bowel tissue",
+      "colon tissue segment"
+    ],
+    "intestine": [
+      "intestinal tissue",
+      "bowel tissue sample",
+      "gastrointestinal tract tissue"
+    ],
+    "bone marrow": [
+      "bone marrow aspirate",
+      "hematopoietic marrow tissue",
+      "marrow compartment sample"
+    ],
+    "blood": [
+      "peripheral circulation sample",
+      "circulatory compartment specimen",
+      "hematologic specimen"
+    ],
+    "prostate": [
+      "prostatic tissue",
+      "prostate gland tissue",
+      "prostate tissue sample"
+    ],
+    "breast": [
+      "mammary tissue",
+      "mammary gland tissue",
+      "breast glandular tissue"
+    ],
+    "cartilage": [
+      "cartilage tissue",
+      "articular cartilage tissue",
+      "cartilaginous tissue sample"
+    ],
+    "thyroid": [
+      "thyroid tissue",
+      "thyroid gland tissue",
+      "neck endocrine gland tissue"
+    ],
+    "adrenal gland": [
+      "adrenal tissue",
+      "adrenal gland tissue",
+      "adrenal cortical tissue"
+    ],
+    "placenta": [
+      "placental tissue",
+      "placenta tissue sample",
+      "fetomaternal interface tissue"
+    ],
+    "pituitary": [
+      "pituitary tissue",
+      "pituitary gland tissue",
+      "hypophyseal tissue sample"
+    ],
+    "parathyroid": [
+      "parathyroid tissue",
+      "parathyroid gland tissue",
+      "calcium-regulating gland tissue"
+    ],
+    "thymus": [
+      "thymic tissue",
+      "thymus tissue sample",
+      "thymic organ tissue"
+    ],
+    "esophagus": [
+      "esophageal tissue",
+      "esophagus tissue sample",
+      "upper gastrointestinal tract tissue"
+    ],
+    "eye": [
+      "ocular tissue",
+      "eye tissue sample",
+      "retinal tissue sample"
+    ],
+    "ear": [
+      "auditory tissue",
+      "inner ear tissue sample",
+      "cochlear tissue sample"
+    ],
+    "ovaries": [
+      "ovarian tissue",
+      "ovary tissue sample",
+      "female gonadal tissue"
+    ],
+    "testes": [
+      "testicular tissue",
+      "testis tissue sample",
+      "male gonadal tissue"
+    ],
+    "uterus": [
+      "uterine tissue",
+      "uterus tissue sample",
+      "female reproductive organ tissue"
+    ],
+    "lymph node": [
+      "lymph node tissue",
+      "nodal tissue sample",
+      "lymphatic tissue sample"
+    ],
+    "endometrium": [
+      "endometrial tissue",
+      "uterine lining tissue",
+      "endometrial lining sample"
+    ],
+    "ileum": [
+      "ileal tissue",
+      "terminal ileum tissue",
+      "distal small bowel tissue"
+    ],
+    "duodenum": [
+      "duodenal tissue",
+      "proximal small bowel tissue",
+      "upper small intestine tissue"
+    ],
+    "heart": [
+      "cardiac tissue",
+      "myocardial tissue",
+      "heart muscle tissue"
+    ],
+    "unknown": []
+  },
+  "disease": {
+    "lung cancer": [
+      "pulmonary carcinoma",
+      "primary lung carcinoma",
+      "lung malignancy"
+    ],
+    "hepatocellular carcinoma": [
+      "primary liver carcinoma",
+      "hepatocellular malignancy",
+      "liver cell carcinoma"
+    ],
+    "breast cancer": [
+      "breast carcinoma",
+      "mammary carcinoma",
+      "breast malignancy"
+    ],
+    "leukemia": [
+      "hematologic malignancy",
+      "malignant blood disorder",
+      "leukemic malignancy"
+    ],
+    "lymphoma": [
+      "lymphoid malignancy",
+      "malignant lymphoproliferative disorder",
+      "nodal lymphoid malignancy"
+    ],
+    "prostate cancer": [
+      "prostate carcinoma",
+      "prostatic malignancy",
+      "malignant prostate disease"
+    ],
+    "pancreatic adenocarcinoma": [
+      "pancreatic ductal carcinoma",
+      "pancreatic gland carcinoma",
+      "pancreatic malignancy"
+    ],
+    "glioblastoma": [
+      "high-grade glioma",
+      "grade four glioma",
+      "malignant glial tumor"
+    ],
+    "cirrhosis": [
+      "hepatic cirrhosis",
+      "advanced liver fibrosis",
+      "chronic liver scarring"
+    ],
+    "chronic kidney disease": [
+      "chronic renal insufficiency",
+      "long-term renal impairment",
+      "chronic kidney impairment"
+    ],
+    "Crohn's disease": [
+      "inflammatory bowel disease Crohn type",
+      "regional enteritis",
+      "chronic ileocolitis Crohn type"
+    ],
+    "ulcerative colitis": [
+      "inflammatory bowel disease colitis",
+      "chronic ulcerative colitis",
+      "mucosal colitis"
+    ],
+    "myocardial infarction": [
+      "acute myocardial infarction",
+      "ischemic cardiac event",
+      "acute heart infarction"
+    ],
+    "diabetes mellitus": [
+      "diabetic disease",
+      "chronic hyperglycemia disorder",
+      "diabetes condition"
+    ],
+    "Barrett's esophagus": [
+      "esophageal metaplasia Barrett type",
+      "Barrett metaplasia",
+      "intestinal metaplasia of esophagus"
+    ],
+    "esophageal squamous cell carcinoma": [
+      "squamous carcinoma of esophagus",
+      "esophageal squamous malignancy",
+      "malignant squamous tumor of esophagus"
+    ],
+    "age-related macular degeneration": [
+      "macular degeneration related to age",
+      "degenerative macular disease",
+      "age-associated retinal degeneration"
+    ],
+    "glaucoma": [
+      "optic neuropathy related to ocular pressure",
+      "chronic glaucomatous optic neuropathy",
+      "progressive optic nerve damage"
+    ],
+    "retinitis pigmentosa": [
+      "inherited retinal dystrophy",
+      "progressive retinal degeneration",
+      "rod cone retinal dystrophy"
+    ],
+    "sensorineural hearing loss": [
+      "inner ear hearing loss",
+      "cochlear hearing impairment",
+      "auditory nerve related hearing loss"
+    ],
+    "polycystic ovary syndrome": [
+      "polycystic ovarian endocrine disorder",
+      "chronic anovulatory syndrome",
+      "ovarian endocrine syndrome"
+    ],
+    "testicular germ cell tumor": [
+      "germ cell tumor of testis",
+      "testicular germ-cell malignancy",
+      "malignant germ cell tumor"
+    ],
+    "endometriosis": [
+      "ectopic endometrial tissue disorder",
+      "pelvic endometrial implants",
+      "extrauterine endometrial tissue"
+    ],
+    "osteoarthritis": [
+      "degenerative joint disease",
+      "chronic joint degeneration",
+      "articular cartilage degeneration"
+    ],
+    "papillary thyroid carcinoma": [
+      "papillary carcinoma of thyroid",
+      "thyroid papillary malignancy",
+      "differentiated thyroid carcinoma papillary type"
+    ],
+    "Hashimoto's thyroiditis": [
+      "chronic autoimmune thyroiditis",
+      "autoimmune thyroid inflammation",
+      "lymphocytic thyroiditis"
+    ],
+    "Cushing's syndrome": [
+      "cortisol excess syndrome",
+      "endocrine hypercortisolism",
+      "hypercortisolism disorder"
+    ],
+    "Addison's disease": [
+      "primary adrenal insufficiency",
+      "chronic adrenal insufficiency",
+      "cortisol deficiency disorder"
+    ],
+    "preeclampsia": [
+      "hypertensive disorder of pregnancy",
+      "pregnancy associated hypertension",
+      "gestational hypertensive complication"
+    ],
+    "pituitary adenoma": [
+      "pituitary gland adenoma",
+      "hypophyseal adenoma",
+      "benign pituitary tumor"
+    ],
+    "hyperparathyroidism": [
+      "parathyroid hormone excess",
+      "parathyroid gland overactivity",
+      "calcium axis endocrine overfunction"
+    ],
+    "thymoma": [
+      "thymic epithelial tumor",
+      "anterior mediastinal thymic tumor",
+      "thymic neoplasm"
+    ],
+    "adrenocortical carcinoma": [
+      "adrenal cortical malignancy",
+      "adrenal cortex carcinoma",
+      "malignant adrenocortical tumor"
+    ],
+    "healthy": [
+      "control sample",
+      "no disease reported",
+      "apparently healthy control"
+    ],
+    "unknown": []
+  },
+  "treatment": {
+    "no treatment": [
+      "untreated",
+      "no therapy"
+    ],
+    "cisplatin": [
+      "cisplatin chemotherapy",
+      "platinum-based chemotherapy",
+      "cisplatin-based regimen"
+    ],
+    "doxorubicin": [
+      "doxorubicin chemotherapy",
+      "anthracycline-based chemotherapy",
+      "doxorubicin-based regimen"
+    ],
+    "paclitaxel": [
+      "paclitaxel chemotherapy",
+      "taxane-based chemotherapy",
+      "paclitaxel-based regimen"
+    ],
+    "sorafenib": [
+      "sorafenib therapy",
+      "multi-kinase inhibitor therapy",
+      "sorafenib-based treatment"
+    ],
+    "imatinib": [
+      "imatinib therapy",
+      "tyrosine kinase inhibitor therapy",
+      "imatinib-based treatment"
+    ],
+    "erlotinib": [
+      "erlotinib therapy",
+      "epidermal growth factor receptor inhibitor therapy",
+      "erlotinib-based treatment"
+    ],
+    "tamoxifen": [
+      "tamoxifen therapy",
+      "endocrine therapy",
+      "anti-estrogen therapy"
+    ],
+    "methotrexate": [
+      "methotrexate therapy",
+      "antimetabolite therapy",
+      "methotrexate-based regimen"
+    ],
+    "5-fluorouracil": [
+      "fluorouracil chemotherapy",
+      "fluoropyrimidine chemotherapy",
+      "fluorouracil-based regimen"
+    ],
+    "amoxicillin": [
+      "amoxicillin antibiotic therapy",
+      "penicillin class antibiotic therapy",
+      "amoxicillin course"
+    ],
+    "gentamicin": [
+      "gentamicin antibiotic therapy",
+      "aminoglycoside antibiotic therapy",
+      "gentamicin course"
+    ],
+    "irradiation": [
+      "radiotherapy treatment",
+      "therapeutic irradiation",
+      "radiation therapy course"
+    ],
+    "dexamethasone": [
+      "dexamethasone therapy",
+      "systemic glucocorticoid therapy",
+      "steroid therapy dexamethasone"
+    ],
+    "esophagectomy": [
+      "esophageal resection surgery",
+      "surgical resection of esophagus",
+      "esophagus removal surgery"
+    ],
+    "photodynamic therapy": [
+      "photodynamic therapy",
+      "light activated therapy",
+      "photoactivated treatment protocol"
+    ],
+    "anti-VEGF intravitreal injection": [
+      "intravitreal anti-angiogenic therapy",
+      "ocular anti-VEGF injection",
+      "intraocular anti-VEGF treatment"
+    ],
+    "cochlear implant": [
+      "cochlear implantation surgery",
+      "hearing implant surgery",
+      "cochlear prosthesis implantation"
+    ],
+    "laparoscopic ovarian cystectomy": [
+      "laparoscopic ovarian cyst removal",
+      "minimally invasive ovarian cystectomy",
+      "laparoscopic cystectomy procedure"
+    ],
+    "in vitro fertilization": [
+      "assisted reproduction procedure",
+      "in vitro fertilization procedure",
+      "embryo transfer procedure"
+    ],
+    "testosterone replacement therapy": [
+      "testosterone replacement therapy",
+      "androgen replacement therapy",
+      "testosterone supplementation therapy"
+    ],
+    "hysterectomy": [
+      "uterine removal surgery",
+      "surgical removal of uterus",
+      "hysterectomy procedure"
+    ],
+    "arthroscopic debridement": [
+      "arthroscopic joint debridement",
+      "minimally invasive joint debridement",
+      "arthroscopy debridement procedure"
+    ],
+    "mesenchymal stem cell cartilage regeneration": [
+      "mesenchymal stem cell cartilage repair",
+      "stem cell based cartilage repair",
+      "cell therapy cartilage repair"
+    ],
+    "radioiodine ablation": [
+      "radioiodine ablation therapy",
+      "iodine isotope ablation",
+      "radioiodine treatment course"
+    ],
+    "levothyroxine": [
+      "levothyroxine therapy",
+      "thyroid hormone replacement therapy",
+      "thyroxine replacement therapy"
+    ],
+    "methimazole": [
+      "methimazole therapy",
+      "anti-thyroid drug therapy",
+      "thyroid synthesis inhibitor therapy"
+    ],
+    "transsphenoidal surgery": [
+      "transsphenoidal pituitary surgery",
+      "pituitary surgery via sphenoid route",
+      "transsphenoidal resection procedure"
+    ],
+    "hydrocortisone therapy": [
+      "hydrocortisone replacement therapy",
+      "glucocorticoid replacement therapy",
+      "steroid replacement therapy"
+    ],
+    "ketoconazole therapy": [
+      "ketoconazole therapy",
+      "steroid synthesis suppression therapy",
+      "cortisol lowering drug therapy"
+    ],
+    "thymectomy": [
+      "surgical removal of thymus",
+      "thymus excision surgery",
+      "thymectomy procedure"
+    ],
+    "parathyroidectomy": [
+      "surgical removal of parathyroid",
+      "parathyroid gland excision",
+      "parathyroidectomy procedure"
+    ],
+    "magnesium sulfate": [
+      "magnesium sulfate infusion",
+      "magnesium infusion therapy",
+      "magnesium sulfate treatment"
+    ],
+    "antihypertensive therapy": [
+      "blood pressure lowering therapy",
+      "antihypertensive medication therapy",
+      "pressure control medication course"
+    ],
+    "mitotane": [
+      "mitotane therapy",
+      "adrenolytic drug therapy",
+      "adrenal targeting drug therapy"
+    ],
+    "unknown": []
+  },
+  "treatment_time": {
+    "pre treatment": [
+      "baseline timepoint",
+      "before therapy",
+      "prior to treatment",
+      "pre-treatment sampling"
+    ],
+    "on treatment": [
+      "during therapy",
+      "under active treatment",
+      "on-treatment sampling",
+      "while receiving therapy"
+    ],
+    "post treatment": [
+      "after therapy",
+      "post-treatment follow-up",
+      "post-therapy sampling",
+      "follow-up timepoint"
+    ],
+    "relapse": [
+      "disease recurrence timepoint",
+      "relapse sampling",
+      "at recurrence",
+      "recurrence phase"
+    ],
+    "24 hours": [
+      "24 hours after",
+      "one day after",
+      "day one",
+      "after 24 hours"
+    ],
+    "48 hours": [
+      "48 hours after",
+      "two days after",
+      "day two",
+      "after 48 hours"
+    ],
+    "72 hours": [
+      "72 hours after",
+      "three days after",
+      "day three",
+      "after 72 hours"
+    ],
+    "96 hours": [
+      "96 hours after",
+      "four days after",
+      "day four",
+      "after 96 hours"
+    ],
+    "5 days": [
+      "five days after",
+      "day five",
+      "after five days"
+    ],
+    "10 days": [
+      "ten days after",
+      "day ten",
+      "after ten days"
+    ],
+    "1 week": [
+      "one week after",
+      "week one",
+      "after one week"
+    ],
+    "2 weeks": [
+      "two weeks after",
+      "week two",
+      "after two weeks"
+    ],
+    "4 weeks": [
+      "four weeks after",
+      "week four",
+      "after four weeks"
+    ],
+    "8 weeks": [
+      "eight weeks after",
+      "week eight",
+      "after eight weeks"
+    ],
+    "3 months": [
+      "three months after",
+      "month three",
+      "after three months"
+    ],
+    "6 months": [
+      "six months after",
+      "month six",
+      "after six months"
+    ],
+    "9 months": [
+      "nine months after",
+      "month nine",
+      "after nine months"
+    ],
+    "18 months": [
+      "eighteen months after",
+      "month eighteen",
+      "after eighteen months"
+    ],
+    "1 year": [
+      "one year after",
+      "twelve months after",
+      "year one",
+      "after one year"
+    ],
+    "unknown": []
+  },
+  "response": {
+    "stable": [
+      "stable disease",
+      "no evidence of progression",
+      "disease remained stable"
+    ],
+    "progressive": [
+      "progressive disease",
+      "evidence of progression",
+      "disease worsening over time"
+    ],
+    "success": [
+      "clinical response",
+      "treatment response",
+      "evidence of improvement",
+      "disease regression"
+    ],
+    "unknown": []
+  },
+  "age": {
+    "pediatric": [
+      "child participant",
+      "minor participant",
+      "juvenile individual",
+      "under eighteen years of age"
+    ],
+    "adult": [
+      "post-adolescent individual",
+      "working-age individual",
+      "mature individual",
+      "non-pediatric participant"
+    ],
+    "senior": [
+      "older adult participant",
+      "elderly individual",
+      "age sixty-five or above",
+      "late-life participant"
+    ],
+    "unknown": [],
+    "19 years": [
+      "19-year-old",
+      "aged 19",
+      "age nineteen"
+    ],
+    "28 years": [
+      "28-year-old",
+      "aged 28",
+      "age twenty-eight"
+    ],
+    "33 years": [
+      "33-year-old",
+      "aged 33",
+      "age thirty-three"
+    ],
+    "34 years": [
+      "34-year-old",
+      "aged 34",
+      "age thirty-four"
+    ],
+    "36 years": [
+      "36-year-old",
+      "aged 36",
+      "age thirty-six"
+    ],
+    "39 years": [
+      "39-year-old",
+      "aged 39",
+      "age thirty-nine"
+    ],
+    "41 years": [
+      "41-year-old",
+      "aged 41",
+      "age forty-one"
+    ],
+    "44 years": [
+      "44-year-old",
+      "aged 44",
+      "age forty-four"
+    ],
+    "45 years": [
+      "45-year-old",
+      "aged 45",
+      "age forty-five"
+    ],
+    "47 years": [
+      "47-year-old",
+      "aged 47",
+      "age forty-seven"
+    ],
+    "52 years": [
+      "52-year-old",
+      "aged 52",
+      "age fifty-two"
+    ],
+    "55 years": [
+      "55-year-old",
+      "aged 55",
+      "age fifty-five"
+    ],
+    "62 years": [
+      "62-year-old",
+      "aged 62",
+      "age sixty-two"
+    ],
+    "63 years": [
+      "63-year-old",
+      "aged 63",
+      "age sixty-three"
+    ],
+    "67 years": [
+      "67-year-old",
+      "aged 67",
+      "age sixty-seven"
+    ],
+    "71 years": [
+      "71-year-old",
+      "aged 71",
+      "age seventy-one"
+    ],
+    "born in 1982": [
+      "year of birth 1982",
+      "birth year: 1982",
+      "born during 1982"
+    ],
+    "born in 1974": [
+      "year of birth 1974",
+      "birth year: 1974",
+      "born during 1974"
+    ],
+    "born in 1999": [
+      "year of birth 1999",
+      "birth year: 1999",
+      "born during 1999"
+    ]
+  },
+  "sex": {
+    "male": [
+      "sex male",
+      "male participant",
+      "man"
+    ],
+    "female": [
+      "sex female",
+      "female participant",
+      "woman"
+    ],
+    "unknown": []
+  },
+  "ethnicity": {
+    "Asian": [
+      "East Asian ancestry",
+      "Asian ancestry",
+      "Asian background"
+    ],
+    "Hispanic": [
+      "Hispanic ancestry",
+      "Latino background",
+      "Latin American ancestry"
+    ],
+    "European": [
+      "European ancestry",
+      "European background",
+      "Europe-origin background"
+    ],
+    "African": [
+      "African ancestry",
+      "African background",
+      "Africa-origin background"
+    ],
+    "American": [
+      "North American cohort",
+      "United States based cohort",
+      "North America origin cohort"
+    ],
+    "American Indian": [
+      "Indigenous American ancestry",
+      "Native American ancestry",
+      "American Indian ancestry"
+    ],
+    "Pacific Islander": [
+      "Pacific Islander ancestry",
+      "Oceanian ancestry",
+      "Pacific ancestry background"
+    ],
+    "Middle Eastern": [
+      "Middle Eastern ancestry",
+      "Near East ancestry",
+      "MENA ancestry background"
+    ],
+    "Nordic": [
+      "Scandinavian ancestry",
+      "Northern European ancestry",
+      "Nordic ancestry background"
+    ],
+    "Eastern European": [
+      "Eastern European ancestry",
+      "East European background",
+      "Slavic region ancestry"
+    ],
+    "Sub-Saharan African": [
+      "Sub-Saharan African ancestry",
+      "African ancestry sub Saharan",
+      "Sub-Saharan background"
+    ],
+    "South Asian": [
+      "South Asian ancestry",
+      "Indian subcontinent ancestry",
+      "South Asia background"
+    ],
+    "Caribbean": [
+      "Caribbean ancestry",
+      "Caribbean region background",
+      "Caribbean origin ancestry"
+    ],
+    "unknown": []
+  }
+}
